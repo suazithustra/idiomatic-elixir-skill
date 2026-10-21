@@ -377,8 +377,17 @@ class DryRunTest(unittest.TestCase):
                 r = self.run_dry(condition, skills_folder=folder)
                 self.assertNotEqual(r.returncode, 0)
                 self.assertTrue(r.stderr.startswith(f"{REFUSAL} {folder}"), r.stderr)
-                self.assertIn("move the folder or symlink aside", r.stderr)
+                self.assertIn("move the folder or symlink out of the skills folder", r.stderr)
                 self.assertNotIn("command:", r.stdout)
+
+    def test_a_renamed_symlink_to_the_skill_in_the_skills_folder_is_refused(self):
+        skills = self.tmp / "renamed-skills"
+        skills.mkdir()
+        renamed = skills / "idiomatic-elixir.aside"
+        renamed.symlink_to(REPO / "idiomatic-elixir")
+        r = self.run_dry("skill", skills_folder=skills / "idiomatic-elixir")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertTrue(r.stderr.startswith(f"{REFUSAL} {renamed}"), r.stderr)
 
     def test_either_condition_proceeds_when_the_skill_is_not_installed(self):
         for condition in ("baseline", "skill"):

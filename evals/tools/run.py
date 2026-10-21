@@ -31,8 +31,8 @@ SKILL_LINE = (
     "including reading any reference file it points you to for this task."
 )
 MOVE_ASIDE = (
-    "refusing to start: the skill is installed at {path}; move the folder or symlink aside "
-    'for the sweep and restore it after (evals/README.md, "Running a case", step 2)'
+    "refusing to start: the skill is installed at {path}; move the folder or symlink out of the "
+    'skills folder for the sweep and restore it after (evals/README.md, "Running a case", step 2)'
 )
 SESSION_TIMEOUT = 1500
 
@@ -94,9 +94,18 @@ def setup_from(args):
     )
 
 
-def refuse_if_installed(skills_folder):
-    if os.path.lexists(skills_folder):
-        sys.exit(MOVE_ASIDE.format(path=skills_folder))
+def installed_copies(skills_folder, skill_dir):
+    # Every entry of the skills folder is listed to the session as a skill, whatever its name, so
+    # a renamed symlink to the skill folder installs it as surely as the usual name does.
+    found = [skills_folder] if os.path.lexists(skills_folder) else []
+    siblings = skills_folder.parent.iterdir() if skills_folder.parent.is_dir() else []
+    found += [entry for entry in siblings if entry != skills_folder and entry.resolve() == skill_dir.resolve()]
+    return found
+
+
+def refuse_if_installed(skills_folder, skill_dir):
+    for path in installed_copies(skills_folder, skill_dir):
+        sys.exit(MOVE_ASIDE.format(path=path))
 
 
 def prompt_for(cases_dir, case):
@@ -316,7 +325,7 @@ def main():
     add_common_arguments(parser)
     args = parser.parse_args()
     setup = setup_from(args)
-    refuse_if_installed(setup.skills_folder)
+    refuse_if_installed(setup.skills_folder, setup.skill_dir)
     models = args.models.split(",")
     if args.dry_run:
         for model in models:

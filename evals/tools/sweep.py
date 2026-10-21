@@ -30,7 +30,7 @@ def main():
     setup = runner.setup_from(args)
     cases = args.cases.split(",") if args.cases else sorted(p.stem for p in setup.cases_dir.glob("*.md"))
     conditions = args.conditions.split(",")
-    runner.refuse_if_installed(setup.skills_folder)
+    runner.refuse_if_installed(setup.skills_folder, setup.skill_dir)
     matrix = parse_matrix(args.models)
     jobs = [
         (case, condition, model, n)

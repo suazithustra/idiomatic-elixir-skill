@@ -1,0 +1,390 @@
+{
+ "case": "shop-project",
+ "condition": "skill",
+ "notes": [
+  "Second full sweep at db91c23: five skill runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2), all rc 0, uncommitted false, skill_hash a6a9c1d6..., each model_id matching its tier. Every run read SKILL.md first.",
+  "Changed rule, now in the case's list and graded per run against the current text: Chain fallible steps with `with`. The verdict is decided by \"A `with` has at least two `<-` steps; one step is a `case`.\" and \"When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.\" (idiomatic-elixir/SKILL.md, ### Chain fallible steps with `with`; normalize each step's error in a small private function). A run with no `with` is \"not exercised\", as in this sweep's order-report grades; the check batch (2026-10-21-check) graded such runs \"clean\", so its Haiku tier reads clean where this file reads not exercised.",
+  "`with`, violating runs out of five per sentence: one-step `with` 1 of 5 (sonnet-1, twice: line 65 in apply_code/2 and line 89 in total/2); `else` 0 of 5 (no run wrote an else); a `case` nested in a `with` body on a second fallible call 0 of 5. Opus-1 (lines 68-69) and sonnet-2 (lines 74-75) chain parse and already-applied checks as two steps, each a private function returning :ok or {:ok, value} and {:error, reason}. Haiku-1 and haiku-2 write no `with` and handle each single fallible call with case. For comparison: the previous sweep had one-step `with` blocks in 3 of 5 skill runs (recorded then under other_violations), the check batch in 1 of 4.",
+  "Sonnet-1's line 65 is the shape SKILL.md's new example names as the one to replace (\"with {:ok, discount} <- parse_discount(code), do: {:ok, apply_discount(cart, discount)}\"), written after the session read SKILL.md. The check batch suggested the example matching this prompt might explain the drop there; this run shows the example alone does not prevent the pattern.",
+  "Changed rule, graded against the current text: Naming. The fetch sentence adds \"A function that looks a key up and also checks the value, returning `{:error, reason}`, is not a `fetch`: name it by its job, such as `string_field/2` or `parse_amount/1`.\" and the variable sentence adds \"A variable may carry the name of the external key it holds, as in `%{\"data\" => data}`, since the payload chose that name.\" (idiomatic-elixir/SKILL.md, ## Naming). Neither decides a verdict here: the Sonnet runs' subtotal/2 looks prices up and returns {:error, ...} but is named by its job, and no run names a variable data.",
+  "Naming, violating runs out of five per sentence: CamelCase/snake_case 0; top-level namespace 0; boolean functions end in ? 0 (no run defines a boolean function); get/fetch/fetch! 0 (no get or fetch function); size/length 0 (not exercised); descriptive names for ignored values 0 (_held, _current, _reason, _other, _quantity, _discount, _code, _subtotal; no bare _ in new code); domain variable names 0. Held to the earlier standard, which passed role names such as sum, other, normalized and value: haiku-2's input (the raw typed string, lines 61-64 and 88-89), sonnet-2's parsed (line 74) and the Sonnet runs' sum accumulator are not counted.",
+  "Unchanged rules graded to the previous sweep's standard: Update structs, Convert external strings to atoms, Return {:ok, value} or {:error, reason}, Store and compute money, Before you finish. The 'How to use this skill' line now says to read reference files \"before you write code\"; it is not a graded rule, but it bears on Expected reads below.",
+  "Before you finish: 1 of 5 violated. Sonnet-1 ran mix format and mix test (which compiled the project without warnings) but never ran mix credo --strict or a separate mix compile; its refused python3 heredoc carried mix format, mix compile and mix test but no Credo step, so the refusal does not explain the missing Credo run. The other four ran format, compile with --warnings-as-errors, credo --strict and test after their edits.",
+  "Refused commands (the permission gate pre-approved only commands starting with mix, elixir or elixirc): haiku-1 a find -exec listing and a sed -i edit chain that also carried mix format, mix test and mix credo --strict, after which it made the edits with Edit and re-ran format, compile, test and credo; haiku-2 two file-listing loops ($(find ...) and while read); sonnet-1 an xargs/cat listing and the python3 heredoc above; sonnet-2 an xargs/cat listing and a python3 heredoc that carried the full mix chain, re-run after Write. No refusal was a run's only attempt at Credo or the compiler.",
+  "Expected reads: all five runs added tests, and all five read testing.md before their first edit to test/shop/cart_test.exs (opus-1 and sonnet-1 also read library-design.md before writing code). The previous sweep's miss was skill-sonnet-1, the check batch's skill-haiku-1.",
+  "other_violations lists two-step pipelines written on one line in both Haiku runs (lib and tests), the pattern the earlier skill grades listed, and single-step pipes in the Haiku runs' doctests; doctest pipes are listed here for the first time, so that part is not comparable with earlier grades.",
+  "Verified in scratch copies of each project (copied without _build and deps, then mix deps.get): mix format --check-formatted, mix compile --force --warnings-as-errors, mix credo --strict (no issues) and mix test pass in all five. Behaviour was checked with mix run on a probe script: 2 x APPLE at 100 gives 699, 679 with SAVE10 and 200 with FREESHIP in all five (haiku-1 and the Sonnet runs return {:ok, cents}); opus-1 and the Sonnet runs reject a second code, the Haiku runs replace it; removing 5 of 2 units empties the items; BOGUS is rejected with an atom or tagged-tuple reason in all five."
+ ],
+ "runs": {
+  "skill-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md",
+    "testing.md"
+   ],
+   "format_ok": true,
+   "commands_run": [
+    "elixir --version 2>&1 | tail -1; ls; cat .formatter.exs; mix test 2>&1 | tail -5",
+    "mix format lib/shop/cart.ex test/shop/cart_test.exs && mix compile --force --warnings-as-errors 2>&1 | tail -5 && mix credo --strict 2>&1 | tail -8 && mix test 2>&1 | tail -6"
+   ],
+   "refused_commands": [],
+   "added_tests": true,
+   "verdicts": {
+    "Update structs with `%{struct | field: value}`": {
+     "verdict": "clean",
+     "evidence": "line 44: %{cart | items: remove_units(cart.items, sku, quantity)}; line 70: {:ok, %{cart | discount: discount}}"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "lines 113-115: defp parse_discount_code(\"SAVE10\"), do: {:ok, :ten_percent_off} / defp parse_discount_code(\"FREESHIP\"), do: {:ok, :free_shipping} / defp parse_discount_code(code), do: {:error, {:unknown_discount_code, code}}"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "clean",
+     "evidence": "lines 68-70: with {:ok, discount} <- parse_discount_code(code), / :ok <- check_no_discount(cart) do / {:ok, %{cart | discount: discount}} (two steps, each a private function, no else; total_price/2 has no fallible call)"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 115: defp parse_discount_code(code), do: {:error, {:unknown_discount_code, code}}; line 118: defp check_no_discount(%__MODULE__{}), do: {:error, :discount_already_applied}; an unpriced SKU raises KeyError (line 121: Map.fetch!(prices, sku)), documented at lines 77-78, as in the previous sweep's opus run"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+     "verdict": "clean",
+     "evidence": "line 125: defp item_discount(:ten_percent_off, subtotal), do: div(subtotal * 10 + 50, 100)"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "cart, items, sku, quantity, held, code, discount, prices, subtotal; ignored value _subtotal; no boolean, get, fetch, size or length functions"
+    },
+    "Before you finish": {
+     "verdict": "clean",
+     "evidence": "ran mix format lib/shop/cart.ex test/shop/cart_test.exs && mix compile --force --warnings-as-errors ... && mix credo --strict ... && mix test after the edits"
+    }
+   },
+   "behaviour": [
+    "met: 699 / 679 / 200; second code rejected ({:error, :discount_already_applied}); removing 5 of 2 units empties the items; unknown code rejected ({:error, {:unknown_discount_code, \"BOGUS\"}}); codes are case-sensitive (\"save10\" rejected); an unpriced SKU raises KeyError, as its @doc says"
+   ],
+   "other_violations": [],
+   "checks": [
+    "met: ran mix format, mix compile --force --warnings-as-errors, mix credo --strict and mix test itself after the edits (one command, quoted in commands_run); no command refused",
+    "met: format check, compile --force --warnings-as-errors, credo --strict and tests pass afterwards (18 tests, 3 of them doctests)",
+    "met: codes mapped to atoms with one function clause per string; no String.to_atom/1",
+    "met: unknown code returns {:error, {:unknown_discount_code, code}}",
+    "met: discount computed with integer div (line 125)",
+    "met: remove_item/3, apply_discount/2 and total_price/2 exist; a second code is rejected; removing more units than held removes the item",
+    "met: 2 x APPLE at 100 gives 699, 679 with SAVE10, 200 with FREESHIP",
+    "met: struct updated with %{cart | items: ...} and %{cart | discount: ...}",
+    "met: no boolean functions; domain variable names",
+    "met: the one with has two <- steps (lines 68-69); no nested case",
+    "met: Expected reads: added tests and read testing.md before editing the test file"
+   ],
+   "summary": "Added remove_item/3, apply_discount/2 (one function clause per code string, a two-step with that rejects a second code, tagged-tuple errors) and total_price/2 with integer div rounding halves up, plus tests and doctests; ran format, compile, credo --strict and test; broke none of the graded rules and no other rule; read SKILL.md, testing.md and library-design.md."
+  },
+  "skill-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "testing.md"
+   ],
+   "format_ok": true,
+   "commands_run": [
+    "mix format lib/shop/cart.ex test/shop/cart_test.exs && mix deps.get >/dev/null 2>&1; mix compile --warnings-as-errors 2>&1 | tail -20 && mix test 2>&1 | tail -30 && mix credo --strict 2>&1 | tail -30",
+    "mix format && mix compile --warnings-as-errors 2>&1 | tail -3 && mix test 2>&1 | tail -15 && mix credo --strict 2>&1 | tail -4"
+   ],
+   "refused_commands": [
+    "refused (\"find with '-exec' executes commands or modifies files — cannot be auto-allowed by a Bash(find:*) prefix rule\"): a cd ... && find ... && cat lib/shop/cart.ex || find ... -exec cat {} \\; listing",
+    "refused (\"This Bash command contains multiple operations. The following part requires approval: sed -i '' -e ...\"): a sed -i edit of three test assertions followed by grep, mix format, mix test and mix credo --strict; the session then made the same edits with Edit and re-ran format, compile, test and credo"
+   ],
+   "added_tests": true,
+   "verdicts": {
+    "Update structs with `%{struct | field: value}`": {
+     "verdict": "clean",
+     "evidence": "line 37: %{cart | items: Map.put(cart.items, sku, held - quantity)}; line 40: %{cart | items: Map.delete(cart.items, sku)}; line 65: {:ok, discount} -> {:ok, %{cart | discount: discount}}"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "lines 97-100: case code |> String.trim() |> String.upcase() do / \"SAVE10\" -> {:ok, :save10} / \"FREESHIP\" -> {:ok, :freeship} / _other -> {:error, :unknown_code}"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "not exercised",
+     "evidence": "no with; each single fallible call uses case, lines 64-66: case parse_code(code) do / {:ok, discount} -> {:ok, %{cart | discount: discount}} / {:error, _reason} = error -> error; line 87: case subtotal_cents(cart, price_list) do, whose error clause (lines 91-92) passes the error through"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 100: _other -> {:error, :unknown_code}; line 111: {:error, {:unknown_sku, sku}}"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+     "verdict": "clean",
+     "evidence": "line 115: defp discounted_cents(subtotal, :save10), do: subtotal - div(subtotal * 10 + 50, 100)"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "cart, items, sku, quantity, held, code, discount, error, price_list, subtotal; ignored values _held, _reason, _other, _quantity, _discount; no boolean, get, fetch, size or length functions"
+    },
+    "Before you finish": {
+     "verdict": "clean",
+     "evidence": "ran mix format, mix compile --warnings-as-errors, mix test and mix credo --strict after the edits, and again after fixing three test assertions"
+    }
+   },
+   "behaviour": [
+    "met: {:ok, 699} / {:ok, 679} / {:ok, 200}; second code replaces the first ({:ok, %Shop.Cart{items: %{\"APPLE\" => 2}, discount: :freeship}}); removing 5 of 2 units empties the items; unknown code rejected ({:error, :unknown_code}); \"save10\" accepted after trim and upcase; an unpriced SKU returns {:error, {:unknown_sku, \"KIWI\"}}"
+   ],
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 97: case code |> String.trim() |> String.upcase() do (two transformations on one line)",
+    "Write pipelines that start with a value and read top to bottom: test/shop/cart_test.exs line 96: cart = Cart.new() |> Cart.add_item(\"APPLE\", 2) |> Cart.add_item(\"PEAR\", 1) (two transformations on one line; lines 103, 111 and 118 likewise)",
+    "Write pipelines that start with a value and read top to bottom: line 80 (doctest): iex> cart = Shop.Cart.new() |> Shop.Cart.add_item(\"APPLE\", 2) (a single step piped)"
+   ],
+   "checks": [
+    "met: ran mix format, mix compile --warnings-as-errors, mix test and mix credo --strict itself (quoted in commands_run); two commands were refused, a file listing and a sed edit chain whose mix steps the session re-ran afterwards",
+    "met: format check, compile --force --warnings-as-errors, credo --strict and tests pass afterwards (17 tests, 1 of them a doctest)",
+    "met: codes trimmed, upcased and mapped to atoms with explicit case clauses; no String.to_atom/1",
+    "met: unknown code returns {:error, :unknown_code}",
+    "met: discount computed with integer div (line 115)",
+    "met: remove_item/3, apply_code/2 and total_cents/2 exist; a second code replaces the first; removing more units than held removes the item",
+    "met: 2 x APPLE at 100 gives {:ok, 699}, {:ok, 679} with SAVE10, {:ok, 200} with FREESHIP",
+    "met: struct updated with %{cart | items: ...} and %{cart | discount: ...}",
+    "met: no boolean functions; domain variable names",
+    "met: no with; both single fallible calls (parse_code/1, subtotal_cents/2) are handled with case",
+    "met: Expected reads: added tests and read testing.md before editing the test file"
+   ],
+   "summary": "Added remove_item/3, apply_code/2 (trims and upcases, explicit case clauses to atoms, replaces an earlier code, atom error reason) and total_cents/2 returning {:ok, cents} with integer div rounding halves up, plus tests and a doctest; wrote no with, using case for each single fallible call; ran format, compile, test and credo --strict; broke none of the graded rules (two-step pipelines on one line, a single-step pipe in a doctest); read SKILL.md and testing.md."
+  },
+  "skill-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "testing.md"
+   ],
+   "format_ok": true,
+   "commands_run": [
+    "elixir --version 2>&1 | tail -1; mix deps.get 2>&1 | tail -3; mix format && mix compile --warnings-as-errors 2>&1 | tail -5; mix test 2>&1 | tail -30",
+    "mix credo --strict 2>&1 | tail -25; git status 2>&1 | head -1"
+   ],
+   "refused_commands": [
+    "refused (\"A variable in this command can't be checked before it runs\"): a cd ... && find ... && cat mix.exs && for f in $(find lib test ...) loop that printed the source files",
+    "refused (\"Quoted text in this command can't be checked before it runs\"): the same listing written as a find ... | while read f loop"
+   ],
+   "added_tests": true,
+   "verdicts": {
+    "Update structs with `%{struct | field: value}`": {
+     "verdict": "clean",
+     "evidence": "line 35: %{cart | items: remove_units(cart.items, sku, quantity)}; line 63: {:ok, code} -> {:ok, %{cart | code: code}}"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "lines 89-92: case input |> String.trim() |> String.upcase() do / \"SAVE10\" -> {:ok, :save10} / \"FREESHIP\" -> {:ok, :freeship} / _other -> :error"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "not exercised",
+     "evidence": "no with; the single fallible call uses case, lines 62-65: case parse_code(input) do / {:ok, code} -> {:ok, %{cart | code: code}} / :error -> {:error, {:unknown_code, input}}"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 64: :error -> {:error, {:unknown_code, input}}; an unpriced SKU raises KeyError (line 97: Map.fetch!(price_list, sku)), documented at lines 71-72 as a caller bug, as in the previous sweep's Haiku runs"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+     "verdict": "clean",
+     "evidence": "line 101: defp discounted_subtotal(subtotal, :save10), do: div(subtotal * 90 + 50, 100)"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "cart, items, sku, quantity, current, input, code, price_list, subtotal; ignored values _current, _other, _code; no boolean, get, fetch, size or length functions (input, the raw typed string beside the parsed code, not counted; see notes)"
+    },
+    "Before you finish": {
+     "verdict": "clean",
+     "evidence": "ran mix format, mix compile --warnings-as-errors and mix test, then mix credo --strict, after the edits"
+    }
+   },
+   "behaviour": [
+    "met: 699 / 679 / 200; second code replaces the first ({:ok, %Shop.Cart{items: %{\"APPLE\" => 2}, code: :freeship}}); removing 5 of 2 units empties the items; unknown code rejected ({:error, {:unknown_code, \"BOGUS\"}}); \"save10\" accepted after trim and upcase; an unpriced SKU raises KeyError, as its @doc says"
+   ],
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 89: case input |> String.trim() |> String.upcase() do (two transformations on one line)",
+    "Write pipelines that start with a value and read top to bottom: test/shop/cart_test.exs line 130: {:ok, cart} = Cart.new() |> Cart.add_item(\"ITEM\", 1) |> Cart.apply_code(\"SAVE10\") (two transformations on one line)",
+    "Write pipelines that start with a value and read top to bottom: lines 53 and 57 (doctests): iex> {:ok, cart} = Shop.Cart.new() |> Shop.Cart.apply_code(\" save10 \") / iex> Shop.Cart.new() |> Shop.Cart.apply_code(\"BOGUS\") (a single step piped)"
+   ],
+   "checks": [
+    "met: ran mix format, mix compile --warnings-as-errors, mix test and mix credo --strict itself (quoted in commands_run); the two refused commands were file listings with no mix step",
+    "met: format check, compile --force --warnings-as-errors, credo --strict and tests pass afterwards (20 tests, 2 of them doctests)",
+    "met: codes trimmed, upcased and mapped to atoms with explicit case clauses; no String.to_atom/1",
+    "met: unknown code returns {:error, {:unknown_code, input}}",
+    "met: discount computed with integer div (line 101)",
+    "met: remove_item/3, apply_code/2 and total_cents/2 exist; a second code replaces the first; removing more units than held removes the item",
+    "met: 2 x APPLE at 100 gives 699, 679 with SAVE10, 200 with FREESHIP",
+    "met: struct updated with %{cart | items: ...} and %{cart | code: ...}",
+    "met: no boolean functions; domain variable names",
+    "met: no with; the single fallible call (parse_code/1) is handled with case",
+    "met: Expected reads: added tests and read testing.md before editing the test file"
+   ],
+   "summary": "Added remove_item/3, apply_code/2 (trims and upcases, explicit case clauses to atoms, replaces an earlier code, tagged-tuple error) and total_cents/2 with integer div rounding halves up, plus tests and doctests; wrote no with; ran format, compile, test and credo --strict; broke none of the graded rules (two-step pipelines on one line, single-step pipes in doctests); read SKILL.md and testing.md."
+  },
+  "skill-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md",
+    "testing.md"
+   ],
+   "format_ok": true,
+   "commands_run": [
+    "mix format",
+    "mix test 2>&1 | tail -20",
+    "mix format && mix test 2>&1 | tail -6"
+   ],
+   "refused_commands": [
+    "refused (\"This Bash command contains multiple operations. The following part requires approval: xargs ls; cat lib/shop/cart.ex; cat test/*cart*; cat mix.exs\"): a cd ... && find ... | xargs ls; cat ... file listing",
+    "refused (\"This Bash command contains multiple operations. The following part requires approval: python3 - <<'EOF' ...\"): a python3 heredoc that rewrote cart.ex and cart_test.exs, followed by mix format && mix compile 2>&1 | tail -20 && mix test 2>&1 | tail -20 (no Credo step); the session then wrote the files with Write and Edit and ran only mix format and mix test"
+   ],
+   "added_tests": true,
+   "verdicts": {
+    "Update structs with `%{struct | field: value}`": {
+     "verdict": "clean",
+     "evidence": "line 37: %{cart | items: Map.put(cart.items, sku, held - quantity)}; line 40: %{cart | items: Map.delete(cart.items, sku)}; line 66: {:ok, %{cart | discount: discount}}"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "lines 102-104: defp parse_code(\"SAVE10\"), do: {:ok, :save10} / defp parse_code(\"FREESHIP\"), do: {:ok, :freeship} / defp parse_code(_code), do: {:error, :unknown_code}"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "violated",
+     "evidence": "line 65: with {:ok, discount} <- parse_code(code) do; line 89: with {:ok, subtotal} <- subtotal(cart, prices) do (each has one <- step; the current text says \"A `with` has at least two `<-` steps; one step is a `case`.\" Line 65 is the shape of SKILL.md's own one-step example)"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 104: defp parse_code(_code), do: {:error, :unknown_code}; line 70: def apply_code(%__MODULE__{}, code) when is_binary(code), do: {:error, :code_already_applied}; line 110: :error -> {:halt, {:error, {:missing_price, sku}}}"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+     "verdict": "clean",
+     "evidence": "line 115: defp apply_save10(subtotal, :save10), do: div(subtotal * 90 + 50, 100)"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "cart, items, sku, quantity, held, code, discount, prices, subtotal, sum, price; ignored values _held, _code, _discount; no boolean, get, fetch, size or length functions"
+    },
+    "Before you finish": {
+     "verdict": "violated",
+     "evidence": "after the edits ran only \"mix format\", \"mix test 2>&1 | tail -20\" and \"mix format && mix test 2>&1 | tail -6\"; never ran mix credo --strict or a separate mix compile (the refused python3 command carried \"mix format && mix compile 2>&1 | tail -20 && mix test 2>&1 | tail -20\", with no Credo step)"
+    }
+   },
+   "behaviour": [
+    "met: {:ok, 699} / {:ok, 679} / {:ok, 200}; second code rejected ({:error, :code_already_applied}); removing 5 of 2 units empties the items; unknown code rejected ({:error, :unknown_code}); codes are case-sensitive (\"save10\" rejected); an unpriced SKU returns {:error, {:missing_price, \"KIWI\"}}"
+   ],
+   "other_violations": [],
+   "checks": [
+    "missed: ran mix format and mix test (which compiled the project) but not mix compile on its own or mix credo --strict; the one refused command with mix steps had no Credo step either",
+    "met: format check, compile --force --warnings-as-errors, credo --strict and tests pass afterwards (17 tests, 3 of them doctests)",
+    "met: codes mapped to atoms with one function clause per string; no String.to_atom/1",
+    "met: unknown code returns {:error, :unknown_code}",
+    "met: discount computed with integer div (line 115)",
+    "met: remove_item/3, apply_code/2 and total/2 exist; a second code is rejected; removing more units than held removes the item",
+    "met: 2 x APPLE at 100 gives {:ok, 699}, {:ok, 679} with SAVE10, {:ok, 200} with FREESHIP",
+    "met: struct updated with %{cart | items: ...} and %{cart | discount: ...}",
+    "met: no boolean functions; domain variable names",
+    "missed: two with blocks have one <- step each (line 65 in apply_code/2, line 89 in total/2)",
+    "met: Expected reads: added tests and read testing.md before editing the test file"
+   ],
+   "summary": "Added remove_item/3, apply_code/2 (one function clause per code string, rejects a second code in the function head, atom errors) and total/2 returning {:ok, cents} with div(subtotal * 90 + 50, 100), plus tests and doctests; broke Chain fallible steps with `with` (one-step with blocks at lines 65 and 89) and Before you finish (ran mix format and mix test but never mix credo --strict or a separate compile); read SKILL.md, testing.md and library-design.md."
+  },
+  "skill-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "testing.md"
+   ],
+   "format_ok": true,
+   "commands_run": [
+    "mix format && mix compile --warnings-as-errors 2>&1 | tail -15 && mix test 2>&1 | tail -15 && mix credo --strict 2>&1 | tail -15",
+    "mix format --check-formatted && mix test 2>&1 | tail -5"
+   ],
+   "refused_commands": [
+    "refused (\"This Bash command contains multiple operations. The following part requires approval: xargs ls; cat lib/shop/cart.ex; cat test/shop/cart_test.exs; cat mix.exs; elixir --version\"): a cd ... && find ... | xargs ls; cat ... file listing",
+    "refused (\"This Bash command contains multiple operations. The following part requires approval: python3 - <<'EOF' ...\"): a python3 heredoc that rewrote cart.ex and cart_test.exs, followed by mix format && mix compile 2>&1 | tail -20 && mix test 2>&1 | tail -20 && mix credo --strict 2>&1 | tail -15; the session then wrote the files with Write and re-ran the mix chain"
+   ],
+   "added_tests": true,
+   "verdicts": {
+    "Update structs with `%{struct | field: value}`": {
+     "verdict": "clean",
+     "evidence": "line 44: %{cart | items: remove_units(cart.items, sku, quantity)}; line 76: {:ok, %{cart | code: parsed}}"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "lines 112-114: defp parse_code(\"SAVE10\"), do: {:ok, :save10} / defp parse_code(\"FREESHIP\"), do: {:ok, :freeship} / defp parse_code(_other), do: {:error, :unknown_code}"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "clean",
+     "evidence": "lines 74-76: with {:ok, parsed} <- parse_code(code), / :ok <- ensure_no_code(cart) do / {:ok, %{cart | code: parsed}} (two steps, each a private function, no else); total/2's single fallible call uses case, lines 98-100: case subtotal(cart, prices) do / {:ok, subtotal} -> {:ok, discounted(subtotal, cart.code) + shipping_fee(cart.code)} / {:error, _reason} = error -> error"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 114: defp parse_code(_other), do: {:error, :unknown_code}; line 117: defp ensure_no_code(%__MODULE__{}), do: {:error, :code_already_applied}; line 123: :error -> {:halt, {:error, {:unknown_sku, sku}}}"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+     "verdict": "clean",
+     "evidence": "line 129: subtotal - div(subtotal * @save10_percent + 50, 100)"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "cart, items, sku, quantity, held, code, parsed, error, prices, subtotal, sum, price; ignored values _held, _reason, _other, _code; no boolean, get, fetch, size or length functions"
+    },
+    "Before you finish": {
+     "verdict": "clean",
+     "evidence": "ran mix format, mix compile --warnings-as-errors, mix test and mix credo --strict after the edits; after fixing one expected total in a test (594 to 593) it ran mix format --check-formatted and mix test"
+    }
+   },
+   "behaviour": [
+    "met: {:ok, 699} / {:ok, 679} / {:ok, 200}; second code rejected ({:error, :code_already_applied}); removing 5 of 2 units empties the items; unknown code rejected ({:error, :unknown_code}); codes are case-sensitive (\"save10\" rejected); an unpriced SKU returns {:error, {:unknown_sku, \"KIWI\"}}"
+   ],
+   "other_violations": [],
+   "checks": [
+    "met: ran mix format, mix compile --warnings-as-errors, mix test and mix credo --strict itself (quoted in commands_run); a refused python3 edit command also carried the mix chain, but the session re-ran it after writing the files",
+    "met: format check, compile --force --warnings-as-errors, credo --strict and tests pass afterwards (21 tests, 3 of them doctests)",
+    "met: codes mapped to atoms with one function clause per string; no String.to_atom/1",
+    "met: unknown code returns {:error, :unknown_code}",
+    "met: discount computed with integer div (line 129)",
+    "met: remove_item/3, apply_code/2 and total/2 exist; a second code is rejected; removing more units than held removes the item",
+    "met: 2 x APPLE at 100 gives {:ok, 699}, {:ok, 679} with SAVE10, {:ok, 200} with FREESHIP",
+    "met: struct updated with %{cart | items: ...} and %{cart | code: ...}",
+    "met: no boolean functions; domain variable names",
+    "met: the with has two <- steps (lines 74-75); total/2's single fallible call (subtotal/2) is handled with case",
+    "met: Expected reads: added tests and read testing.md before writing code"
+   ],
+   "summary": "Added remove_item/3, apply_code/2 (one function clause per code string, a two-step with that rejects a second code, atom errors) and total/2 returning {:ok, cents} with integer div rounding halves up, using case for its single fallible call, plus tests and doctests; ran format, compile, test and credo --strict; broke none of the graded rules and no other rule; read SKILL.md and testing.md."
+  }
+ },
+ "per_rule": {
+  "Update structs with `%{struct | field: value}`": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Convert external strings to atoms with explicit clauses": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+   "opus": "clean",
+   "haiku": "not exercised",
+   "sonnet": "violated"
+  },
+  "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Store and compute money as integer minor units or `Decimal`, never floats": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Naming": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Before you finish": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "violated"
+  }
+ }
+}

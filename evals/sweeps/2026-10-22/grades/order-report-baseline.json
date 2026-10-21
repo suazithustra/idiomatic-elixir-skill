@@ -1,0 +1,381 @@
+{
+  "case": "order-report",
+  "condition": "baseline",
+  "notes": [
+    "Second full sweep at db91c23: five baseline runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2), all rc 0, each model_id matching its tier. No transcript has a Skill tool call or any SKILL.md text, and reads is empty in all five, as the prompt's last line (\"Do not invoke any skills.\") requires. In the scratch folder, mix format --check-formatted passes for haiku-1 and haiku-2 and fails for opus-1 (lines 25, 30, 84), sonnet-1 (lines 37, 88-89) and sonnet-2 (line 51); all five compile, with warnings only that Decimal is not loaded. Opus-1 also left check/check.exs (a Decimal stand-in and a smoke script) in its run folder after its rm was refused; that file is not graded.",
+    "Changed rule, now in the case's list and graded per run: \"Chain fallible steps with `with`; normalize each step's error in a small private function\". The verdict is decided by \"A `with` has at least two `<-` steps; one step is a `case`.\" and \"When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.\" (idiomatic-elixir/SKILL.md, the rule's first paragraph and the paragraph after its first example). Violating runs out of 5: one-step with 1 (opus-1 line 50, around parse_all/1 in build/1); else 1 (opus-1 lines 127-128, which rewrite Decimal.parse/1 and finite?/1 results into one error, the shape the previous sweep flagged in skill-sonnet-1); case nested in a with 0. The other four write no with (not exercised): haiku-1, haiku-2, sonnet-1 and sonnet-2 raise on bad input instead of returning tuples. For comparison, the previous sweep's baseline runs had the one-step shape in 3 of 5 (opus-1 line 57, sonnet-1 line 87, sonnet-2 line 35), not graded then because the rule was not in the case's list.",
+    "Changed rule, graded against the current text: \"Use the `Enum` or `Map` function made for the job\", decided by its second table row: \"a `reduce` that reads and writes one key per element is these two written by hand\". Hand-written per-key fold: 5 of 5. Per currency: opus-1 lines 66-67 (a for comprehension with reduce:), haiku-1 lines 53-56, sonnet-1 lines 63-64, sonnet-2 line 51; per customer: haiku-2 lines 44-46 with Map.get/Map.put at lines 63 and 78, sonnet-2 lines 34-42. The first check batch already read the per-currency Map.update fold as counting under this row. The previous sweep graded the same per-currency shape clean under the old text (its baseline-opus-1 lines 71-72, baseline-haiku-2 lines 57-60, baseline-sonnet-2 lines 105-106), so the move to violated for Opus and Sonnet reflects the new row; only haiku-2's Map.get then Map.put fold would also break the old text (row `Map.put(map, k, f.(Map.get(map, k)))`). Opus-1, haiku-1 and sonnet-1 group customers with Enum.group_by/2 and Map.new/2, the function the case's check line now names.",
+    "Changed rule, graded against the current text: Naming (fetch sentence: \"A function that looks a key up and also checks the value, returning `{:error, reason}`, is not a `fetch`: name it by its job, such as `string_field/2` or `parse_amount/1`.\"; variable sentence: \"A variable may carry the name of the external key it holds, as in `%{\"data\" => data}`, since the payload chose that name.\"). Neither added sentence decides a verdict here: no run defines a lookup helper (haiku-2 calls the standard Map.fetch!/2), and no run names a variable data. Violating runs per sentence, out of 5: CamelCase/snake_case 0; top-level namespace 0 (Reports.Orders as the prompt names it); boolean functions end in ? 0 (opus-1 finite?/1, haiku-1 completed?/1, sonnet-1 a completed? key); get/fetch 0; size/length 0 (not exercised); ignored values 0; domain variable names 1 (sonnet-2 line 64: latest(a, b), the line the previous sweep flagged in baseline-sonnet-1). acc, entry, id, rows, string, value and current are held to the earlier standard, which passed them and flagged only data and single letters.",
+    "Unchanged rule, new finding: \"Use captures for one-call lambdas and `fn` for anything longer\" is decided by its first sentence and \"When the body does more than one call or would need `&2`, write `fn` with named arguments.\" Sonnet-2 line 51 writes a capture whose body calls Map.update/4 and, through an inner fn, Decimal.add/2; because captures cannot nest, the one-call lambda inside is written as fn. The rule's form is fn totals -> Map.update(totals, currency, amount, &Decimal.add(&1, amount)) end. No earlier run in this case wrote that shape.",
+    "Other unchanged rules follow the earlier standard. Decimal.parse/1 catch-alls are listed under Match every expected shape (opus-1 line 128; sonnet-1 line 82, which raises instead of returning a tuple). Raising on malformed rows is listed under the raise rule (haiku-1, haiku-2, sonnet-1, sonnet-2). Reading string keys inside the report code is listed under Read required keys and Parse external data (haiku-1, sonnet-2), as in the previous baseline-haiku-2. A public build/1 with an @doc lacking ## Examples is listed (opus-1, haiku-1, haiku-2), and so is one with no @doc at all (sonnet-1, sonnet-2). A two-step pipeline on one line is listed (sonnet-1 line 67), as in the previous skill-haiku-1, and format failures go under Before you finish. One new finding: sonnet-2's add_spend/2 selects the status and matches the fields in one head (line 49), so a completed row missing \"amount\" or \"currency\" falls through to the no-op clause (line 54). A probe with a stand-in Decimal confirmed that such a row counts toward top_customers but is left out of totals. It is listed under Match every expected shape, whose last paragraph says to select the type in one function and validate the fields in another."
+  ],
+  "runs": {
+    "baseline-opus-1": {
+      "model_id": "claude-opus-5-5",
+      "reads": [],
+      "format_ok": false,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 141: defp parse_status(\"completed\"), do: {:ok, :completed}; line 142: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 143: defp parse_status(\"pending\"), do: {:ok, :pending}; line 144: defp parse_status(status), do: {:error, {:invalid_status, status}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "violated",
+          "evidence": "line 50: with {:ok, orders} <- parse_all(rows) do (one `<-` step; its body calls nothing that can fail, so per the current text it is a case); lines 124-128: with {decimal, \"\"} <- Decimal.parse(string), / true <- finite?(decimal) do / {:ok, decimal} / else / _ -> {:error, {:invalid_amount, string}} (an else that rewrites the steps' results instead of steps that return {:error, reason}); the three-step with at lines 107-109 passes errors through unchanged"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "violated",
+          "evidence": "line 66: for %{status: :completed, currency: currency, amount: amount} <- orders, reduce: %{} do; line 67: totals -> Map.update(totals, currency, amount, &Decimal.add(&1, amount)) (a reduce that reads and writes one key per element; current text: group_by then Map.new); per customer it is clean: line 57: |> Enum.group_by(& &1.customer_id); line 58: |> Map.new(fn {customer_id, orders} -> {customer_id, summarize(orders)} end); line 81: |> Enum.frequencies_by(& &1.customer_id)"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 91: |> Enum.with_index(); line 94: {:ok, order} -> {:cont, {:ok, [order | orders]}} (prepends; never reversed, but grouping, sums, Enum.max and the tie-broken sort do not depend on order); no ++, Enum.at/2 or length/1"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 73: |> Enum.map(& &1.placed_at); line 74: |> Enum.max(DateTime)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 124: with {decimal, \"\"} <- Decimal.parse(string),; line 67: totals -> Map.update(totals, currency, amount, &Decimal.add(&1, amount))"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 132: defp finite?(decimal), do: not (Decimal.nan?(decimal) or Decimal.inf?(decimal)) ends in ?; module Reports.Orders as the prompt names it; domain names (rows, orders, customer_id, totals, placed_at, status); no lookup helper; ignored value named (line 136: _offset)"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 57: |> Enum.group_by(& &1.customer_id); line 67: &Decimal.add(&1, amount); line 80: |> Enum.filter(&(&1.status == :completed)); fn only to destructure tuples (lines 58, 82, 84) or for a multi-line body (line 92)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Match every expected shape and let unexpected ones crash: line 128: _ -> {:error, {:invalid_amount, string}} (Decimal.parse/1's :error and trailing-text shapes and finite?/1's false caught by one catch-all)",
+        "Before you finish: line 84: |> Enum.map(fn {customer_id, count} -> %{customer_id: customer_id, completed_orders: count} end) (100 characters; mix format also rewrites lines 25 and 30)",
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 36: @doc \"\"\" has no ## Examples"
+      ],
+      "checks": [
+        "met: amounts parsed and summed with Decimal (lines 124, 67)",
+        "met: dates compared with Enum.max(DateTime) (line 74)",
+        "missed: per-currency totals folded by hand in a for/reduce with Map.update (lines 66-67); customers grouped with Enum.group_by/2 and Map.new/2 (lines 57-58), counts with Enum.frequencies_by/2 (line 81), ranking with Enum.sort_by (line 82)",
+        "met: status converted with explicit clauses (lines 141-144)",
+        "met: list built by prepending (line 94); no ++ or length-based empty check",
+        "met: one-call lambdas are captures",
+        "met: no process",
+        "met: finite?/1 ends in ?; domain variable names",
+        "missed: line 50 is a one-step with around parse_all/1, which the check says should be a case; parse_amount/1 rewrites its steps' results in an else (lines 127-128)",
+        "missed: mix format --check-formatted fails (lines 25, 30, 84)",
+        "met: Expected reads (none) applies to skill runs; reads is empty, as the baseline prompt requires"
+      ],
+      "summary": "Parses rows into atom-keyed maps with Decimal amounts, DateTime values and explicit status clauses, returns {:ok, report} or the first bad row with its index, and builds the report with group_by, Map.new, Enum.max(DateTime) and frequencies_by. It breaks the with rule (a one-step with in build/1 and an else in parse_amount/1) and the Enum/Map rule (per-currency totals folded with Map.update). Outside the list, it lumps Decimal.parse/1 failures under `_ ->`, its @doc has no examples, and it fails mix format. It read no skill files."
+    },
+    "baseline-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "not exercised",
+          "evidence": "status stays a string; line 77: defp completed?(%{\"status\" => \"completed\"}), do: true"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "not exercised",
+          "evidence": "no with, and no function returns {:ok, value} or {:error, reason}; parse_amount/1 raises (line 92: raise ArgumentError, \"invalid amount: #{inspect(amount)}\")"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "violated",
+          "evidence": "line 53: |> Enum.reduce(%{}, fn order, acc ->; line 54: cents = parse_amount(order[\"amount\"]); line 55: Map.update(acc, order[\"currency\"], cents, &(&1 + cents)) (a reduce that reads and writes one key per element; current text: group_by then Map.new); per customer it is clean: line 43: |> Enum.group_by(& &1[\"customer_id\"]); line 44: |> Map.new(fn {customer_id, rows} -> {customer_id, summarize_customer(rows)} end); line 69: |> Enum.frequencies_by(& &1[\"customer_id\"])"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "Enum.filter/map/take only (lines 52, 60, 68-72); no ++, Enum.at/2, length/1 or empty-list check"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 60: |> Enum.map(&placed_on/1); line 61: |> Enum.max(Date)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 85: String.to_integer(whole) * 100; line 89: String.to_integer(whole) * 100 + cents; line 55: Map.update(acc, order[\"currency\"], cents, &(&1 + cents))"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 77: defp completed?(%{\"status\" => \"completed\"}), do: true ends in ?; module Reports.Orders; domain names (orders, rows, order, cents, spent, last_order_on); ignored values named (_order, _offset)"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 43: |> Enum.group_by(& &1[\"customer_id\"]); line 52: |> Enum.filter(&completed?/1); line 55: &(&1 + cents); fn only for a two-call body (line 53) or to destructure tuples (lines 44, 70, 72)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys: line 54: cents = parse_amount(order[\"amount\"]); line 55: Map.update(acc, order[\"currency\"], cents, &(&1 + cents)) (also lines 43 and 69: & &1[\"customer_id\"])",
+        "Parse external data into structs where it enters the system: line 54: cents = parse_amount(order[\"amount\"]) (string-keyed rows are never parsed at the boundary; amounts and dates are parsed inside the report code)",
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: line 92: raise ArgumentError, \"invalid amount: #{inspect(amount)}\"; line 103: |> NaiveDateTime.from_iso8601!()",
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 33: @doc \"\"\" has no ## Examples"
+      ],
+      "checks": [
+        "met: amounts summed as integer cents (lines 85, 89, 55)",
+        "met: dates compared with Enum.max(Date) (line 61)",
+        "missed: per-currency spend folded by hand with Enum.reduce and Map.update (lines 53-56); customers grouped with Enum.group_by/2 and Map.new/2 (lines 43-44), counts with Enum.frequencies_by/2 (line 69), ranking with Enum.sort_by (line 70)",
+        "met: status not converted to atoms (matched as a string, line 77)",
+        "met: lists built with Enum.map/filter; no ++ or length-based empty check",
+        "met: one-call lambdas are captures",
+        "met: no process",
+        "met: completed?/1 ends in ?; domain variable names",
+        "met: no with written; failures raise, so there is no single fallible call to put in a case",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads (none) applies to skill runs; reads is empty, as the baseline prompt requires"
+      ],
+      "summary": "Groups the raw string-keyed rows by customer with group_by and Map.new, folds integer cents per currency with Enum.reduce and Map.update, and takes the latest date with Enum.max(Date), breaking the Enum/Map rule. Outside the list, it reads required keys with order[\"key\"] in the report code instead of parsing at the boundary, raises on malformed amounts and dates, and its @doc has no examples. It read no skill files."
+    },
+    "baseline-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "not exercised",
+          "evidence": "status stays a string; line 72: if order.status == \"completed\" do"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "not exercised",
+          "evidence": "no with, and no function returns {:ok, value} or {:error, reason}; parsers raise (line 118, line 130)"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "violated",
+          "evidence": "line 44: Enum.reduce(orders, %{}, fn order, acc ->; line 45: add_order(acc, parse_order(order)); line 63: Map.get(customers, order.customer_id, %{; line 78: Map.put(customers, order.customer_id, entry) (a reduce that reads and writes one key per element, with Map.get then Map.put; current text: group_by then Map.new); line 83: %{entry | spent: spent, completed_count: entry.completed_count + 1} (completed orders counted by hand)"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 94: |> Enum.map(fn {id, entry} -> {id, entry.completed_count} end); no ++, Enum.at/2, length/1 or empty-list check"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 89: if DateTime.compare(placed_at, current) == :gt, do: placed_at, else: current"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 111: String.to_integer(whole) * 100; lines 114-115: String.to_integer(whole) * 100 + / String.to_integer(String.pad_trailing(fraction, 2, \"0\")); line 82: Map.update(entry.spent, order.currency, order.amount, &(&1 + order.amount))"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "module Reports.Orders; no boolean function and no lookup helper; parse_datetime!/1 raises as its ! says; domain names (orders, customers, order, entry, spent, cents, placed_at, current); ignored values named (_offset, _id)"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 82: &(&1 + order.amount); fn for a two-call body (line 44) or to destructure tuples (lines 94-96)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: line 118: raise ArgumentError, \"invalid amount: #{inspect(amount)}\"; line 130: raise ArgumentError, \"invalid placed_at #{inspect(value)}: #{inspect(reason)}\" (and lines 53-57 read each key with Map.fetch!/2, so a missing key raises KeyError)",
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 31: @doc \"\"\" has no ## Examples"
+      ],
+      "checks": [
+        "met: amounts summed as integer cents (lines 111, 114-115, 82)",
+        "met: dates compared with DateTime.compare/2 (line 89)",
+        "missed: per-customer summaries folded by hand with Enum.reduce, Map.get and Map.put (lines 44-46, 63, 78) and a hand-kept completed_count (line 83) instead of Enum.group_by/2, Map.new/2 and Enum.frequencies_by/2; ranking with Enum.sort_by (line 96)",
+        "met: status not converted to atoms (compared as a string, line 72)",
+        "met: lists built with Enum.map/filter; no ++ or length-based empty check",
+        "met: one-call lambdas are captures",
+        "met: no process",
+        "met: no boolean function; domain variable names",
+        "met: no with written; failures raise, so there is no single fallible call to put in a case",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads (none) applies to skill runs; reads is empty, as the baseline prompt requires"
+      ],
+      "summary": "Parses each row into an atom-keyed map with Map.fetch!/2, integer cents and a DateTime, then folds all orders into per-customer entries with Enum.reduce, Map.get, Map.put and a hand-kept completed count, breaking the Enum/Map rule. Outside the list, it raises ArgumentError on malformed amounts and dates, and its @doc has no examples. It read no skill files."
+    },
+    "baseline-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [],
+      "format_ok": false,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "not exercised",
+          "evidence": "status becomes a boolean; line 54: completed?: status == \"completed\""
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "not exercised",
+          "evidence": "no with, and no function returns {:ok, value} or {:error, reason}; parsers raise (lines 82, 89)"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "violated",
+          "evidence": "line 63: Enum.reduce(completed, %{}, fn %{currency: currency, amount: amount}, acc ->; line 64: Map.update(acc, currency, amount, &Decimal.add(&1, amount)) (a reduce that reads and writes one key per element; current text: group_by then Map.new); per customer it is clean: line 33: |> Enum.group_by(& &1.customer_id); line 34: |> Map.new(fn {id, rows} -> {id, summarize(rows)} end)"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 32: |> Enum.map(&normalize/1); line 66: completed_count: length(completed) (length/1 only counts); no ++, Enum.at/2 or empty-list check"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 67: last_order_on: rows |> Enum.map(& &1.placed_on) |> Enum.max(Date)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 80: case Decimal.parse(amount) do; line 64: Map.update(acc, currency, amount, &Decimal.add(&1, amount))"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 54: completed?: status == \"completed\" (boolean key ends in ?); parse_amount!/1 and parse_date!/1 raise as their ! says; module Reports.Orders; domain names (orders, summaries, rows, completed, summary, decimal); ignored values named (_id, _offset)"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 32: &normalize/1; line 59: Enum.filter(rows, & &1.completed?); line 64: &Decimal.add(&1, amount); fn only to destructure arguments (lines 34, 37, 63, 73-75)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Match every expected shape and let unexpected ones crash: line 82: _ -> raise ArgumentError, \"invalid amount: #{inspect(amount)}\" (Decimal.parse/1's :error and trailing-text shapes caught by one catch-all)",
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: line 82: _ -> raise ArgumentError, \"invalid amount: #{inspect(amount)}\"; line 89: {:error, reason} -> raise ArgumentError, \"invalid placed_at #{inspect(placed_at)}: #{reason}\" (and normalize/1 at line 42 has no clause for a row missing a key, so it raises FunctionClauseError)",
+        "Write pipelines that start with a value and read top to bottom: line 67: last_order_on: rows |> Enum.map(& &1.placed_on) |> Enum.max(Date) (two transformations on one line)",
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 28: @spec build([map()]) :: t() (the public build/1 has no @doc)",
+        "Before you finish: line 37: customers: Map.new(summaries, fn {id, summary} -> {id, Map.delete(summary, :completed_count)} end), (105 characters; mix format also rewrites lines 88-89)"
+      ],
+      "checks": [
+        "met: amounts summed with Decimal (lines 80, 64)",
+        "met: dates compared with Enum.max(Date) (line 67)",
+        "missed: per-currency totals folded by hand with Enum.reduce and Map.update (lines 63-64); customers grouped with Enum.group_by/2 and Map.new/2 (lines 33-34); ranking with Enum.sort_by (line 75)",
+        "met: status not converted to atoms (becomes a boolean, line 54)",
+        "met: list built with Enum.map/2 (line 32); length/1 only counts",
+        "met: one-call lambdas are captures",
+        "met: no process",
+        "met: completed? key ends in ?; domain variable names",
+        "met: no with written; failures raise, so there is no single fallible call to put in a case",
+        "missed: mix format --check-formatted fails (lines 37, 88-89)",
+        "met: Expected reads (none) applies to skill runs; reads is empty, as the baseline prompt requires"
+      ],
+      "summary": "Normalizes rows into atom-keyed maps with Decimal amounts, a Date and a completed? flag, groups by customer with group_by and Map.new, and takes the latest date with Enum.max(Date), but folds per-currency totals with Enum.reduce and Map.update, breaking the Enum/Map rule. Outside the list, it lumps Decimal.parse/1 failures under `_ ->` and raises on malformed rows, puts two pipeline steps on one line, gives build/1 no @doc, and fails mix format. It read no skill files."
+    },
+    "baseline-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [],
+      "format_ok": false,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "not exercised",
+          "evidence": "status stays a string; line 49: defp add_spend(summary, %{\"status\" => \"completed\", \"currency\" => currency, \"amount\" => amount}) do"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "not exercised",
+          "evidence": "no with, and no function returns {:ok, value} or {:error, reason}; line 67: {:ok, datetime, _offset} = DateTime.from_iso8601(string) raises on bad input"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "violated",
+          "evidence": "line 34: Enum.reduce(orders, %{}, fn order, acc ->; line 37: Map.update(acc, order[\"customer_id\"], new_summary(order, placed_at), fn summary -> (a reduce that reads and writes one key per element; current text: group_by then Map.new); line 51: update_in(summary.totals, &Map.update(&1, currency, amount, fn sum -> Decimal.add(sum, amount) end)) (per-currency totals updated one key per order); line 59: |> Enum.frequencies_by(& &1[\"customer_id\"]) is the made-for-the-job count"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "Enum.filter/take only (lines 58-61); no ++, Enum.at/2, length/1 or empty-list check"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 64: defp latest(a, b), do: if(DateTime.compare(a, b) == :lt, do: b, else: a)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 50: amount = Decimal.new(amount); line 51: fn sum -> Decimal.add(sum, amount) end"
+        },
+        "Naming": {
+          "verdict": "violated",
+          "evidence": "line 64: defp latest(a, b), do: if(DateTime.compare(a, b) == :lt, do: b, else: a)"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "violated",
+          "evidence": "line 51: update_in(summary.totals, &Map.update(&1, currency, amount, fn sum -> Decimal.add(sum, amount) end)) (a capture whose body does two calls, Map.update/4 and, through the inner fn, Decimal.add/2; the inner one-call lambda is written as fn because captures cannot nest; the rule's form is fn totals -> Map.update(totals, currency, amount, &Decimal.add(&1, amount)) end)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Match every expected shape and let unexpected ones crash: line 49: defp add_spend(summary, %{\"status\" => \"completed\", \"currency\" => currency, \"amount\" => amount}) do; line 54: defp add_spend(summary, _order), do: summary (one head both selects completed orders and matches their fields, so a completed row missing \"amount\" or \"currency\" falls through to the no-op clause; a probe confirmed it counts toward top_customers but not toward totals)",
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys: line 35: placed_at = parse_datetime!(order[\"placed_at\"]); line 37: Map.update(acc, order[\"customer_id\"], new_summary(order, placed_at), fn summary -> (also line 58: &(&1[\"status\"] == \"completed\") and line 59: & &1[\"customer_id\"])",
+        "Parse external data into structs where it enters the system: line 35: placed_at = parse_datetime!(order[\"placed_at\"]); line 50: amount = Decimal.new(amount) (string-keyed rows are never parsed at the boundary; values are parsed inside the fold)",
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: line 67: {:ok, datetime, _offset} = DateTime.from_iso8601(string); line 50: amount = Decimal.new(amount) (line 13: Malformed amounts or timestamps raise.)",
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 25: @spec build([map()]) :: report() (the public build/1 has no @doc)",
+        "Before you finish: line 51: update_in(summary.totals, &Map.update(&1, currency, amount, fn sum -> Decimal.add(sum, amount) end)) (104 characters; mix format rewrites it)"
+      ],
+      "checks": [
+        "met: amounts summed with Decimal (lines 50-51)",
+        "met: dates compared with DateTime.compare/2 (line 64)",
+        "missed: per-customer summaries folded by hand with Enum.reduce and Map.update (lines 34-42) and per-currency totals with Map.update (line 51) instead of Enum.group_by/2 and Map.new/2; counts with Enum.frequencies_by/2 (line 59), ranking with Enum.sort_by (line 60)",
+        "met: status not converted to atoms (matched as a string, lines 49, 58)",
+        "met: no list built by hand; no ++ or length-based empty check",
+        "missed: line 51 writes the one-call lambda fn sum -> Decimal.add(sum, amount) end as fn, inside a capture that does two calls",
+        "met: no process",
+        "missed: latest(a, b) uses non-domain variable names (line 64); no boolean function",
+        "met: no with written; failures raise, so there is no single fallible call to put in a case",
+        "missed: mix format --check-formatted fails (line 51)",
+        "met: Expected reads (none) applies to skill runs; reads is empty, as the baseline prompt requires"
+      ],
+      "summary": "Folds the raw string-keyed rows into per-customer summaries with Enum.reduce and Map.update, with Decimal totals and DateTime.compare/2, and counts completed orders with frequencies_by. It breaks the Enum/Map rule (per-key folds), Naming (latest(a, b)) and the captures rule (a two-call capture wrapping an fn). Outside the list, it silently drops completed rows missing amount or currency from the totals, reads required keys with order[\"key\"] without parsing at the boundary, raises on malformed input, gives build/1 no @doc, and fails mix format. It read no skill files."
+    }
+  },
+  "per_rule": {
+    "Convert external strings to atoms with explicit clauses": {
+      "opus": "clean",
+      "haiku": "not exercised",
+      "sonnet": "not exercised"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+      "opus": "violated",
+      "haiku": "not exercised",
+      "sonnet": "not exercised"
+    },
+    "Use the `Enum` or `Map` function made for the job": {
+      "opus": "violated",
+      "haiku": "violated",
+      "sonnet": "violated"
+    },
+    "Treat lists as linked lists": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Compare dates, times, and decimals with their module functions": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Naming": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "violated"
+    },
+    "Use captures for one-call lambdas and `fn` for anything longer": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "violated"
+    },
+    "Decide whether you need a process": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

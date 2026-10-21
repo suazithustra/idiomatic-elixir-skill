@@ -14,7 +14,7 @@ The scripts that ran the sweep of 2026-10-21, kept so a check batch or a full sw
 
 ## A full sweep
 
-Move the installed skill aside first (by default `~/.claude/skills/idiomatic-elixir`; pass `--skills-folder` if it lives elsewhere). A run in either condition refuses to start while that path exists: a session that can load the installed skill is not a baseline, and a with-skill run must load only the copy the prompt names. Then:
+Move the installed skill aside first (by default `~/.claude/skills/idiomatic-elixir`; pass `--skills-folder` if it lives elsewhere). A run in either condition refuses to start while that path exists, or while any other entry of that skills folder resolves to the skill folder (a renamed symlink is still listed to the session as a skill): a session that can load the installed skill is not a baseline, and a with-skill run must load only the copy the prompt names. Then:
 
 ```
 python3 evals/tools/sweep.py --output evals/sweeps/<date>
