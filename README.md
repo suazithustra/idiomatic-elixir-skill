@@ -95,9 +95,33 @@ idiomatic-elixir/      the skill
   references/          topic-specific rules
   LICENSE.txt          Apache License 2.0
   NOTICE               copyright and credits for adapted material
-evals/                 test prompts for checking changes to the skill
+evals/                 checks on the skill and its test prompts
+  cases/               one prompt per case, with its inputs
+  sweeps/              dated run records: outputs, transcripts, gradings
 LICENSE                Apache License 2.0
 ```
+
+## Using the skill alongside Phoenix's generated AGENTS.md
+
+`mix phx.new` (Phoenix 1.8.16) writes an `AGENTS.md` into every new project. Most of it is Phoenix-specific guidance this skill does not cover: layouts, HEEx (HTML-aware Embedded Elixir) templates, streams, hooks and forms. Some of it repeats rules here (atoms from input, `is_` prefixes, `start_supervised!/1`, waiting for messages instead of sleeping, preloading associations, map access on structs) without the reasons. A few of its statements are wrong or overstated. These were checked on 2026-10-21 against Elixir 1.20.3, Phoenix LiveView 1.2.13, Ecto 3.13.5 and phoenix_ecto 4.7.0, and this skill follows the checked behaviour:
+
+- Its sample marked `VALID` for rebinding the result of an `if` has no `else`, so `socket` becomes `nil` whenever the socket is not connected:
+
+  ```elixir
+  socket =
+    if connected?(socket) do
+      assign(socket, :val, val)
+    end
+  ```
+
+  The rule "Assign the result of `if`, `case`, and `Enum` calls" here shows the `else`.
+- "**Never** nest multiple modules in the same file as it can cause cyclic dependencies and compilation errors": nesting compiles, and Phoenix's own router nests a module. One module per file stays the convention under "Naming".
+- "`DynamicSupervisor` and `Registry`, require names in the child spec": `Registry` does; `DynamicSupervisor` does not.
+- On `Task.async_stream/3`, "The majority of times you will want to pass `timeout: :infinity`": the five-second default is the only bound on an item that hangs, so `references/processes.md` keeps a timeout.
+- "You **must** use `Ecto.Changeset.get_field(changeset, :field)` to access changeset fields": `get_change/3`, `fetch_change/2` and `fetch_field/2` are the API too, and `phx.gen.auth` uses `get_change`.
+- "prepend to stream - `stream(socket, :messages, [new_msg], at: -1)`": `at: -1` appends; `at: 0` prepends.
+- "LiveView streams are *not* enumerable": `Phoenix.LiveView.LiveStream` implements `Enumerable`. The real limit is that the server keeps no copy of the items, so filtering means refetching, which the file's own recipe does.
+- "You are FORBIDDEN from accessing the changeset in the template as it will cause errors": `<.form for={@changeset}>` and `@changeset.valid?` work; only `@changeset[:field]` raises, because structs do not implement `Access`.
 
 ## Contributing
 
@@ -128,7 +152,7 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
 
 ### Testing a change
 
-`evals/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a macro-based router, ExUnit tests for a GenServer, a Phoenix context with Ecto, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
+`evals/cases/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a macro-based router, ExUnit tests for a GenServer, a Phoenix context with Ecto, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
 
 Run the cases related to your change before and after it, and describe what you saw in the pull request.
 

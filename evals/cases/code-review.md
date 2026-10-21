@@ -1,0 +1,68 @@
+# Code review
+
+The input is `code-review-input.ex`, a module with planted problems.
+
+## Prompt
+
+```text
+Review the Elixir module at <evals>/code-review-input.ex and write an improved version.
+
+Write your review (a list of findings) and the improved code to <output>/review.md. Reply with just the file path when done.
+```
+
+## What to check
+
+Count how many planted problems the review reports. The improved code must fix every problem the review reports.
+
+| Line | Problem |
+| --- | --- |
+| 2, 5, 7, 44 | Comments restate the code; the module and function descriptions belong in `@moduledoc` and `@doc` |
+| 8 | `String.to_atom/1` on external input |
+| 8 | A missing role raises outside the `try`, unlike every other bad field |
+| 10–40 | `try/rescue _ ->` around the whole body; `String.to_integer/1` is used for its exception instead of `Integer.parse/1` |
+| 10–40 | `try` contains `if`, which contains `case`, which contains more `if`s |
+| 12 | Single-step pipe |
+| 15–17 | `age` is rebound inside the `if`, so the cap never leaves the block; magic number `120` |
+| 21 | `&&` with boolean operands |
+| 21 | `is_binary(email)` can never be false, because `String.downcase/1` already raised on non-strings |
+| 21 | Magic number `18` |
+| 22–24 | Struct inserted without a changeset, so there is no validation or `unique_constraint` |
+| 26 | `notify` and `silent` are overlapping booleans |
+| 30 | `return_id` changes the return shape |
+| 32 | `_ ->` swallows the `{:error, changeset}` from `Repo.insert/1` |
+| 36, 39 | Every failure returns the same `{:error, :invalid}` |
+| 45 | Unsupervised `spawn/1`; the closure copies the whole `user` struct |
+| 49 | `user[:name]` on a struct raises `UndefinedFunctionError` |
+| 51 | Pipe into an anonymous function, which is also a single-step pipe |
+
+Must not report (correct code a rule could be misapplied to):
+
+| Line | Why it is fine |
+| --- | --- |
+| 11 | The comment explains a reason the code cannot show, so it stays |
+| 19 | `"nickname"` is an optional key, so `params["nickname"]` and `\|\|` with a default are the right tools |
+| 26 | `opts[:notify]` and `opts[:silent]` can be `nil`, so `&&` and `!` are right there; the overlapping options are the problem, not the operators |
+
+Also check:
+
+- Each finding names the rule it applies and quotes the line.
+- The improved code still returns normally for `import_user(params)` with no options (no `and` or `not` on a `nil` option).
+- Expected reads: `processes.md` (the `spawn`) and `ecto-phoenix.md` (the insert).
+
+## Seen so far
+
+Before 2026-10-21, undated:
+
+- Without the skill: Opus found nearly everything but missed the `&&`. Haiku missed the `&&` and its improved code still called `String.to_atom/1`.
+- With the skill: Haiku and Sonnet reported the `&&`, the overlapping options, and the comments that belong in `@doc`. In the latest round, all three runs reported the `spawn` and fixed it with `Task.Supervisor`. One earlier Haiku run reported the `spawn` but left it in its improved code.
+
+- 2026-10-21, 93873be, claude-opus-5-5, without skill, 1 run: Found 14 of 20 planted problems, missing the nesting, the line 12 pipe, the `&&`, the magic `18`, the line 32 `_ ->` (noted only as a caller change) and the closure copy; the improved code still copies the whole `user` into the task and builds its changeset with `change/2` while validating fields by hand (finding 11 on line 19 is about blank CSV cells, not the access or `||`, so it is not counted as a false positive).
+- 2026-10-21, 93873be, claude-haiku-5-5, without skill, 1 run: Found 11 of 20 planted problems, missing the nesting, the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the identical errors and the closure copy; the improved code still inserts a bare struct, keeps `:silent` and `:return_id` (the latter reported but kept), drops the insert changeset, returns `{:error, :invalid}` for every bad field, nests `if` in `case`, and swaps `spawn` for an equally unsupervised `Task.start/1`.
+- 2026-10-21, 93873be, claude-haiku-5-5, without skill, 1 run: Found 10 of 20 planted problems, missing the nesting, the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the line 32 `_ ->`, the identical errors and the closure copy; the improved code still inserts a bare struct, keeps `:silent` and `:return_id` (the latter reported but kept), drops the insert changeset, returns `{:error, :invalid}` for every bad field, nests `if` in `case`, copies `user` into the task, and deletes the line 11 why-comment without saying so.
+- 2026-10-21, 93873be, claude-sonnet-5-5, without skill, 1 run: Found 12 of 20 planted problems, missing the nesting, the line 12 pipe, both magic numbers, the line 21 `&&`, the overlapping options (it flagged line 26's operators instead, a must-not-report line), the identical errors and the closure copy; the improved code still returns `{:error, :invalid}` for every bad field and copies the whole `user` into the task.
+- 2026-10-21, 93873be, claude-sonnet-5-5, without skill, 1 run: Found 13 of 20 planted problems, missing the nesting, the line 12 pipe, both magic numbers, the `&&`, the identical errors and the closure copy; the improved code still returns `{:error, :invalid}` for every bad field, copies the whole `user` into the task, and adds a new single-step pipe at review.md line 65.
+- 2026-10-21, 93873be, claude-opus-5-5, with skill, 1 run: Found all 20 planted problems with no false positives, each finding naming its rule and quoting the line; the improved code validates through a real changeset (`cast/3`, `validate_required/2`, `validate_number/3`, `unique_constraint/3`), assumes `role` is an `Ecto.Enum` in `User`, passes only the built message to a supervised task, and breaks no graded rule; it read SKILL.md, processes.md and ecto-phoenix.md.
+- 2026-10-21, 93873be, claude-haiku-5-5, with skill, 1 run: Found 15 of 20 planted problems with no false positives, missing the nesting, the magic `18`, the bare-struct insert, the identical errors and the closure copy; the improved code still inserts a bare `%User{}` and returns `{:error, :invalid}` for every bad field; it read SKILL.md, processes.md and ecto-phoenix.md but did not apply the changeset rule.
+- 2026-10-21, 93873be, claude-haiku-5-5, with skill, 1 run: Found 18 of 20 planted problems, missing the identical errors (mentioned only under behavior changes) and the closure copy, with one false positive (finding 12 applies `and`/`not` to line 26's `!opts[:silent]`); the improved code fixes both missed problems silently, inserts through an assumed `User.changeset/2`, and no longer checks the age floor itself; it read SKILL.md, processes.md and ecto-phoenix.md.
+- 2026-10-21, 93873be, claude-sonnet-5-5, with skill, 1 run: Found 16 of 20 planted problems, missing the line 12 pipe, the line 21 `&&` (it applied that rule to line 26, a must-not-report line), the bare-struct insert and the closure copy; the improved code still inserts a bare `%User{}` and copies the whole `user` into the task, and finding 12 says `@doc` examples were added when there are none; it read SKILL.md, processes.md and ecto-phoenix.md.
+- 2026-10-21, 93873be, claude-sonnet-5-5, with skill, 1 run: Found 18 of 20 planted problems, missing the line 12 pipe and the bare-struct insert, with one false positive (finding 4 applies `and`/`not` to line 26); the improved code still inserts a bare `%User{}`; it read SKILL.md and processes.md but not ecto-phoenix.md, the only run to skip it.

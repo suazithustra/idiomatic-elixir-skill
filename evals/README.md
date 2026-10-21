@@ -4,6 +4,8 @@ Fixed test prompts to rerun after changing the skill, to check that rules still 
 
 ## Cases
 
+Each case is a file under `cases/`, next to any input it needs.
+
 | File | Exercises |
 | --- | --- |
 | `webhook-parser.md` | external string-keyed input, error tuples, atom conversion |
@@ -24,10 +26,12 @@ The checker cannot see a claim that is wrong or an example that compiles but mis
 
 ## Running a case
 
-1. Copy the prompt from the case file. Replace `<output>` with a path in a scratch folder outside this repository, `<evals>` with a folder in that scratch space that holds only the case's input files (`code-review-input.ex`, `test-writing-input.ex`, or a fresh copy of `shop-project/`), `<skill>` with the path of the `idiomatic-elixir/` folder, and `<elixir-version>` with the installed version from `elixir --version`. Start the session with that scratch folder as its working directory, so the run cannot read the skill, this folder, or the "What to check" lists.
+1. Copy the prompt from the case file. Replace `<output>` with a path in a scratch folder outside this repository, `<evals>` with a folder in that scratch space that holds only the case's input files from `cases/` (`code-review-input.ex`, `test-writing-input.ex`, or a fresh copy of `shop-project/`), `<skill>` with the path of the `idiomatic-elixir/` folder, and `<elixir-version>` with the installed version from `elixir --version`. Start the session with that scratch folder as its working directory, so the run cannot read the skill, this folder, or the "What to check" lists.
 2. For a run without the skill (baseline), make sure the skill is not installed in any skills directory the session reads (move the folder or symlink aside for the run and restore it after), and add this line to the end of the prompt: `Do not invoke any skills.`
 3. For a run with the skill, add this line to the start of the prompt: `First read the skill at <skill>/SKILL.md and follow it, including reading any reference file it points you to for this task.`
 4. Run each prompt in a fresh session with no shared context. Smaller, faster models show the most problems. Run those at least twice, because results vary between runs. Keep each session's transcript; the next step searches it.
+
+   A full sweep runs every case once on Opus, twice on Haiku and twice on Sonnet, without the skill first and then with it, and records every run. The sweep of 2026-10-21 started each run as a non-interactive session (`claude -p`, prompt on standard input) with the run's scratch folder as its working directory, the skill folder granted read access for with-skill runs, and shell commands pre-approved only when they started with `mix`, `elixir` or `elixirc`; a non-interactive session cannot answer a permission prompt, so a few compound commands (ones with shell variables, `find -exec`, `rm`, or a `python3` heredoc) were refused, which the shop-project records note. Each run's outputs, prompt and transcript are kept under `sweeps/<date>/<case>/<condition>-<model>-<n>/` (the transcript gzipped), the gradings under `sweeps/<date>/grades/`, and the outputs were graded against the case's checks and the rule index one case at a time.
 5. Check the output against the case's "What to check" list, including its "Expected reads" line (see below). For a single-file case, run `mix format --check-formatted <output>/<file>.ex`, and compile with `elixir <output>/<file>.ex` where the case allows. For code-review, copy the improved module out of `review.md` into a `.ex` file first and run only the format check; the module does not compile on its own.
 
 Step 3 tests whether agents follow the rules once they read them. It does not test whether an agent loads the skill by itself. To test that, install the skill and give the prompt without the extra line in a fresh session.
@@ -50,7 +54,7 @@ Add one line per run, or per group of identical runs, under the case's "Seen so 
 
 - `YYYY-MM-DD, <short hash>, <model identifier>, with skill or without skill, N runs: what happened, naming the rule that was broken or followed.`
 
-The hash is the committed revision the skill was loaded from, with no uncommitted changes under `idiomatic-elixir/` or `evals/`. The model identifier is the exact name the session reports in its transcript, not the alias used to start it. Keep each transcript's path with your own notes so the "Expected reads" phrases can be searched again later. Notes written before this shape existed stay under the lead "Before 2026-10-21, undated:".
+The hash is the committed revision the skill was loaded from, with no uncommitted changes under `idiomatic-elixir/` or `evals/`. The model identifier is the exact name the session reports in its transcript, not the alias used to start it. Keep each transcript next to its outputs under `sweeps/<date>/`, gzipped, so the "Expected reads" phrases can be searched again later with `zgrep`. Notes written before this shape existed stay under the lead "Before 2026-10-21, undated:".
 
 ## Which case exercises which rule
 
@@ -58,63 +62,95 @@ A rule with no case can regress unnoticed. The rule cell is the rule's exact hea
 
 | Rule | Cases | Without skill |
 | --- | --- | --- |
-| Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys | code-review, webhook-parser | |
-| Match every expected shape and let unexpected ones crash | code-review, webhook-parser | |
-| In multi-clause functions, bind in the head only what patterns and guards use | webhook-parser | |
-| Update structs with `%{struct \| field: value}` | shop-project | |
-| Convert external strings to atoms with explicit clauses | webhook-parser, order-report, shop-project, code-review | |
-| Branch with function clauses and guards before reaching for `if` or `cond` | rate-limiter, code-review | |
-| Chain fallible steps with `with`; normalize each step's error in a small private function | webhook-parser | |
-| Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs | webhook-parser, library-client, shop-project, code-review | |
-| Use `and`, `or`, `not` when the operands are booleans | code-review | |
-| Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it | code-review | |
-| Use the `Enum` or `Map` function made for the job | order-report | |
-| Treat lists as linked lists | order-report | |
-| Compare dates, times, and decimals with their module functions | order-report | |
-| Store and compute money as integer minor units or `Decimal`, never floats | order-report, shop-project | |
-| Parse external data into structs where it enters the system | webhook-parser | |
-| Use one atom-valued field or option instead of overlapping booleans | code-review | |
-| Group related parameters | library-client | |
-| Give each function one return shape | library-client, code-review | |
-| Read configuration at runtime, not into module attributes | library-client | |
-| Naming | rate-limiter, webhook-parser, order-report, shop-project | |
-| Comments explain why; documentation goes in `@moduledoc` and `@doc` | code-review, webhook-parser, rate-limiter | |
-| Keep functions short and at one level of detail | code-review | |
-| Write pipelines that start with a value and read top to bottom | code-review | |
-| Use captures for one-call lambdas and `fn` for anything longer | order-report | |
-| Before you finish | shop-project | |
-| Validate input with changesets | ecto-phoenix, code-review; the accessor sentence is not provocable: no prompt needs to know whether a field changed | |
-| Let Phoenix turn missing records into 404 responses | ecto-phoenix | |
-| Group writes that must succeed together | ecto-phoenix | |
-| Load associations up front | ecto-phoenix | |
-| Keep migrations to schema changes | ecto-phoenix | |
-| Keep database access in contexts | ecto-phoenix | |
-| Take configuration as arguments, not from the application environment | library-client | |
-| Use exception structs as error reasons | library-client | |
-| Make polymorphism explicit | library-client | |
-| Add specs, and hide technical functions from the docs | library-client, macro-dsl | |
-| Keep secrets out of logs and inspect output | library-client | |
-| Keep structs under 32 fields | not provocable: no prompt builds a struct with that many fields | |
-| Write a function unless the job needs a macro | macro-dsl | |
-| Keep `quote` blocks small | macro-dsl | |
-| Unquote each argument once | macro-dsl | |
-| Offer `import` or `alias` instead of `use` when they are enough | not provocable: the macro-dsl prompt prescribes `use TinyRouter` | |
-| Avoid compile-time dependencies on modules used only at runtime | not provocable: no prompt has a second module to depend on | |
-| Write module names literally | macro-dsl | |
-| Decide whether you need a process | order-report | |
-| Pick the abstraction that matches the job | rate-limiter; the timeout sentence is not provocable: no prompt maps concurrently | |
-| Keep each process behind one module | rate-limiter | |
-| Write GenServers that stay responsive | rate-limiter | |
-| Use ETS for data many processes read | rate-limiter | |
-| Supervise every long-lived process | rate-limiter, code-review | |
-| Send processes only the data they need | code-review | |
-| Run tests concurrently unless they share global state | test-writing | |
-| Group tests by function and name them by behaviour | test-writing | |
-| Assert with patterns | test-writing | |
-| Wait for messages, not for time | test-writing | |
-| Start processes with `start_supervised!/1` | test-writing | |
-| Replace dependencies at boundaries, through behaviours | test-writing | |
-| Use setup for shared data | test-writing | |
+| Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys | code-review, webhook-parser | Opus violated, Haiku violated, Sonnet clean |
+| Match every expected shape and let unexpected ones crash | code-review, webhook-parser | Opus violated, Haiku violated, Sonnet violated |
+| In multi-clause functions, bind in the head only what patterns and guards use | webhook-parser | Opus clean, Haiku clean, Sonnet violated |
+| Update structs with `%{struct \| field: value}` | shop-project | Opus clean, Haiku clean, Sonnet clean |
+| Convert external strings to atoms with explicit clauses | webhook-parser, order-report, shop-project, code-review | Opus clean, Haiku clean, Sonnet clean |
+| Branch with function clauses and guards before reaching for `if` or `cond` | rate-limiter, code-review | Opus violated, Haiku violated, Sonnet violated |
+| Chain fallible steps with `with`; normalize each step's error in a small private function | webhook-parser | Opus clean, Haiku clean, Sonnet clean |
+| Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs | webhook-parser, library-client, shop-project, code-review | Opus clean, Haiku clean, Sonnet clean |
+| Use `and`, `or`, `not` when the operands are booleans | code-review | Opus violated, Haiku violated, Sonnet violated |
+| Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it | code-review | Opus clean, Haiku clean, Sonnet clean |
+| Use the `Enum` or `Map` function made for the job | order-report | Opus clean, Haiku clean, Sonnet clean |
+| Treat lists as linked lists | order-report | Opus clean, Haiku clean, Sonnet clean |
+| Compare dates, times, and decimals with their module functions | order-report | Opus clean, Haiku clean, Sonnet clean |
+| Store and compute money as integer minor units or `Decimal`, never floats | order-report, shop-project | Opus clean, Haiku clean, Sonnet clean |
+| Parse external data into structs where it enters the system | webhook-parser | Opus clean, Haiku violated, Sonnet violated |
+| Use one atom-valued field or option instead of overlapping booleans | code-review | Opus clean, Haiku violated, Sonnet violated |
+| Group related parameters | library-client | Opus clean, Haiku violated, Sonnet violated |
+| Give each function one return shape | library-client, code-review | Opus clean, Haiku violated, Sonnet clean |
+| Read configuration at runtime, not into module attributes | library-client | Opus clean, Haiku clean, Sonnet clean |
+| Naming | rate-limiter, webhook-parser, order-report, shop-project | Opus violated, Haiku violated, Sonnet violated |
+| Comments explain why; documentation goes in `@moduledoc` and `@doc` | code-review, webhook-parser, rate-limiter | Opus violated, Haiku violated, Sonnet violated |
+| Keep functions short and at one level of detail | code-review | Opus violated, Haiku violated, Sonnet violated |
+| Write pipelines that start with a value and read top to bottom | code-review | Opus violated, Haiku violated, Sonnet violated |
+| Use captures for one-call lambdas and `fn` for anything longer | order-report | Opus clean, Haiku clean, Sonnet clean |
+| Before you finish | shop-project | Opus clean, Haiku violated, Sonnet violated |
+| Validate input with changesets | ecto-phoenix, code-review; the accessor sentence is not provocable: no prompt needs to know whether a field changed | Opus violated, Haiku violated, Sonnet clean |
+| Let Phoenix turn missing records into 404 responses | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
+| Group writes that must succeed together | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
+| Load associations up front | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
+| Keep migrations to schema changes | ecto-phoenix | Opus violated, Haiku violated, Sonnet violated |
+| Keep database access in contexts | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
+| Take configuration as arguments, not from the application environment | library-client | Opus clean, Haiku violated, Sonnet violated |
+| Use exception structs as error reasons | library-client | Opus clean, Haiku violated, Sonnet clean |
+| Make polymorphism explicit | library-client | Opus clean, Haiku violated, Sonnet violated |
+| Add specs, and hide technical functions from the docs | library-client, macro-dsl | Opus clean, Haiku violated, Sonnet violated |
+| Keep secrets out of logs and inspect output | library-client | Opus clean, Haiku not exercised, Sonnet violated |
+| Keep structs under 32 fields | not provocable: no prompt builds a struct with that many fields | not provocable |
+| Write a function unless the job needs a macro | macro-dsl | Opus clean, Haiku clean, Sonnet clean |
+| Keep `quote` blocks small | macro-dsl | Opus violated, Haiku violated, Sonnet violated |
+| Unquote each argument once | macro-dsl | Opus clean, Haiku clean, Sonnet clean |
+| Offer `import` or `alias` instead of `use` when they are enough | macro-dsl; the import-instead-of-use sentence is not provocable: the prompt prescribes `use TinyRouter` | Opus violated, Haiku violated, Sonnet violated |
+| Avoid compile-time dependencies on modules used only at runtime | macro-dsl | Opus clean, Haiku violated, Sonnet violated |
+| Write module names literally | macro-dsl | Opus clean, Haiku clean, Sonnet clean |
+| Decide whether you need a process | order-report | Opus clean, Haiku clean, Sonnet clean |
+| Pick the abstraction that matches the job | rate-limiter; the timeout sentence is not provocable: no prompt maps concurrently | Opus violated, Haiku violated, Sonnet violated |
+| Keep each process behind one module | rate-limiter | Opus violated, Haiku clean, Sonnet clean |
+| Write GenServers that stay responsive | rate-limiter | Opus clean, Haiku violated, Sonnet clean |
+| Use ETS for data many processes read | rate-limiter | Opus violated, Haiku violated, Sonnet violated |
+| Supervise every long-lived process | rate-limiter, code-review | Opus clean, Haiku violated, Sonnet clean |
+| Send processes only the data they need | code-review | Opus violated, Haiku violated, Sonnet violated |
+| Run tests concurrently unless they share global state | test-writing | Opus clean, Haiku violated, Sonnet violated |
+| Group tests by function and name them by behaviour | test-writing | Opus violated, Haiku violated, Sonnet violated |
+| Assert with patterns | test-writing | Opus clean, Haiku clean, Sonnet violated |
+| Wait for messages, not for time | test-writing | Opus clean, Haiku violated, Sonnet violated |
+| Start processes with `start_supervised!/1` | test-writing | Opus violated, Haiku clean, Sonnet violated |
+| Replace dependencies at boundaries, through behaviours | test-writing | Opus clean, Haiku clean, Sonnet clean |
+| Use setup for shared data | test-writing | Opus clean, Haiku clean, Sonnet clean |
+
+## Cull candidates
+
+A rule every tier followed without the skill is a candidate for deletion, not a deletion: with five runs per case, a rule broken in a third of runs shows clean about one time in six. Delete a rule only after a second sweep, on a later date, agrees. The lists below come from the sweep of 2026-10-21 at 93873be, kept under `sweeps/2026-10-21/`, in which every tier was available.
+
+Candidates (every tier exercised the rule and none violated it):
+
+- Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it: Opus 1 run, Haiku 2, Sonnet 2 in code-review
+- Chain fallible steps with `with`; normalize each step's error in a small private function: Opus 1 run, Haiku 2, Sonnet 2 in webhook-parser
+- Compare dates, times, and decimals with their module functions: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+- Convert external strings to atoms with explicit clauses: Opus 1 run, Haiku 2, Sonnet 2 in code-review, order-report, shop-project, webhook-parser
+- Decide whether you need a process: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+- Group writes that must succeed together: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
+- Keep database access in contexts: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
+- Let Phoenix turn missing records into 404 responses: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
+- Load associations up front: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
+- Read configuration at runtime, not into module attributes: Opus 1 run, Haiku 2, Sonnet 2 in library-client
+- Replace dependencies at boundaries, through behaviours: Opus 1 run, Haiku 2, Sonnet 2 in test-writing
+- Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: Opus 1 run, Haiku 2, Sonnet 2 in code-review, library-client, shop-project, webhook-parser
+- Store and compute money as integer minor units or `Decimal`, never floats: Opus 1 run, Haiku 2, Sonnet 2 in order-report, shop-project
+- Treat lists as linked lists: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+- Unquote each argument once: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
+- Update structs with `%{struct | field: value}`: Opus 1 run, Haiku 2, Sonnet 2 in shop-project
+- Use captures for one-call lambdas and `fn` for anything longer: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+- Use setup for shared data: Opus 1 run, Haiku 2, Sonnet 2 in test-writing
+- Use the `Enum` or `Map` function made for the job: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+- Write a function unless the job needs a macro: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
+- Write module names literally: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
+
+Unconfirmed (a tier never produced the construct the rule governs):
+
+- Keep secrets out of logs and inspect output: Opus clean, Haiku not exercised, Sonnet violated in library-client
 
 ## Keep prompts neutral
 
