@@ -14,12 +14,13 @@ Write the code to <output>/orders.ex. You may use the shell to check it compiles
 
 - Amounts are summed with `Decimal` or as integer minor units, never as floats.
 - Dates are compared with `Date` or `DateTime` functions, or `Enum.max(dates, Date)`, not with `<`, `>`, or `Enum.max/1`.
-- Specific `Enum` and `Map` functions are used where one fits (`Enum.frequencies_by/2`, `Map.new/2`, `Enum.sort_by/3`) instead of a hand-written `reduce`.
+- Specific `Enum` and `Map` functions are used where one fits (`Enum.frequencies_by/2`, `Enum.group_by/2`, `Map.new/2`, `Enum.sort_by/3`) instead of a hand-written `reduce`.
 - If status strings are converted to atoms, it is done with explicit clauses.
 - Lists are built with `Enum.map/2`, a comprehension, or prepend-and-reverse, not `acc ++ [order]` in a loop. Empty lists are checked with `== []` or a pattern, not `length(list) == 0`.
 - One-call lambdas are captures (`&String.trim/1`, `& &1.amount`), not `fn x -> f(x) end`.
 - No GenServer, Agent, or Task is introduced for what is a pure computation over the list.
 - Boolean functions end in `?` (no `is_` names outside guards), and variables are named after the domain (`order`, `customer_id`, `totals`), not `data`, `res`, or `x`.
+- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 

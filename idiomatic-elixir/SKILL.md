@@ -10,7 +10,7 @@ Readability rules carry the same weight as correctness rules.
 
 ## How to use this skill
 
-- **Reference files:** besides following the rules below, read each reference file whose trigger appears in the code or the task:
+- **Reference files:** besides following the rules below, read every reference file whose trigger appears in the code or the task, before you write code and, in a review, before you list findings:
 
   | If the code or task involves | Read |
   | --- | --- |
@@ -59,7 +59,7 @@ value = Enum.at(parts, 1)
 [key, value] = String.split(pair, "=", parts: 2)
 ```
 
-When the input set is open by design (event types from an external system, messages from other processes), end with a clause that binds and names what it catches: `defp parse_event(type, _data), do: {:error, {:unsupported_event, type}}`. Make sure that clause can only receive what its error names. If one set of clauses both selects the event type and matches its fields, a known type with a missing field falls through to "unsupported event". Select the type in one function and validate the fields in another.
+When the input set is open by design (event types from an external system, messages from other processes), end with a clause that binds and names what it catches: `defp parse_event(type, _payload), do: {:error, {:unsupported_event, type}}`. Make sure that clause can only receive what its error names. If one set of clauses both selects the event type and matches its fields, a known type with a missing field falls through to "unsupported event". Select the type in one function and validate the fields in another.
 
 ### In multi-clause functions, bind in the head only what patterns and guards use
 
@@ -115,7 +115,7 @@ Use `if` for a single boolean condition, not `case flag do true -> ...; false ->
 
 ### Chain fallible steps with `with`; normalize each step's error in a small private function
 
-A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function that returns `{:ok, value}` or `{:error, reason}`, and let `with` pass the error through unchanged. Use `case` when there is only one step.
+A `with` has at least two `<-` steps; one step is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function that returns `{:ok, value}` or `{:error, reason}`, and let `with` pass the error through unchanged.
 
 ```elixir
 # Instead of
@@ -144,6 +144,32 @@ defp decode64(encoded) do
     {:ok, decoded} -> {:ok, decoded}
     :error -> {:error, :badencoding}
   end
+end
+```
+
+Count the `<-` clauses before writing `with`. With one there is nothing to chain, and a `with` makes the reader look for the other steps, so use `case`, which shows both outcomes in one place. When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.
+
+```elixir
+# Instead of
+with {:ok, discount} <- parse_discount(code), do: {:ok, apply_discount(cart, discount)}
+# write
+case parse_discount(code) do
+  {:ok, discount} -> {:ok, apply_discount(cart, discount)}
+  {:error, _reason} = error -> error
+end
+
+# Instead of
+with {:ok, text} <- string_field(row, "amount") do
+  case Decimal.parse(text) do
+    {amount, ""} -> {:ok, Decimal.round(amount, 2)}
+    {_amount, _rest} -> {:error, {:invalid_field, "amount"}}
+    :error -> {:error, {:invalid_field, "amount"}}
+  end
+end
+# write
+with {:ok, text} <- string_field(row, "amount"),
+     {:ok, amount} <- parse_amount(text) do
+  {:ok, Decimal.round(amount, 2)}
 end
 ```
 
@@ -188,6 +214,7 @@ Use `Enum.each/2` only for side effects. When you need results, use `Enum.map/2`
 | Instead of | Write |
 | --- | --- |
 | `Enum.reduce(users, %{}, fn u, acc -> Map.put(acc, u.id, u) end)` | `Map.new(users, &{&1.id, &1})` |
+| `Enum.reduce(orders, %{}, fn order, acc -> Map.update(acc, order.customer_id, [order], &[order \| &1]) end)` | `Enum.group_by(orders, & &1.customer_id)`, then `Map.new/2` over the groups to summarize each; a `reduce` that reads and writes one key per element is these two written by hand |
 | `Enum.into(pairs, %{})` | `Map.new(pairs)` |
 | `Enum.map(items, &f/1) \|> Enum.join(", ")` | `Enum.map_join(items, ", ", &f/1)` |
 | `Enum.reduce(items, 0, &(&1.amount + &2))` | `Enum.sum_by(items, & &1.amount)` (Elixir 1.18+) |
@@ -264,10 +291,10 @@ A module attribute is evaluated at compile time. `@base_url Application.get_env(
 - Modules are `CamelCase`, with acronyms kept upper case: `MyApp.HTTPClient` in `lib/my_app/http_client.ex`. Functions, variables, atoms, and file names are `snake_case`.
 - Put every module under the top-level namespace of its own application or library: `MyApp.RateLimiter`, not `RateLimiter`, and not `Plug.Auth` in a package named `:plug_auth`. The VM loads one module per name, so packages that define the same module cannot be used together. Protocol implementations and `Mix.Tasks.*` are the exceptions.
 - A function that returns a boolean ends in `?`: `valid?/1`, `admin?/1`. The `is_` prefix is only for guards, such as one defined with `defguard is_admin(user)`.
-- `get` returns a value or a default (often `nil`), `fetch` returns `{:ok, value}` or `:error`, and `fetch!` raises.
+- `get` returns a value or a default (often `nil`), `fetch` returns `{:ok, value}` or `:error`, and `fetch!` raises. A function that looks a key up and also checks the value, returning `{:error, reason}`, is not a `fetch`: name it by its job, such as `string_field/2` or `parse_amount/1`.
 - `size` means the operation is constant time (`map_size/1`, `byte_size/1`). `length` means it walks the data (`length/1`, `String.length/1`). Name your own functions the same way.
 - Give ignored values a descriptive name with a leading underscore (`_reason`, `_opts`) when it tells the reader what is being ignored.
-- Name variables after the domain (`order`, `line_item`, `refund`), not `data`, `item`, `res`, or `x`.
+- Name variables after the domain (`order`, `line_item`, `refund`), not `data`, `item`, `res`, or `x`. A variable may carry the name of the external key it holds, as in `%{"data" => data}`, since the payload chose that name.
 
 ## Readability
 

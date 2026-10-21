@@ -34,6 +34,7 @@ In the project afterwards:
 - With 2 units of `"APPLE"` at 100 cents each: no code gives 699, `"SAVE10"` gives 180 + 499 = 679, `"FREESHIP"` gives 200.
 - The cart struct is updated with `%{cart | items: ...}`, not `Map.put/3`.
 - Boolean functions end in `?`, and variables are named after the domain (`cart`, `sku`, `code`), not `data`, `res`, or `x`.
+- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - Expected reads: `testing.md` when the run adds or changes tests.
 
 ## Seen so far

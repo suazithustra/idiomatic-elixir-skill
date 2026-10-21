@@ -16,7 +16,7 @@ Write the package's main module(s) using Req as the HTTP library. Put all module
 - Error reasons are exception structs defined with `defexception`.
 - No option changes a function's return shape.
 - The API key is hidden from `inspect` output, for example with `@derive {Inspect, except: [...]}`.
-- Every public function has a `@spec`.
+- Every public function has a `@spec`, including `@doc false` ones and ones defined inside `quote`; a function under `@impl` needs none.
 - Public functions check their arguments with guards or patterns (a binary for the API key, numbers for coordinates), so a bad argument fails in `WeatherClient`, not inside Req.
 - All modules are under `WeatherClient`.
 - The file passes `mix format --check-formatted`.

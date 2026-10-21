@@ -12,13 +12,13 @@ Write the tests to <output>/subscriptions_test.exs. The file must start ExUnit i
 
 ## What to check
 
-- The test module uses `async: true`.
-- Each test starts its own server with `start_supervised!/1` and a test-specific `:name`, or no name.
+- The test module uses `async: true`, and the mailer double reaches the test process without `Process.register/2` on the test pid or the application environment.
+- Each test starts its own server with `start_supervised!/1` and a test-specific `:name`, or no name. A test that asserts a start failure calls `start_supervised/1` and matches the reason; nothing calls `start_link` from a test.
 - The mailer is replaced through the `Notify.Mailer` behaviour (a test module that implements it, or a mock built on it), not by redefining `Notify.Mailer` or patching modules at runtime.
 - Notifications are awaited with `assert_receive` and `refute_receive`. There is no `Process.sleep/1`.
 - The exit test monitors the process and waits for the `:DOWN` message, or calls `:sys.get_state/1`, before asserting that the subscriber is gone. There is no polling of `Process.alive?/1`.
 - Assertions use patterns (`assert [^pid] = ...`, `assert_receive {:notification, "news", %{id: 1}}`), not `elem/2` or `==` on a tuple's parts.
-- Tests are grouped in `describe` blocks per function and named by behaviour.
+- Tests are grouped in `describe` blocks named after the function under test or after a condition the block's tests share; no block joins two functions. Test names say what the call did, not only its return value (`returns :ok`).
 - Shared setup returns a map that tests match in their heads.
 - Only public functions are tested.
 - The file passes `mix format --check-formatted` and the tests pass.

@@ -1,0 +1,315 @@
+{
+  "case": "webhook-parser",
+  "condition": "skill",
+  "notes": [
+    "Check batch: four runs (haiku-1, haiku-2, sonnet-1, sonnet-2), no opus, so the opus tier is \"unavailable\" in per_rule. Runs were made at 58f6318 with the uncommitted rule changes; their skill_hash 2cce1ab4... matches the current working tree, and each transcript contains the reworded `with` text.",
+    "The `with` rule changed since 93873be (and again since the first check batch) and is graded against the current text. The one-step sentence now decides with \"A `with` has at least two `<-` steps; one step is a `case`.\" and \"When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.\" (idiomatic-elixir/SKILL.md, ### Chain fallible steps with `with`; normalize each step's error in a small private function). The else sentence is unchanged.",
+    "`with`, violating runs out of four per sentence: one-step with: 1 of 4 (sonnet-2 lines 130 and 167; the body of the with at line 167 calls cast/3, which can fail, the shape the new paragraph names). Large else block: 0 of 4 (no run wrote an else). The first check batch had 2 of 4 one-step (both haiku); here both haiku runs are clean, and haiku-2 wrote its one-step clause as a case (lines 34-37).",
+    "Not counted under the `with` rule: haiku-1 created_at/1 (lines 127-130) and sonnet-1 string_field/2, amount_field/2 and map_field/2 (lines 62-81) are one-step `case`s whose success branch calls another function that can fail (datetime_from_unix/1, check/3). Each is a two-step chain written as a case, but the rule's sentences name a one-step `with`, so they are clean under the current text.",
+    "Naming changed since 93873be and is graded against the current text, as in the first check batch. The fetch sentence decides with \"`get` returns a value or a default (often `nil`), `fetch` returns `{:ok, value}` or `:error`, and `fetch!` raises. A function that looks a key up and also checks the value, returning `{:error, reason}`, is not a `fetch`: name it by its job, such as `string_field/2` or `parse_amount/1`.\" The generic-name sentence decides with \"A variable may carry the name of the external key it holds, as in `%{\"data\" => data}`, since the payload chose that name.\" (idiomatic-elixir/SKILL.md, ## Naming).",
+    "Naming, violating runs out of four per sentence: fetch_* returning {:error, reason}: 1 of 4 (sonnet-2: fetch_required/2 returns {:error, {:missing_field, key}}; it does not check the value, so the first half of the sentence decides, as with fetch_required/3 in the previous sweep's skill-opus-1 and fetch_string/2 in its baseline-sonnet-1). Generic name: 1 of 4 (haiku-2: string_field/2 and typed_field/3 take the whole payload in a parameter named data, lines 22-26, the same call as haiku-1 in the first check batch). Under the 93873be text all four runs would have been violated for the generic-name sentence, because each binds data from the \"data\" key.",
+    "Borderline name calls: haiku-1 line 83 rebinds data to the parsed struct stored in Event's data field, counted as carrying the payload's key name (as sonnet-2 in the first check batch). meta (haiku-2), envelope (sonnet-1), raw and value (sonnet-2) are not counted, as earlier grades did not count base, envelope, body or value.",
+    "Unchanged rules follow the earlier standard: dispatching on literal type strings with the type kept as a string (haiku-2, sonnet-2) is clean under the atoms rule, as baseline-haiku-1 in the previous sweep; a parse/1 @doc without ## Examples (haiku-2) is clean, as baseline-haiku-2 in the previous sweep was; an if inside a case and a two-transformation pipeline on one line go under other_violations, as in the previous sweep's webhook-parser and order-report grades.",
+    "Verified in the scratch folder: all four files pass mix format --check-formatted and compile with elixirc --warnings-as-errors; doctests pass (haiku-1 1, haiku-2 0, sonnet-1 3, sonnet-2 4); a probe of 14 payloads confirmed the missing and invalid results quoted above, including {:unsupported_event, \"invoice.paid\"} for an unknown type and {:missing_field, \"amount\"} for a known type without amount in every run. Transcripts show each run reading only SKILL.md."
+  ],
+  "runs": {
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+          "verdict": "clean",
+          "evidence": "line 149: case Map.fetch(map, key) do (also lines 166, 175); line 158: case Map.get(map, key) do -- reads only the optional \"failure_reason\""
+        },
+        "Match every expected shape and let unexpected ones crash": {
+          "verdict": "clean",
+          "evidence": "line 93: {:ok, other} -> {:error, {:unsupported_event, other}}; line 94: {:error, _reason} = error -> error; line 153: {:ok, _other} -> {:error, {:invalid_field, key}} -- error shapes matched explicitly; parse_data/2 has one clause per known type and no catch-all"
+        },
+        "In multi-clause functions, bind in the head only what patterns and guards use": {
+          "verdict": "clean",
+          "evidence": "line 98: defp parse_data(:payment_succeeded, data), do: parse_payment(data)"
+        },
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 90: {:ok, \"payment.succeeded\"} -> {:ok, :payment_succeeded}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 79-85, 103-116 and 120-123: with chains of five, five and two steps, no else, no one-step with"
+        },
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+          "verdict": "clean",
+          "evidence": "line 134: case DateTime.from_unix(seconds) do; reasons are tagged tuples"
+        },
+        "Parse external data into structs where it enters the system": {
+          "verdict": "clean",
+          "evidence": "line 24: @enforce_keys [:payment_id, :amount, :currency, :customer_email]; all three structs have @enforce_keys and @type t; line 152: :error -> {:error, {:missing_field, key}}"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 148: defp string_field(map, key) do -- named by its job, no fetch_*; data on lines 82, 98-102 and 140 holds the \"data\" key and is allowed; line 83: {:ok, data} <- parse_data(type, data) do -- rebinds data to the parsed struct stored in Event's data field, counted as carrying the payload's key name"
+        },
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+          "verdict": "clean",
+          "evidence": "no comments; every module has @moduledoc; parse/1 has @doc and its doctest passes"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: no try/rescue; line 134 uses DateTime.from_unix/1",
+        "met: error reasons are tagged tuples",
+        "met: no String.to_atom; event_type/1 maps the known type strings with explicit case clauses",
+        "met: event_type/1 selects the type, parse_data/2 validates fields (verified: known type missing amount -> {:missing_field, \"amount\"})",
+        "met: missing and invalid errors name the field checked; a present key with value nil is reported as missing by explicit {:ok, nil} clauses (lines 151, 168, 177)",
+        "met: multi-clause heads bind only what selects the clause",
+        "met: all structs have @enforce_keys and @type t",
+        "met: with chains over small private functions, no else, no one-step with",
+        "met: *_field helpers instead of fetch_*; data names are the payload key and allowed",
+        "met: no comments; @moduledoc and @doc present",
+        "met: mix format --check-formatted passes",
+        "met: expected reads none; read SKILL.md only"
+      ],
+      "summary": "An Event struct holding Payment or Refund, with event_type/1 mapping the known types and Map.fetch-based *_field helpers chained with with; broke no graded rule; read SKILL.md only."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+          "verdict": "clean",
+          "evidence": "line 91: case Map.fetch(data, key) do; line 83: case data[key] do -- reads only the optional \"failure_reason\""
+        },
+        "Match every expected shape and let unexpected ones crash": {
+          "verdict": "clean",
+          "evidence": "line 56: defp build(type, _meta, _data), do: {:error, {:unsupported_event, type}} -- receives only unknown types, since fields are validated in the clause bodies; lines 95-96: :error -> / {:error, {:missing_field, key}}"
+        },
+        "In multi-clause functions, bind in the head only what patterns and guards use": {
+          "verdict": "clean",
+          "evidence": "line 33: defp build(\"payment.succeeded\", meta, data) do"
+        },
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 33: defp build(\"payment.succeeded\", meta, data) do (also lines 40, 48) -- dispatch on literal type strings; the type stays a string and selects the struct module; no String.to_atom"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "line 34: case payment_fields(data) do -- the one-step clause uses case; lines 22-28, 41-45, 49-53 and 59-70: with chains of two or more steps, no else"
+        },
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+          "verdict": "clean",
+          "evidence": "line 74: case DateTime.from_unix(created) do; struct!/2 only on fixed keys (lines 35, 44, 52)"
+        },
+        "Parse external data into structs where it enters the system": {
+          "verdict": "clean",
+          "evidence": "line 106: @enforce_keys [:event_id, :occurred_at, :payment_id, :amount, :currency, :customer_email]; all three structs have @enforce_keys and @type t"
+        },
+        "Naming": {
+          "verdict": "violated",
+          "evidence": "line 90: defp typed_field(data, key, valid?) do; line 80: defp string_field(data, key), do: typed_field(data, key, &is_binary/1); line 22: with {:ok, event_id} <- string_field(payload, \"id\"), -- the data parameter receives the whole payload (lines 22-26), so data is a generic name here, not the \"data\" key; no fetch_* functions"
+        },
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+          "verdict": "clean",
+          "evidence": "no comments; every module has @moduledoc; parse/1 has @doc; it has no ## Examples, which the previous sweep did not count (baseline-haiku-2)"
+        }
+      },
+      "other_violations": [
+        "Keep functions short and at one level of detail: line 91: case Map.fetch(data, key) do; line 93: if valid?.(value), do: {:ok, value}, else: {:error, {:invalid_field, key}} (if inside case)",
+        "Write pipelines that start with a value and read top to bottom: line 43: fields = payment |> Map.put(:failure_reason, failure_reason) |> Map.merge(meta) (two transformations on one line)"
+      ],
+      "checks": [
+        "met: no try/rescue; line 74 uses DateTime.from_unix/1",
+        "met: error reasons are tagged tuples or the atom :invalid_payload",
+        "met: no String.to_atom; build/3 clauses match the known type strings",
+        "met: build/3 heads select the type, the bodies validate fields (verified: known type missing amount -> {:missing_field, \"amount\"})",
+        "met: missing and invalid errors name the field checked (verified)",
+        "met: multi-clause heads bind only what selects the clause",
+        "met: all structs have @enforce_keys and @type t",
+        "met: with chains over small private functions, no else; the one-step build/3 clause uses case",
+        "missed: no fetch_* names, but string_field/2 and typed_field/3 name a parameter data that receives the whole payload",
+        "met: no comments; @moduledoc and @doc present (no doctest examples)",
+        "met: mix format --check-formatted passes",
+        "met: expected reads none; read SKILL.md only"
+      ],
+      "summary": "One struct per event type, built by build/3 clauses on the type string from Map.fetch-based typed_field/3 helpers chained with with; broke Naming (a data parameter that receives the whole payload), plus an if inside a case and a two-step pipeline on one line outside the case list; read SKILL.md only."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+          "verdict": "clean",
+          "evidence": "line 111: case Map.fetch(map, key) do; lines 95-97 match the optional keys with %{^key => ...} patterns"
+        },
+        "Match every expected shape and let unexpected ones crash": {
+          "verdict": "clean",
+          "evidence": "line 204: defp parse_event(type, _envelope, _data), do: {:error, {:unsupported_event, type}}; line 97: %{} -> {:ok, nil}; line 132: defp from_unix(_seconds, key), do: {:error, {:invalid_field, key}} -- each catch-all receives only what its error names"
+        },
+        "In multi-clause functions, bind in the head only what patterns and guards use": {
+          "verdict": "clean",
+          "evidence": "line 203: defp parse_event(\"refund.created\", envelope, data), do: parse_refund(envelope, data)"
+        },
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 202: defp parse_event(\"payment.failed\", envelope, data), do: parse_payment(:failed, envelope, data)"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 86-89, 189-194, 207-223 and 227-240: with chains of two or more steps, no else, no one-step with"
+        },
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+          "verdict": "clean",
+          "evidence": "line 126: case DateTime.from_unix(seconds) do"
+        },
+        "Parse external data into structs where it enters the system": {
+          "verdict": "clean",
+          "evidence": "line 9: @enforce_keys [:id, :type, :occurred_at, :payment_id, :amount, :currency, :customer_email]; both structs have @enforce_keys and @type t; line 113: :error -> {:error, {:missing_field, key}}"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 61: def string_field(map, key) do -- named by its job, no fetch_*; data on lines 192, 199-206 and 226 holds the \"data\" key and is allowed"
+        },
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+          "verdict": "clean",
+          "evidence": "no comments; Fields is @moduledoc false and the other modules have @moduledoc; parse/1 has @doc and its 3 doctests pass"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: no try/rescue; line 126 uses DateTime.from_unix/1",
+        "met: error reasons are tagged tuples or the atom :invalid_payload",
+        "met: no String.to_atom; parse_event/3 clauses map the known type strings to :succeeded and :failed",
+        "met: parse_event/3 selects the type, parse_payment/3 and parse_refund/2 validate fields (verified: known type missing amount -> {:missing_field, \"amount\"})",
+        "met: missing and invalid errors name the field checked (verified)",
+        "met: multi-clause heads bind only what selects the clause",
+        "met: both structs have @enforce_keys and @type t",
+        "met: with chains over small private functions, no else, no one-step with",
+        "met: *_field helpers instead of fetch_*; data names are the payload key and allowed",
+        "met: no comments; @moduledoc and @doc present",
+        "met: mix format --check-formatted passes",
+        "met: expected reads none; read SKILL.md only"
+      ],
+      "summary": "PaymentEvent and RefundEvent structs (refund amount and currency optional), built by parse_event/3 clauses from a Fields module of Map.fetch-based *_field helpers chained with with; broke no graded rule; read SKILL.md only."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+          "verdict": "clean",
+          "evidence": "line 181: case Map.fetch(map, key) do (also line 173)"
+        },
+        "Match every expected shape and let unexpected ones crash": {
+          "verdict": "clean",
+          "evidence": "line 149: defp parse_event(type, _data), do: {:error, {:unsupported_event, type}}; line 190: :error -> {:error, {:invalid_field, key}}; line 195: defp parse_string(_value), do: :error -- each catch-all receives only what its error names"
+        },
+        "In multi-clause functions, bind in the head only what patterns and guards use": {
+          "verdict": "clean",
+          "evidence": "line 129: defp parse_event(\"payment.succeeded\", data) do"
+        },
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 129: defp parse_event(\"payment.succeeded\", data) do (also lines 135, 142) -- dispatch on literal type strings; the type stays a string and selects the struct module; no String.to_atom"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "violated",
+          "evidence": "line 130: with {:ok, payment} <- parse_payment_fields(data) do; line 167: with {:ok, raw} <- fetch_required(map, key) do -- two one-step withs (current text: one step is a case); line 168: cast(raw, key, parser) -- a call that can fail, so under the current text it is the second step; no else blocks"
+        },
+        "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+          "verdict": "clean",
+          "evidence": "line 204: case DateTime.from_unix(value) do; struct!/2 only on fixed keys (lines 131, 138)"
+        },
+        "Parse external data into structs where it enters the system": {
+          "verdict": "clean",
+          "evidence": "line 22: @enforce_keys [:payment_id, :amount, :currency, :customer_email, :failure_reason]; all four structs have @enforce_keys and @type t; line 183: :error -> {:error, {:missing_field, key}}"
+        },
+        "Naming": {
+          "verdict": "violated",
+          "evidence": "line 180: defp fetch_required(map, key) do; line 183: :error -> {:error, {:missing_field, key}} -- a fetch_ that returns {:error, reason} rather than :error, as fetch_required/3 in the previous sweep's skill-opus-1; data on lines 121 and 129-151 holds the \"data\" key and is allowed"
+        },
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+          "verdict": "clean",
+          "evidence": "no comments; every module has @moduledoc; parse/1 has @doc and its 4 doctests pass"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: no try/rescue; line 204 uses DateTime.from_unix/1",
+        "met: error reasons are tagged tuples or the atom :invalid_payload",
+        "met: no String.to_atom; parse_event/2 clauses match the known type strings",
+        "met: parse_event/2 heads select the type, the bodies validate fields (verified: known type missing amount -> {:missing_field, \"amount\"})",
+        "met: missing and invalid errors name the field checked (verified)",
+        "met: multi-clause heads bind only what selects the clause",
+        "met: all structs have @enforce_keys and @type t",
+        "met: with chains over small private functions, no else; but lines 130 and 167 are one-step withs",
+        "missed: fetch_required/2 returns {:error, {:missing_field, key}} rather than :error; data names are the payload key and allowed",
+        "met: no comments; @moduledoc and @doc present",
+        "met: mix format --check-formatted passes",
+        "met: expected reads none; read SKILL.md only"
+      ],
+      "summary": "An Event struct holding PaymentSucceeded, PaymentFailed or RefundCreated, built by parse_event/2 clauses on the type string from field/3 and small parser functions; broke the with rule (two one-step withs, one whose body calls the fallible cast/3) and Naming (fetch_required/2 returns {:error, _}); read SKILL.md only."
+    }
+  },
+  "per_rule": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Match every expected shape and let unexpected ones crash": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "In multi-clause functions, bind in the head only what patterns and guards use": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Convert external strings to atoms with explicit clauses": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "violated"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Parse external data into structs where it enters the system": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Naming": {
+      "opus": "unavailable",
+      "haiku": "violated",
+      "sonnet": "violated"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

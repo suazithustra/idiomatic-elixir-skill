@@ -22,6 +22,8 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - Functions with several clauses bind in the head only what the clause's pattern or guard uses; fields the body alone needs are read from the matched value.
 - Structs have `@enforce_keys` and `@type t`.
 - Steps are chained with `with` over small private functions that return `{:ok, value}` or `{:error, reason}`. There is no large `else` block that maps errors back to steps.
+- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
+- A function that checks a value and returns `{:error, reason}` is not named `fetch_*`; `fetch` names a lookup that returns `{:ok, value}` or `:error`. A variable may carry the name of the payload key it holds, such as `data` for `"data"`.
 - No comments that restate a clause. Documentation is in `@moduledoc` and `@doc`.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).

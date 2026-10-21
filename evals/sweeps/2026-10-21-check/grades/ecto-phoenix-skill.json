@@ -1,0 +1,240 @@
+{
+  "case": "ecto-phoenix",
+  "condition": "skill",
+  "notes": [
+    "Check batch: four runs (haiku-1, haiku-2, sonnet-1, sonnet-2), no opus, so the opus tier is \"unavailable\" in per_rule. Runs were made at 58f6318 with the uncommitted rule changes (skill_hash 9faec678...).",
+    "Validate input with changesets changed since 93873be and is graded against the current text of idiomatic-elixir/references/ecto-phoenix.md, ## Validate input with changesets. Two sentences now decide: \"A `%User{}` built from the params and passed to `Repo.insert/1` or `Repo.update/1` is the pattern to replace: Ecto writes the struct as given, so nothing is validated and a constraint violation raises.\" and \"Declare database constraints in the changeset (`unique_constraint/3`, and `foreign_key_constraint/3` or `assoc_constraint/3` for a `belongs_to`) so a violation returns `{:error, changeset}` instead of raising.\" The previous sweep already accepted assoc_constraint(:user) (skill-opus-1), so the change moves no verdict here.",
+    "Validate input with changesets, violating runs out of four per sentence: bare-struct insert or update: 0 of 4 (every Repo.insert/Repo.update receives a changeset: the post through Post.changeset/2, the published_at change through change/2, the audit row through Log.changeset/2). Missing user constraint: 0 of 4 (haiku-1 line 48 and sonnet-1 line 33 use foreign_key_constraint(:user_id); haiku-2 line 48 and sonnet-2 line 61 use assoc_constraint(:user)). In the previous sweep 1 of the 4 haiku and sonnet skill runs (skill-haiku-2) left the constraint out.",
+    "format_ok: result.json reports false for all four because mix format, run without Ecto's and Phoenix's locals_without_parens, adds parentheses to field, belongs_to, add and similar calls. The grade file's format_ok comes from Code.format_string!/2 with those DSL calls in locals_without_parens, as the previous sweep computed it; all four pass. Nothing compiles because Phoenix and Ecto are not installed.",
+    "Unchanged rules follow the previous sweep's standard: in haiku-1 the migration rule is clean (the migration only adds the column) but the case check is missed because the separate backfill script uses MyApp.Blog.Post; a missing @moduledoc on the context counts under the comments rule (haiku-2, as skill-haiku-2 before), while missing @doc on schema functions does not (haiku-2's Post.publish_changeset/2 at line 51, sonnet-2's Post at lines 39-66), as the previous sweep did not count them in baseline-opus-1 or baseline-sonnet-2.",
+    "Transcripts show each run reading SKILL.md and references/ecto-phoenix.md and no other reference file."
+  ],
+  "runs": {
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 45: |> cast(attrs, [:title, :body]); line 46: |> validate_required([:title, :body, :user_id]); line 48: |> foreign_key_constraint(:user_id); line 92: %Post{user_id: user.id}; the audit row also goes through a changeset, line 131: %Log{}; line 132: |> Log.changeset(%{"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 114: |> Repo.get!(id); line 155: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 122: Repo.transact(fn ->; line 123: with {:ok, post} <- post |> Post.publish_changeset() |> Repo.update(),; line 124: {:ok, _log} <- record_audit(post, \"post.published\") do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 104: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 168: alter table(:posts) do; line 169: add :published_at, :utc_datetime. The separate backfill script uses the schema module (line 181: alias MyApp.Blog.Post; line 185: Post), but the rule forbids schema modules only inside migrations, so this misses the case check, not the rule"
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 155: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and foreign_key_constraint(:user_id) (lines 45-48)",
+        "met: user_id set on the struct, not cast (line 92)",
+        "met: listing preloads the author (line 104); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 122)",
+        "missed: backfill is a separate script but uses MyApp.Blog.Post (line 181: alias MyApp.Blog.Post); migration itself only adds the column",
+        "met: controller calls Blog.get_post!/1 only (line 155)",
+        "met: show action relies on Repo.get!/2 raising (line 114)",
+        "met: no string error reasons; errors are changesets",
+        "met: no restating comments; context and schema have @moduledoc and @doc",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with foreign_key_constraint(:user_id), preloaded listing, Repo.transact/2 publish, column-only migration and get!-based show action, breaking no listed rule, but its separate backfill script uses MyApp.Blog.Post (line 181); read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 46: |> cast(attrs, [:title, :body]); line 47: |> validate_required([:title, :body]); line 48: |> assoc_constraint(:user); line 71: %Post{user_id: user.id}; the audit row also goes through a changeset, line 118: %Log{}; line 119: |> Log.changeset(%{"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 114: |> Repo.get!(id); line 164: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 93: Repo.transact(fn ->; line 94: with {:ok, published} <-; line 98: {:ok, _log} <- log_action(published, \"post.published\") do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 83: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 134: alter table(:posts) do; line 135: add :published_at, :utc_datetime_usec; backfill in a separate script on the table name, line 148: from(p in \"posts\","
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 164: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 57: defmodule MyApp.Blog do (no @moduledoc)"
+      ],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 46-48)",
+        "met: user_id set on the struct, not cast (line 71)",
+        "met: listing preloads the author (line 83); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 93)",
+        "met: migration only adds the column; backfill is a separate script on the \"posts\" table, not MyApp.Blog.Post (line 148)",
+        "met: controller calls Blog.get_post!/1 only (line 164)",
+        "met: show action relies on Repo.get!/2 raising (line 114)",
+        "met: no string error reasons; errors are changesets",
+        "missed: MyApp.Blog has no @moduledoc (line 57); comments themselves explain why",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Repo.transact/2 publish, column-only migration with a separate table-name backfill script and a get!-based show action, breaking no listed rule, but MyApp.Blog has no @moduledoc; read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 31: |> cast(params, [:title, :body]); line 32: |> validate_required([:title, :body]); line 33: |> foreign_key_constraint(:user_id); line 64: %Post{user_id: user.id}; the audit row also goes through a changeset, line 102: Log.changeset(%Log{}, %{"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 87: |> Repo.get!(id); line 157: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 98: Multi.new(); line 109: |> Repo.transaction(); line 112: {:error, _step, changeset, _changes_so_far} -> {:error, changeset}"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 76: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 124: alter table(:posts) do; line 125: add :published_at, :utc_datetime; backfill in a separate script on the table name, line 139: from(post in \"posts\","
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 157: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and foreign_key_constraint(:user_id) (lines 31-33)",
+        "met: user_id set on the struct, not cast (line 64)",
+        "met: listing preloads the author (line 76); no Repo call inside Enum.map/2",
+        "met: publishing uses Ecto.Multi with Repo.transaction/1 (lines 98-109), and the 4-tuple error is turned into {:error, changeset} (line 112)",
+        "met: migration only adds the column; backfill is a separate script on the \"posts\" table, not MyApp.Blog.Post (line 139)",
+        "met: controller calls Blog.get_post!/1 only (line 157)",
+        "met: show action relies on Repo.get!/2 raising (line 87)",
+        "met: no string error reasons; errors are changesets (line 112)",
+        "met: no restating comments; context and schema have @moduledoc and @doc",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with foreign_key_constraint(:user_id), preloaded listing, Ecto.Multi publish that returns a single 2-tuple error shape, column-only migration with a separate table-name backfill script and a get!-based show action, breaking no listed rule; read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 59: |> cast(attrs, [:title, :body]); line 60: |> validate_required([:title, :body]); line 61: |> assoc_constraint(:user); line 90: %Post{user_id: user.id}; the audit row also goes through a changeset, line 142: %Audit.Log{}; line 143: |> Audit.Log.changeset(%{action: \"Published post #{post.id} (user #{post.user_id})\"})"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 113: |> Repo.get!(id); line 157: render(conn, :show, post: Blog.get_post!(id))"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 122: Repo.transact(fn ->; line 123: with {:ok, published} <- set_published_at(post),; line 124: {:ok, _log} <- log_publication(published) do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 102: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 10: alter table(:posts) do; line 11: add :published_at, :utc_datetime; backfill in a separate script on the table name, line 26: from(p in \"posts\","
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 157: render(conn, :show, post: Blog.get_post!(id))"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 59-61)",
+        "met: user_id set on the struct, not cast (line 90)",
+        "met: listing preloads the author (line 102); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 122)",
+        "met: migration only adds the column; backfill is a separate script on the \"posts\" table, not MyApp.Blog.Post (line 26)",
+        "met: controller calls Blog.get_post!/1 only (line 157)",
+        "met: show action relies on Repo.get!/2 raising (line 113)",
+        "met: error reasons are :already_published (line 130) and changesets",
+        "met: no restating comments; context has @moduledoc and @doc; Post is @moduledoc false (line 39) and its functions have no @doc, not counted, as the previous sweep did not count schema functions",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Repo.transact/2 publish with an :already_published guard clause, column-only migration with a separate table-name backfill script and a get!-based show action, breaking no listed rule; read SKILL.md and ecto-phoenix.md."
+    }
+  },
+  "per_rule": {
+    "Validate input with changesets": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Let Phoenix turn missing records into 404 responses": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Group writes that must succeed together": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Load associations up front": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep migrations to schema changes": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep database access in contexts": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

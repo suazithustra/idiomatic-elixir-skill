@@ -22,6 +22,7 @@ Write all the code to <output>/ratelimit.ex. You may use the shell to check it c
 - The caller example goes through the limiter module's own functions, not `GenServer.call/3` or `:ets` directly.
 - Boolean results are branched on with `if`, not `case ... true -> ... false ->`.
 - No comments that restate the code.
+- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - The file passes `mix format --check-formatted`.
 - Expected reads: `processes.md`.
 

@@ -26,7 +26,7 @@ Write the package's main module(s) to <output>/tiny_router.ex, followed by the M
 - `match/1`, `routes/0`, and every helper are plain functions; only the declaration form (`get`) and `__using__/1` are macros.
 - Handler modules are kept as the literal names the user wrote; nothing builds module names with `Module.concat/2` or string interpolation.
 - Handlers stay runtime dependencies: `get` keeps the alias as written or expands it with `Macro.expand_literals/2` and a function in the environment, so `mix xref trace` on a router lists `MyApp.PageHandler` as a runtime dependency, not a compile-time one. `Macro.expand/2` makes it compile-time.
-- Public functions have `@spec`s; all modules are under `TinyRouter`.
+- Every public function has a `@spec`, including `@doc false` ones and ones defined inside `quote`; a function under `@impl` needs none. All modules are under `TinyRouter`.
 - A bad declaration fails at compile time with `ArgumentError` or `CompileError`, not at the first request.
 - The file passes `mix format --check-formatted` and compiles.
 - Expected reads: `macros.md` and `library-design.md`.

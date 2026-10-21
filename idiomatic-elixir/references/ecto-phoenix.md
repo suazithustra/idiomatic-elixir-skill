@@ -2,7 +2,16 @@
 
 ## Validate input with changesets
 
-Cast and validate external input with `Ecto.Changeset` (`cast/3`, `validate_required/2`, `validate_number/3`, `validate_inclusion/3`) instead of checking fields by hand. Declare database constraints in the changeset (`unique_constraint/3`, `foreign_key_constraint/3`) so a violation returns `{:error, changeset}` instead of raising. Use `Ecto.Enum` for fields with a fixed set of atom values.
+Cast and validate external input with `Ecto.Changeset` (`cast/3`, `validate_required/2`, `validate_number/3`, `validate_inclusion/3`) instead of checking fields by hand. A `%User{}` built from the params and passed to `Repo.insert/1` is the pattern to replace: Ecto inserts the struct as given, so nothing is validated and a constraint violation raises. `Repo.update/2` does not accept a struct at all; it raises `ArgumentError`, and only a changeset can carry the changes. Declare database constraints in the changeset (`unique_constraint/3`, and `foreign_key_constraint/3` or `assoc_constraint/3` for a `belongs_to`) so a violation returns `{:error, changeset}` instead of raising. Use `Ecto.Enum` for fields with a fixed set of atom values.
+
+```elixir
+# Instead of
+Repo.insert(%User{email: params["email"], age: params["age"]})
+# write
+%User{}
+|> User.changeset(params)
+|> Repo.insert()
+```
 
 Keep fields the code sets, such as `user_id` or `status`, out of the list passed to `cast/3`, so a request cannot set them. Set them on the struct before `cast/3`, or with `put_change/3` and `put_assoc/3` after it. Read a changeset through its functions: `get_field/3` for the current value (changes over data), `get_change/3` or `fetch_change/2` to know whether a field changed, and `fetch_field/2` to know whether the value comes from the changes or the data. `changeset[:field]` raises, and `changeset.changes.field` raises when the field did not change.
 

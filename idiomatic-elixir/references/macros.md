@@ -27,6 +27,7 @@ defmacro get(route, handler) do
 end
 
 @doc false
+@spec __define__(module(), String.t(), module()) :: :ok
 def __define__(module, route, handler) do
   if not is_binary(route), do: raise(ArgumentError, "route must be a binary")
   if not is_atom(handler), do: raise(ArgumentError, "handler must be a module")

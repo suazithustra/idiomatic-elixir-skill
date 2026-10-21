@@ -13,7 +13,11 @@ end
 # write
 def split(string, opts \\ []) when is_binary(string) do
   opts = Keyword.validate!(opts, parts: 2)
-  String.split(string, "-", parts: opts[:parts])
+  split_into(string, opts[:parts])
+end
+
+defp split_into(string, parts) when is_integer(parts) and parts > 0 do
+  String.split(string, "-", parts: parts)
 end
 ```
 
@@ -44,17 +48,24 @@ Use protocols when behaviour varies by data type, and behaviours (`@callback`) w
 
 ```elixir
 # Instead of (accepts integers, URIs, and anything else with String.Chars)
-def dasherize(data), do: data |> to_string() |> String.replace("_", "-")
+def dasherize(name), do: name |> to_string() |> String.replace("_", "-")
 # write
-def dasherize(data) when is_atom(data), do: dasherize(Atom.to_string(data))
-def dasherize(data) when is_binary(data), do: String.replace(data, "_", "-")
+def dasherize(name) when is_atom(name), do: dasherize(Atom.to_string(name))
+def dasherize(name) when is_binary(name), do: String.replace(name, "_", "-")
 ```
 
-Check input types at the public boundary with guards or patterns, so a bad argument fails with a `FunctionClauseError` naming your function instead of an error deep inside another library.
+Check input types at the public boundary with guards or patterns, so a bad argument fails with a `FunctionClauseError` naming your function instead of an error deep inside another library. An option value needs the same check as a positional argument: `Keyword.validate!/2` checks the keys, not the values, so an `api_key` taken from `opts` and put straight into a request header is unchecked input. That is why `split/2` above hands `:parts` to a clause guarded with `is_integer(parts) and parts > 0`, so a bad value fails there, in the library's own function, before `String.split/3` sees it.
 
 ## Add specs, and hide technical functions from the docs
 
-Give every public function a `@spec`. Mark functions that are public only for technical reasons, such as functions called from macro-generated code, with `@doc false`.
+Give every public function a `@spec`, including functions marked `@doc false` and functions a macro defines in the caller's module, where the `@spec` goes inside the `quote`, directly above the `def`. A function that implements a `@callback` under `@impl` needs none; the callback carries the types. Mark functions that are public only for technical reasons, such as functions called from macro-generated code, with `@doc false`.
+
+```elixir
+quote do
+  @spec routes() :: [{String.t(), module()}]
+  def routes, do: unquote(Macro.escape(routes))
+end
+```
 
 ## Keep secrets out of logs and inspect output
 

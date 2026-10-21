@@ -1,0 +1,293 @@
+{
+  "case": "macro-dsl",
+  "condition": "skill",
+  "notes": [
+    "Same standards as the previous sweep's macro-dsl grade files: the import/alias rule is graded on what __using__ injects and whether the effects of use sit in an admonition at the top of @moduledoc; a direct attribute write inside get's quote counts against Keep quote blocks small, validation in the macro body (outside quote) does not; `if not ... raise` validation, `if ... else raise` and a multi-branch cond are not counted under the branching rule, as in those files; a one-line three-step pipeline is listed under the pipeline rule.",
+    "Changed rule, graded against the current working-tree text of idiomatic-elixir/references/library-design.md: Add specs, and hide technical functions from the docs. The sentences that decide the verdict: \"Give every public function a `@spec`, including functions marked `@doc false` and functions a macro defines in the caller's module, where the `@spec` goes inside the `quote`, directly above the `def`. A function that implements a `@callback` under `@impl` needs none; the callback carries the types.\" Violating runs: 0 of 4. Every @doc false public function and every generated routes/0 and match/1 has a @spec, the generated ones inside the quote directly above the def; no run used @callback/@impl, so the exemption did not apply.",
+    "Compile-time dependencies verified with mix xref trace in scratch Mix projects (one per run, the run's file copied unchanged to lib/tiny_router.ex, so xref line numbers match the run file) with real MyApp.PageHandler and MyApp.UserHandler modules. Both haiku runs pass the handler alias unexpanded into a function call that runs in the router's module body, with neither Macro.expand nor Macro.expand_literals, and xref reports alias MyApp.PageHandler (compile); this is a different route to the same violation than the previous sweep's haiku runs, which used Macro.expand. Both sonnet runs use Macro.expand_literals with a function set in the env and xref reports alias MyApp.PageHandler (runtime).",
+    "Bad-declaration checks: each run's TinyRouter compiled with one router declaring get 123, MyApp.PageHandler and another declaring get \"/\", \"not a module\". All eight fail while the router compiles: haiku-1 and sonnet-2 with ArgumentError from the function the quote calls, haiku-2 with CompileError from __put_route__/3, sonnet-1 with CompileError while expanding get.",
+    "Format: all four pass mix format --check-formatted as written and compile without warnings. All four wrote get(...) with parentheses in the example router, so the tolerance for parentheses on get was not needed.",
+    "haiku-2, Keep quote blocks small, is a judgment on a construct the previous sweep did not contain: get's quote is one function call (the case's check is met), but __before_compile__'s quote holds the route-matching loop (lines 62-70: String.split, Enum.find_value with an fn and a case) that a TinyRouter function could hold. Graded violated on the rule's sentence \"Put the logic in a regular function and have the generated code call it.\" If only get's quote is counted, haiku-2 is clean and the haiku tier is clean for this rule.",
+    "All four runs read SKILL.md, macros.md and library-design.md (Read calls in the transcripts; each run read both reference files twice). This matches result.json reads and satisfies the Expected reads line.",
+    "Smoke test outside the rules: all four return routes in declaration order and match \"/\" and \"/users/42\"; the haiku runs return atom param keys (%{id: \"42\"}), the sonnet runs string keys (%{\"id\" => \"42\"})."
+  ],
+  "runs": {
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md",
+        "macros.md"
+      ],
+      "format_ok": "ok",
+      "compiles": true,
+      "compile_time_failures": {
+        "bad_path": "fails: ArgumentError: MyApp.BadPath: route path must be a string, got: 123",
+        "bad_handler": "fails: ArgumentError: MyApp.BadHandler: handler for \"/\" must be a module name, got: \"not a module\""
+      },
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 33: @spec __put_route__(module(), term(), term()) :: :ok; line 64: @spec __match__([{String.t(), module()}], String.t()) ::; both @doc false (lines 32, 63); line 55: @spec routes() :: [{String.t(), module()}] and line 58: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error inside the __before_compile__ quote, directly above each def"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "only __using__ (line 12), get (line 26) and __before_compile__ (line 50) are macros"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 28: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)) (validation and recording in __put_route__/3, lines 34-47); line 59: def match(path), do: TinyRouter.__match__(routes(), path)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 28 each once; line 56 once"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` and defines `routes/0`; __using__ (lines 14-16) injects only import, attribute registration and @before_compile"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 28: unquote(handler) passes the user's alias as written; no Module.concat or interpolation"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "violated",
+          "evidence": "line 28: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)) (the handler alias is evaluated in the router's module body, not expanded with Macro.expand_literals; mix xref trace: lib/tiny_router.ex:97: alias MyApp.PageHandler (compile))"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: get's quote only calls TinyRouter.__put_route__/3, which validates and records the route",
+        "met: path and handler unquoted once each",
+        "met: __using__ injects only import, attribute registration and @before_compile; effects in an admonition at the top of @moduledoc",
+        "met: __using__, __put_route__/3, __before_compile__ and __match__/2 are @doc false",
+        "met: only __using__, get and __before_compile__ are macros",
+        "met: handlers kept as written; no Module.concat or interpolation",
+        "missed: handlers are compile-time dependencies: get passes the alias unexpanded into a module-body call (mix xref trace: alias MyApp.PageHandler (compile))",
+        "met: __put_route__/3, __match__/2 and the generated routes/0 and match/1 have @spec; only TinyRouter is defined",
+        "met: both bad declarations raise ArgumentError while the router module compiles",
+        "met: passes mix format --check-formatted and compiles without warnings",
+        "met: Expected reads (macros.md, library-design.md) both in reads"
+      ],
+      "summary": "Validates and records routes in a specced @doc false __put_route__/3 called from a one-line quote, specs the generated routes/0 and match/1 and documents use in an admonition, but passes the handler alias unexpanded into a module-body call, so handlers are compile-time dependencies; read SKILL.md, macros.md and library-design.md."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md",
+        "macros.md"
+      ],
+      "format_ok": "ok",
+      "compiles": true,
+      "compile_time_failures": {
+        "bad_path": "fails: CompileError: route path must be a string, got: 123",
+        "bad_handler": "fails: CompileError: route handler must be a module name, got: \"not a module\""
+      },
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 45: @spec __put_route__(Macro.Env.t(), term(), term()) :: :ok; line 76: @spec __match__([String.t()], [String.t() | {:param, atom()}]) ::; both @doc false (lines 44, 75); line 58: @spec routes() :: [{String.t(), module()}] and line 61: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error inside the __before_compile__ quote, directly above each def"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "only __using__ (line 24), get (line 38) and __before_compile__ (line 53) are macros"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "violated",
+          "evidence": "lines 62-66: def match(path) when is_binary(path) do / segments = String.split(path, \"/\", trim: true) / Enum.find_value(unquote(Macro.escape(compiled)), :error, fn {pattern, handler} -> / case TinyRouter.__match__(segments, pattern) do (the route-matching loop sits inside __before_compile__'s quote; get's quote at line 40 is one call)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 40 each once; lines 59, 65 each once"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` and, when the module compiles,; __using__ (lines 26-28) injects only import, attribute registration and @before_compile"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 40: unquote(handler) passes the user's alias as written; no Module.concat or interpolation"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "violated",
+          "evidence": "line 40: TinyRouter.__put_route__(__ENV__, unquote(path), unquote(handler)) (the handler alias is evaluated in the router's module body, not expanded with Macro.expand_literals; mix xref trace: lib/tiny_router.ex:125: alias MyApp.PageHandler (compile))"
+        }
+      },
+      "other_violations": [
+        "Write pipelines that start with a value and read top to bottom: line 54: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse()"
+      ],
+      "checks": [
+        "met: get's quote only calls TinyRouter.__put_route__/3, which validates (check_path!/2, check_handler!/2) and records the route",
+        "met: path and handler unquoted once each",
+        "met: __using__ injects only import, attribute registration and @before_compile; effects in an admonition at the top of @moduledoc",
+        "met: __using__, __put_route__/3, __before_compile__ and __match__/2 are @doc false",
+        "met: only __using__, get and __before_compile__ are macros",
+        "met: handlers kept as written; no Module.concat or interpolation",
+        "missed: handlers are compile-time dependencies: get passes the alias unexpanded into a module-body call (mix xref trace: alias MyApp.PageHandler (compile))",
+        "met: __put_route__/3, __match__/2 and the generated routes/0 and match/1 have @spec; only TinyRouter is defined",
+        "met: both bad declarations raise CompileError while the router module compiles",
+        "met: passes mix format --check-formatted and compiles without warnings",
+        "met: Expected reads (macros.md, library-design.md) both in reads"
+      ],
+      "summary": "Validates and records routes through a specced @doc false __put_route__/3 and documents use in an admonition, but makes handlers compile-time dependencies by passing the alias unexpanded and keeps the route-matching loop inside __before_compile__'s quote, plus a one-line pipeline; read SKILL.md, macros.md and library-design.md."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md",
+        "macros.md"
+      ],
+      "format_ok": "ok",
+      "compiles": true,
+      "compile_time_failures": {
+        "bad_path": "fails: CompileError: route path must be a string literal, got: 123",
+        "bad_handler": "fails: CompileError: route handler must be a module name, got: \"not a module\""
+      },
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 80: @spec split(String.t()) :: [String.t()] (@doc false at line 79); line 61: @spec routes() :: [{String.t(), module()}] and line 69: @spec match(String.t()) :: {:ok, module(), %{optional(String.t()) => String.t()}} | :error inside the __before_compile__ quote, directly above each def; the generated match_segments clauses are defp"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "only __using__ (line 33), get (line 46) and __before_compile__ (line 56) are macros; validate_route!/3, match_clause/1 and segment_pattern/1 are defp"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "violated",
+          "evidence": "line 51: @tiny_router_routes unquote(Macro.escape(route)) (recorded directly inside get's quote, not by calling a function; validation runs outside quote in validate_route!/3)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 51 once; lines 117-118 each once"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports the `get/2` macro and defines; __using__ (lines 35-37) injects only import, attribute registration and @before_compile"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 47: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:routes, 0}})"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 47: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:routes, 0}}) (mix xref trace: lib/tiny_router.ex:134: alias MyApp.PageHandler (runtime))"
+        }
+      },
+      "other_violations": [
+        "Write pipelines that start with a value and read top to bottom: line 57: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse()"
+      ],
+      "checks": [
+        "missed: get's quote writes the attribute directly (line 51); validation runs at expansion time in validate_route!/3, outside quote, not in a function the quote calls",
+        "met: path and handler unquoted once each",
+        "met: __using__ injects only import, attribute registration and @before_compile; effects in an admonition at the top of @moduledoc",
+        "met: __using__, __before_compile__ and split/1 are @doc false",
+        "met: only __using__, get and __before_compile__ are macros",
+        "met: handlers kept as written (Macro.expand_literals); no Module.concat or interpolation",
+        "met: handlers are runtime dependencies (mix xref trace)",
+        "met: split/1 and the generated routes/0 and match/1 have @spec; only TinyRouter is defined",
+        "met: both bad declarations raise CompileError while get expands in the router module",
+        "met: passes mix format --check-formatted and compiles without warnings",
+        "met: Expected reads (macros.md, library-design.md) both in reads"
+      ],
+      "summary": "Validates at expansion time, generates one match clause per route with specced routes/0 and match/1, keeps handlers runtime-only with Macro.expand_literals and documents use in an admonition; breaks Keep quote blocks small with a direct attribute write in get's quote, plus a one-line pipeline; read SKILL.md, macros.md and library-design.md."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md",
+        "macros.md"
+      ],
+      "format_ok": "ok",
+      "compiles": true,
+      "compile_time_failures": {
+        "bad_path": "fails: ArgumentError: TinyRouter: route path must be a string, got: 123",
+        "bad_handler": "fails: ArgumentError: TinyRouter: handler for \"/\" must be a module name, got: \"not a module\""
+      },
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 74: @spec __define__(module(), term(), term()) :: :ok; line 90: @spec __match__([{String.t(), module()}], String.t()) ::; both @doc false (lines 73, 89); line 60: @spec routes() :: [{String.t(), module()}] and line 68: @spec match(String.t()) :: {:ok, module(), %{optional(String.t()) => String.t()}} | :error inside the __before_compile__ quote, directly above each def"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "only __using__ (line 28), get (line 41) and __before_compile__ (line 52) are macros"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 47: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)) (validation and recording in the __define__/3 clauses, lines 75-87); line 69: def match(path) when is_binary(path), do: TinyRouter.__match__(routes(), path)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 47 each once; line 61 once"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` and defines; __using__ (lines 30-32) injects only import, attribute registration and @before_compile"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 44: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}})"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 44: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:132: alias MyApp.PageHandler (runtime))"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: get's quote only calls TinyRouter.__define__/3, which validates and records the route",
+        "met: path and handler unquoted once each",
+        "met: __using__ injects only import, attribute registration and @before_compile; effects in an admonition at the top of @moduledoc",
+        "met: __using__, __before_compile__, __define__/3 and __match__/2 are @doc false",
+        "met: only __using__, get and __before_compile__ are macros",
+        "met: handlers kept as written (Macro.expand_literals); no Module.concat or interpolation",
+        "met: handlers are runtime dependencies (mix xref trace)",
+        "met: __define__/3, __match__/2 and the generated routes/0 and match/1 have @spec; only TinyRouter is defined",
+        "met: both bad declarations raise ArgumentError while the router module compiles",
+        "met: passes mix format --check-formatted and compiles without warnings",
+        "met: Expected reads (macros.md, library-design.md) both in reads"
+      ],
+      "summary": "Validates and records in a specced @doc false __define__/3 called from a one-line quote, specs the generated routes/0 and match/1, keeps handlers runtime-only with Macro.expand_literals and documents use in an admonition; breaks none of the seven rules; read SKILL.md, macros.md and library-design.md."
+    }
+  },
+  "per_rule": {
+    "Add specs, and hide technical functions from the docs": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Write a function unless the job needs a macro": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep `quote` blocks small": {
+      "opus": "unavailable",
+      "haiku": "violated",
+      "sonnet": "violated"
+    },
+    "Unquote each argument once": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Write module names literally": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+      "opus": "unavailable",
+      "haiku": "violated",
+      "sonnet": "clean"
+    }
+  }
+}

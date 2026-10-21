@@ -4,7 +4,30 @@
 
 Start test modules with `use ExUnit.Case, async: true`. Use `async: false` only when the tests touch global state that cannot be isolated, such as the application environment, named singleton processes, or global mocks. With Ecto on PostgreSQL, the SQL sandbox lets database tests run with `async: true`. On MySQL keep database tests `async: false`; the sandbox docs say concurrent tests deadlock there.
 
+A test double that the server calls, such as a mailer, reaches the test process without global state: register the test process in a `Registry` under the server's test-specific name, built from the test's module and name because two modules can share a test name, and let the double look it up by the name it finds in `Process.info(self(), :registered_name)`, since it runs inside the server. Start the registry once, in `test_helper.exs`, or in `setup_all` with `start_supervised!/1` when the file runs on its own. `Process.register(self(), TestMailer)` and `Application.put_env(:notify, :test_pid, self())` make the test process a singleton, which forces `async: false`.
+
+```elixir
+# Instead of (one process at a time can hold the name)
+Process.register(self(), TestMailer)
+# write
+setup %{module: module, test: test} do
+  name = Module.concat(module, test)
+  {:ok, _owner} = Registry.register(TestMailer.Registry, name, nil)
+  %{server: start_supervised!({Notifier, mailer: TestMailer, name: name})}
+end
+
+# deliver/2 runs inside the server, so its registered name is the test's key
+def deliver(to, subject) do
+  {:registered_name, server} = Process.info(self(), :registered_name)
+  [{test_pid, _value}] = Registry.lookup(TestMailer.Registry, server)
+  send(test_pid, {:delivered, to, subject})
+  :ok
+end
+```
+
 ## Group tests by function and name them by behaviour
+
+Name a `describe` block after the function under test, or after a condition its tests share, the shape the ExUnit documentation shows with a named `setup` (`describe "when the subscriber has exited" do` followed by `setup [:subscribe_and_exit]`). A block that joins two functions (`describe "subscribe/3 and subscribers/2"`) no longer says which one a failure is about. Name each test by the behaviour it checks: `test "returns :ok"` states a return value most functions share, so a failure line names nothing; `test "notifies every subscriber of the topic"` says what broke.
 
 ```elixir
 describe "parse/1" do
@@ -59,7 +82,15 @@ To assert on a GenServer's state after sending it casts, call `:sys.get_state(pi
 
 ## Start processes with `start_supervised!/1`
 
-`start_supervised!/1` starts a process under the test supervisor and stops it at the end of the test, so tests do not leak processes into each other. Give the process a test-specific name, or none, so async tests do not collide on a global name.
+`start_supervised!/1` starts a process under the test supervisor and stops it at the end of the test, so tests do not leak processes into each other. Give the process a test-specific name, or none, so async tests do not collide on a global name; a server that registers `__MODULE__` by default takes a test-specific name built from the context's module and test name, `Module.concat(context.module, context.test)`. To assert that a start fails, call `start_supervised/1` and match the reason. `start_link/1` called from the test links the new process to the test process, so a failed start exits the test with the same reason, and a start that unexpectedly succeeds leaves a process running under the default name.
+
+```elixir
+# Instead of
+assert {:error, _reason} = Notifier.start_link(name: :notifier_without_mailer)
+# write
+assert {:error, {:missing_mailer, _spec}} =
+         start_supervised({Notifier, name: Module.concat(context.module, context.test)})
+```
 
 ## Replace dependencies at boundaries, through behaviours
 
