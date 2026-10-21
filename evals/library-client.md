@@ -18,6 +18,7 @@ Write the package's main module(s) using Req as the HTTP library. Put all module
 - The API key is hidden from `inspect` output, for example with `@derive {Inspect, except: [...]}`.
 - All modules are under `WeatherClient`.
 - The file passes `mix format --check-formatted`.
+- Expected reads: `library-design.md`.
 
 ## Seen so far
 

@@ -77,7 +77,7 @@ cp -R idiomatic-elixir-skill/idiomatic-elixir ~/.claude/skills/
 | Claude Code | `~/.claude/skills/` | `.claude/skills/` |
 | Codex, Gemini CLI, GitHub Copilot, Cursor, OpenCode, Amp, Windsurf | `~/.agents/skills/` | `.agents/skills/` |
 
-Most agents that support skills read `~/.agents/skills/` and `.agents/skills/`. Claude Code reads only its own directories. Some agents also have their own directories (for example `~/.gemini/skills/` or `~/.copilot/skills/`); see your agent's documentation.
+Most agents that support skills read `~/.agents/skills/` and `.agents/skills/`. Claude Code reads only its own directories. Codex also reads `~/.codex/skills/` (or `$CODEX_HOME/skills/`), which is where its installer puts skills. Some agents also have their own directories (for example `~/.gemini/skills/` or `~/.copilot/skills/`); see your agent's documentation.
 
 In the Claude apps and the Claude API, skills are uploaded rather than copied into a directory; see Anthropic's documentation for the steps.
 
@@ -128,7 +128,7 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
 
 ### Testing a change
 
-`evals/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
+`evals/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a macro-based router, ExUnit tests for a GenServer, a Phoenix context with Ecto, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
 
 Run the cases related to your change before and after it, and describe what you saw in the pull request.
 

@@ -8,11 +8,13 @@ defmodule Accounts.UserImporter do
     role = String.to_atom(params["role"])
 
     try do
+      # The provider lowercases addresses before its uniqueness check, so match it here
       email = params["email"] |> String.downcase()
       age = String.to_integer(params["age"])
+      nickname = params["nickname"] || email
 
       if is_binary(email) && age >= 18 do
-        user = %User{email: email, age: age, role: role}
+        user = %User{email: email, age: age, role: role, nickname: nickname}
 
         case Repo.insert(user) do
           {:ok, user} ->
@@ -40,6 +42,7 @@ defmodule Accounts.UserImporter do
 
   defp welcome_email(user) do
     name = user[:name] || "there"
-    "Hi " <> name <> ", welcome!"
+    greeting = "Hi " <> name <> ", welcome!"
+    greeting |> (fn text -> text <> " Enjoy your account." end).()
   end
 end

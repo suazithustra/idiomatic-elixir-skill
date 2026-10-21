@@ -16,7 +16,7 @@ Readability rules carry the same weight as correctness rules.
   | --- | --- |
   | `GenServer`, `Agent`, `Task`, `spawn`, `send`, `:ets`, a supervisor, or shared state | `references/processes.md` |
   | a Hex package, or a public module API other code depends on | `references/library-design.md` |
-  | `defmacro`, `quote`, `__using__`, or `use` of your own module | `references/macros.md` |
+  | `defmacro`, `quote`, `__using__`, `use` of your own module, or `Module.concat` | `references/macros.md` |
   | `ExUnit`, files under `test/` | `references/testing.md` |
   | `Repo`, `Ecto`, schemas, migrations, Phoenix controllers, contexts, or LiveViews | `references/ecto-phoenix.md` |
 
@@ -88,7 +88,7 @@ defp parse_status("suspended"), do: {:ok, :suspended}
 defp parse_status(other), do: {:error, {:unknown_status, other}}
 ```
 
-`String.to_existing_atom/1` is acceptable only when every valid atom appears literally in the same module, for example in a function that lists them. Atoms that appear only in a module attribute or the module body do not count.
+`String.to_existing_atom/1` is acceptable only when every valid atom appears literally in the same module, for example in a function that lists them. Atoms that appear only in a module attribute no function reads, or only in code that runs at compile time, are not in the compiled module and may not exist at runtime.
 
 ## Control flow and errors
 
@@ -196,11 +196,11 @@ Use `Enum.each/2` only for side effects. When you need results, use `Enum.map/2`
 | `Enum.sort(items) \|> Enum.reverse()` | `Enum.sort(items, :desc)` |
 | `Enum.find(items, &f/1) != nil` | `Enum.any?(items, &f/1)` |
 | `if Map.has_key?(map, k), do: Map.get(map, k)` | `case Map.fetch(map, k) do` |
-| `Map.put(map, k, f.(Map.get(map, k)))` | `Map.update!(map, k, f)` |
+| `Map.put(map, k, f.(Map.get(map, k)))` | `Map.update!(map, k, f)` when `k` must exist; `Map.update(map, k, initial, f)` when it may be missing |
 
 ### Treat lists as linked lists
 
-`length/1` and `Enum.at/2` walk the list. `acc ++ [item]` copies `acc` every time, so a loop that appends is quadratic. Build lists with `Enum.map/2` or a comprehension, or prepend with `[item | acc]` and reverse once at the end. Check for empty lists with `list == []` or a `[]` / `[_ | _]` pattern, not `length(list) == 0`. When you need an element's position, use `Enum.with_index/2` or `Enum.zip/2` instead of indexing in a loop.
+`length/1` and `Enum.at/2` walk the list. `acc ++ [item]` copies `acc` every time, so a loop that appends is quadratic. Build lists with `Enum.map/2` or a comprehension, or prepend with `[item | acc]` and reverse once at the end. Check for empty lists with `list == []` or a `[]` / `[_ | _]` pattern, not `length(list) == 0`. When you need an element's position, use `Enum.with_index/2` or `Enum.zip/2` instead of indexing in a loop. `list[0]` does not index a list: `Access` treats a list as a keyword list and raises `ArgumentError` for an integer key. Use a pattern, or `Enum.at/2` when you need one position.
 
 ### Compare dates, times, and decimals with their module functions
 

@@ -2,7 +2,7 @@
 
 ## Run tests concurrently unless they share global state
 
-Start test modules with `use ExUnit.Case, async: true`. Use `async: false` only when the tests touch global state that cannot be isolated, such as the application environment, named singleton processes, or global mocks. With Ecto, the SQL sandbox lets database tests run with `async: true`.
+Start test modules with `use ExUnit.Case, async: true`. Use `async: false` only when the tests touch global state that cannot be isolated, such as the application environment, named singleton processes, or global mocks. With Ecto on PostgreSQL, the SQL sandbox lets database tests run with `async: true`. On MySQL keep database tests `async: false`; the sandbox docs say concurrent tests deadlock there.
 
 ## Group tests by function and name them by behaviour
 
@@ -47,6 +47,15 @@ test "notifies subscribers" do
   assert_receive {:notification, :updated}
 end
 ```
+
+To wait for a process to exit, monitor it and assert on the `:DOWN` message instead of polling `Process.alive?/1`:
+
+```elixir
+ref = Process.monitor(pid)
+assert_receive {:DOWN, ^ref, :process, ^pid, :normal}
+```
+
+To assert on a GenServer's state after sending it casts, call `:sys.get_state(pid)` first, or any synchronous call to it. The process handles messages in order, so the reply means the earlier casts were handled too.
 
 ## Start processes with `start_supervised!/1`
 

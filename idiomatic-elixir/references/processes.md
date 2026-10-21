@@ -20,6 +20,8 @@ Libraries should not impose processes or concurrency on their users. Give users 
 
 When a `Task` starts exchanging messages with other processes, or an `Agent` starts running work beyond reading and updating its state, rewrite it as a `GenServer`.
 
+`Task.async_stream/3` exits the caller when one item takes longer than `:timeout` (5000 ms by default). Set `:timeout` to the longest acceptable time per item, and pass `on_timeout: :kill_task` when one slow item should not abort the whole stream; the stream then yields `{:exit, :timeout}` for that item.
+
 ## Keep each process behind one module
 
 All interaction with a process goes through the functions of the module that defines it. Other modules never call `GenServer.call/3`, `GenServer.cast/2`, `send/2`, or `Agent.update/2` on it directly. The owning module controls the shape of the state and the messages.
@@ -60,22 +62,23 @@ A GenServer serializes access. When many processes read shared data, or update c
 defmodule MyApp.Counters do
   use GenServer
 
-  @table __MODULE__
+  def start_link(opts) do
+    name = Keyword.get(opts, :name, __MODULE__)
+    GenServer.start_link(__MODULE__, name, name: name)
+  end
 
-  def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  def increment(name \\ __MODULE__, key), do: :ets.update_counter(name, key, 1, {key, 0})
 
-  def increment(key), do: :ets.update_counter(@table, key, 1, {key, 0})
-
-  def get(key) do
-    case :ets.lookup(@table, key) do
+  def get(name \\ __MODULE__, key) do
+    case :ets.lookup(name, key) do
       [{^key, count}] -> count
       [] -> 0
     end
   end
 
   @impl true
-  def init(_opts) do
-    :ets.new(@table, [
+  def init(name) do
+    :ets.new(name, [
       :named_table,
       :public,
       :set,
@@ -87,6 +90,8 @@ defmodule MyApp.Counters do
   end
 end
 ```
+
+The table takes the process's name, so each instance owns its own table, and a test can start one with `start_supervised!({MyApp.Counters, name: :counters_test})`. The name must be an atom, because `:named_table` requires one.
 
 Callers may write to a shared table directly only with operations that are atomic on their own: `:ets.update_counter/4`, `:ets.insert_new/2`, `:ets.delete/2`, or an `:ets.insert/2` whose new value does not depend on what was there. A `lookup` followed by an `insert` computed from the looked-up value is a race: two processes can read the same old value and both write, and the second write discards the first. For example, a rate limiter that reads a user's timestamps, checks the count, and writes the list back lets concurrent requests exceed the limit. Either change the data so an atomic operation does the job (a counter per user per time window with `:ets.update_counter/4`, or insert one row per request first, then count with `:ets.select_count/2` and delete your row if the count is over the limit), or send that operation through the owner process.
 

@@ -4,14 +4,14 @@ A task inside a Mix project that has Credo and tests. It checks whether agents r
 
 ## Setup
 
-Copy `shop-project/` to a scratch folder, then run `mix deps.get` in the copy. Before the run, confirm that `mix test` passes, `mix credo --strict` finds no issues, and `mix format --check-formatted` succeeds. Replace `<project>` below with the copy's path.
+Requires Elixir 1.20 or later, Hex, and network access for `mix deps.get`. Make a fresh copy of `shop-project/` for every run (a run changes the project), then run `mix deps.get` in the copy. Before the run, confirm that `mix test` passes, `mix credo --strict` finds no issues, and `mix format --check-formatted` succeeds. Replace `<project>` below with the copy's path.
 
 ## Prompt
 
 ```text
 The Mix project at <project> is a small shop app with a `Shop.Cart` module. Add the following to the cart:
 
-- A way to remove units of an item from the cart.
+- A way to remove units of an item from the cart. Removing more units than the cart holds removes the item.
 - Discount codes. Customers type codes into a form, so they arrive as strings. "SAVE10" takes 10% off the item subtotal. "FREESHIP" waives the shipping fee. A cart can hold at most one code, and unknown codes must be rejected.
 - A way to compute the total price in cents, given a price list that maps each SKU to its price in cents. Every order pays a shipping fee of 499 cents unless "FREESHIP" is applied.
 
@@ -30,6 +30,11 @@ In the project afterwards:
 - Discount codes are mapped to atoms with explicit clauses, or kept as strings. There is no `String.to_atom/1`.
 - An unknown code returns an error with an atom, tagged tuple, or exception struct as the reason, not a string.
 - The discount is computed with integer arithmetic, such as `div(subtotal * 90, 100)`, not with floats such as `trunc(subtotal * 0.9)`.
+- `Shop.Cart` has functions that remove units, apply a code, and compute the total in cents. A second code is rejected or replaces the first; either way the cart holds one. Removing more units than present removes the item.
+- With 2 units of `"APPLE"` at 100 cents each: no code gives 699, `"SAVE10"` gives 180 + 499 = 679, `"FREESHIP"` gives 200.
+- The cart struct is updated with `%{cart | items: ...}`, not `Map.put/3`.
+- Boolean functions end in `?`, and variables are named after the domain (`cart`, `sku`, `code`), not `data`, `res`, or `x`.
+- Expected reads: `testing.md` when the run adds or changes tests.
 
 ## Seen so far
 

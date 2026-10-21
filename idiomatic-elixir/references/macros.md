@@ -84,7 +84,7 @@ Do this only when the macro never calls the module, reads its struct, or inspect
 
 ## Write module names literally
 
-The compiler tracks dependencies only on module names it can see. `Module.concat(OtherModule, part)` or `:"Elixir.OtherModule.Foo"` hides the dependency, so changes to that module may not trigger recompilation.
+The compiler tracks dependencies only on module names it can see in the code. `Module.concat(OtherModule, part)` builds the name at runtime, so changes to that module do not trigger recompilation of the caller.
 
 ```elixir
 # Instead of
@@ -93,4 +93,11 @@ for part <- [:Foo, :Bar], do: Module.concat(OtherModule, part).example()
 for mod <- [OtherModule.Foo, OtherModule.Bar], do: mod.example()
 ```
 
-If the names really must be generated, build them inside a macro with `OtherModule.unquote(part)` so the full alias exists at compile time.
+If the names really must be generated, build the full name inside a macro and unquote it, so the expanded code contains the literal module name and `mix xref` can see it:
+
+```elixir
+defmacro call_example(part) do
+  mod = Module.concat(OtherModule, part)
+  quote do: unquote(mod).example()
+end
+```
