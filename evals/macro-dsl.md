@@ -23,6 +23,7 @@ Write the package's main module(s) to <output>/tiny_router.ex, followed by the M
 - Each macro argument is unquoted once, or bound with `bind_quoted`.
 - `__using__/1` injects only what is needed (an attribute, `@before_compile` or similar) and its effects on the caller are documented at the top of `@moduledoc`.
 - Functions that exist only to be called from generated code are marked `@doc false`.
+- `match/1`, `routes/0`, and every helper are plain functions; only the declaration form (`get`) and `__using__/1` are macros.
 - Handler modules are kept as the literal names the user wrote; nothing builds module names with `Module.concat/2` or string interpolation.
 - Public functions have `@spec`s; all modules are under `TinyRouter`.
 - A bad declaration fails at compile time with `ArgumentError` or `CompileError`, not at the first request.

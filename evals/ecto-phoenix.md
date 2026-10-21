@@ -22,7 +22,8 @@ Write all the code (context, schema, migration, any script, controller) to <outp
 - The listing query preloads or joins the author; there is no `Repo` call inside `Enum.map/2`.
 - Publishing uses `Repo.transact/2` or `Ecto.Multi`, so the audit row and the post update succeed or fail together.
 - The migration only adds the column. The backfill of `published_at` is a separate script, Mix task, or release task, and it does not use `MyApp.Blog.Post`.
-- The controller calls context functions; it does not build queries or call `Repo` itself. `Repo.get!/2` inside the context for the URL id is fine.
+- The controller calls context functions; it does not build queries or call `Repo` itself.
+- The show action lets `Repo.get!/2` raise for a missing id, which Phoenix turns into a 404, instead of matching `nil` and rendering a 404 by hand.
 - Error reasons are atoms, tuples, or changesets, not strings.
 - No comments that restate the code; documentation is in `@moduledoc` and `@doc`.
 - Expected reads: `ecto-phoenix.md`.

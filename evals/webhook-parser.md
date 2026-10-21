@@ -19,6 +19,7 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - No `String.to_atom/1` on the event type. Known types are mapped with explicit clauses.
 - Selecting the event type is separate from validating its fields, so a known type with a missing field is not reported as an unsupported event.
 - Missing-field and invalid-field errors name the actual field. They are not guessed from which other keys matched.
+- Functions with several clauses bind in the head only what the clause's pattern or guard uses; fields the body alone needs are read from the matched value.
 - Structs have `@enforce_keys` and `@type t`.
 - Steps are chained with `with` over small private functions that return `{:ok, value}` or `{:error, reason}`. There is no large `else` block that maps errors back to steps.
 - No comments that restate a clause. Documentation is in `@moduledoc` and `@doc`.
@@ -26,6 +27,8 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - Expected reads: none (SKILL.md only).
 
 ## Seen so far
+
+Before 2026-10-21, undated:
 
 - Without the skill: Opus and Sonnet were clean. Haiku used `rescue` for control flow and returned string error reasons.
 - With the skill: Haiku dropped both. One run let a known type with missing fields fall through to "unsupported event"; a later run guessed which field was missing. Both led to rule changes.

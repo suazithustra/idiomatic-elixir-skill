@@ -11,6 +11,11 @@ defmodule Accounts.UserImporter do
       # The provider lowercases addresses before its uniqueness check, so match it here
       email = params["email"] |> String.downcase()
       age = String.to_integer(params["age"])
+
+      if age > 120 do
+        age = 120
+      end
+
       nickname = params["nickname"] || email
 
       if is_binary(email) && age >= 18 do

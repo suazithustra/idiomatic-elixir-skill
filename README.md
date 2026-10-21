@@ -122,7 +122,7 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
    ```
    ````
 
-4. Run every code example, and check every claim about Elixir behavior, on a current Elixir version before you submit.
+4. Run `elixir evals/check_skill.exs`. It parses, formats, and compiles the code examples and checks the rule index in `evals/README.md`. It cannot see a wrong claim or an example that compiles but misbehaves, so also run every example by hand and check every claim about Elixir behavior on a current Elixir version before you submit.
 5. Keep `SKILL.md` under about 500 lines, as the specification recommends. If it grows past that, move topic-specific rules into reference files.
 6. Keep the frontmatter to the fields defined in the specification. Some tools reject a skill with extra fields.
 

@@ -38,6 +38,8 @@ In the project afterwards:
 
 ## Seen so far
 
+Before 2026-10-21, undated:
+
 - Haiku with the skill (2 runs): both ran the formatter, Credo, and the tests, and every final check passed. One added tests. Both computed the discount with floats.
 - Haiku without the skill (2 runs): both ran the tests but neither ran Credo or the formatter, and both left unformatted code. Both returned string error reasons. One computed the discount with floats.
 - Sonnet with the skill (1 run): ran everything, added tests, used integer arithmetic, and every final check passed.
