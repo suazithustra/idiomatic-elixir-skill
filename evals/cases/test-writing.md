@@ -17,7 +17,7 @@ Write the tests to <output>/subscriptions_test.exs. The file must start ExUnit i
 - The mailer is replaced through the `Notify.Mailer` behaviour (a test module that implements it, or a mock built on it), not by redefining `Notify.Mailer` or patching modules at runtime.
 - Notifications are awaited with `assert_receive` and `refute_receive`. There is no `Process.sleep/1`.
 - The exit test monitors the process and waits for the `:DOWN` message, or calls `:sys.get_state/1`, before asserting that the subscriber is gone. There is no polling of `Process.alive?/1`.
-- Assertions use patterns (`assert [^pid] = ...`, `assert_receive {:notification, "news", %{id: 1}}`), not `elem/2` or `==` on a tuple's parts.
+- Assertions use patterns (`assert [^pid] = ...`, `assert_receive {:notification, "news", %{id: 1}}`) or `==` on the whole value, not `elem/2` or `==` on a tuple's parts; a value the test already holds is pinned or compared whole, not bound by a match and compared with `==` afterwards.
 - Tests are grouped in `describe` blocks named after the function under test or after a condition the block's tests share; no block joins two functions. Test names say what the call did, not only its return value (`returns :ok`).
 - Shared setup returns a map that tests match in their heads.
 - Only public functions are tested.

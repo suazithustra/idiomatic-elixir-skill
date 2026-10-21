@@ -147,15 +147,21 @@ defp decode64(encoded) do
 end
 ```
 
-Count the `<-` clauses before writing `with`. With one there is nothing to chain, and a `with` makes the reader look for the other steps, so use `case`, which shows both outcomes in one place. When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.
+Count the `<-` clauses before writing `with`. With one there is nothing to chain, and a `with` makes the reader look for the other steps, so use `case`, which shows both outcomes in one place. This holds in a public function whose only fallible call is the first step and whose body builds the result: the `with` saves the error clause and costs the reader a search for steps that are not there. When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.
 
 ```elixir
 # Instead of
-with {:ok, discount} <- parse_discount(code), do: {:ok, apply_discount(cart, discount)}
+def build(rows) do
+  with {:ok, orders} <- parse_orders(rows) do
+    {:ok, summarize(orders)}
+  end
+end
 # write
-case parse_discount(code) do
-  {:ok, discount} -> {:ok, apply_discount(cart, discount)}
-  {:error, _reason} = error -> error
+def build(rows) do
+  case parse_orders(rows) do
+    {:ok, orders} -> {:ok, summarize(orders)}
+    {:error, _reason} = error -> error
+  end
 end
 
 # Instead of
@@ -333,7 +339,7 @@ A public function should read as a short sequence of named steps, with the detai
 
 ### Use captures for one-call lambdas and `fn` for anything longer
 
-`Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents. When the body does more than one call or would need `&2`, write `fn` with named arguments.
+`Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`. When the body does more than one call, or would need `&3`, write `fn` with named arguments.
 
 ## Before you finish
 

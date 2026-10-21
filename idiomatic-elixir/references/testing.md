@@ -43,7 +43,7 @@ end
 
 ## Assert with patterns
 
-A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters.
+A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace.
 
 ```elixir
 # Instead of
@@ -52,6 +52,14 @@ assert user.email == "a@example.com"
 assert user.role == :member
 # write
 assert {:ok, %User{email: "a@example.com", role: :member}} = Accounts.create_user(attrs)
+
+# Instead of
+assert [pid] = Subscriptions.subscribers(server, "news")
+assert pid == self()
+# write
+assert Subscriptions.subscribers(server, "news") == [self()]
+# or, with a value bound earlier in the test
+assert [^subscriber] = Subscriptions.subscribers(server, "news")
 
 # Instead of
 assert elem(result, 0) == :error
