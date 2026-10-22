@@ -1,0 +1,310 @@
+{
+ "case": "test-writing",
+ "condition": "baseline",
+ "notes": [
+  "Third full sweep (2026-10-22-b, head 0397dec): five baseline runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2), all rc 0, each model_id matching its tier. No transcript has a Skill tool call (each session used only Read on the input file, Write, Bash and, in opus-1, Edit), and reads is empty in all five, as the prompt's last line (\"Do not invoke any skills.\") requires. Expected reads (testing.md and processes.md) is therefore unmet in every run, as expected for baseline.",
+  "Changed rule since db91c23, graded against the current text of references/testing.md: \"Assert with patterns\". Deciding sentence: \"A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace.\" Count: 0 of 5 runs bind a value from the call under test and compare it with == afterwards; no elem/2, is_pid or length assertions this time. Judgment: opus-1 (lines 50-51), sonnet-1 (lines 57-58) and sonnet-2 (lines 49, 51) bind the pid returned by a start call and then assert Process.whereis(name) == pid. The value under test there is the whereis result, compared whole against a value the test holds, which the sentence allows, so these are graded clean; reading them as the forbidden shape would make opus and sonnet violated on this rule. The other graded rules are unchanged since db91c23 and are graded to the standard of the 2026-10-22 grade files. The SKILL.md changes (one-step with, the new do: rule, captures) are outside this case's list; I checked the outputs for them and found nothing to report.",
+  "\"Start processes with `start_supervised!/1`\" (unchanged since db91c23) is violated in 4 of 5 runs. start_link called from a test: opus-1 line 58, sonnet-1 lines 57 and 65, sonnet-2 lines 49 and 58; no run uses start_supervised/1 for the start-failure test. opus-1 also starts the server under the default global name in its async: true module (line 50), which the 2026-10-21 sweep graded violated for its opus-1. haiku-2 starts every server under the default name Notify.Subscriptions (line 21). Its module is async: false, but unlike the default-name tests the previous sweep excused, no test there is about the default, so it falls under \"Give the process a test-specific name, or none\" in the same way as the previous sweep's sonnet-1 with one fixed name for every test. haiku-1 is clean, with System.unique_integer names (line 22), which the previous sweeps graded clean. sonnet-2 starts its server through a hand-built child spec that calls GenServer.start_link without a name (lines 22, 26-33), which is under start_supervised!, so that part is not counted.",
+  "Judgment on \"Use setup for shared data\" (unchanged): sonnet-2's setup returns {:ok, server: server} (line 23), a keyword list rather than the map the rule names (\"Return data from `setup` as a map\"). ExUnit merges it into the context, and the tests match %{server: server} in their heads, so this is a strict reading. It is graded violated because the rule names the map form, and it is the first violation of this rule in any test-writing sweep. Reading the keyword form as allowed would make the sonnet tier clean. The other four runs return maps.",
+  "\"Group tests by function and name them by behaviour\" is violated in 5 of 5: every run has describe \"subscribe/3 and subscribers/2\" (opus-1 line 62, haiku-1 line 28, haiku-2 line 25, sonnet-1 line 69, sonnet-2 line 62). sonnet-1 also names tests only by their return value (line 70: test \"subscribe returns :ok\"; line 104: test \"returns :ok\"). Every run's describe \"when a subscribed process exits\" is a shared condition, which the rule allows. Previous sweep: 4 of 5.",
+  "\"Run tests concurrently unless they share global state\": 4 of 5 violate with async: false, forced by Process.register on the test pid (haiku-1 line 20, haiku-2 line 20, sonnet-2 line 21) or Application.put_env (sonnet-1 line 19). opus-1 is clean: async: true with a duplicate-keys Registry started in setup_all and keyed by the server pid, which the mailer double looks up with self() (lines 17, 26, 32). That is not the name key the rule shows, but it uses no global state, so it is graded clean as in the previous sweep. \"Wait for messages, not for time\": 3 of 5 violate with Process.sleep polling helpers (haiku-2 line 167, sonnet-1 line 49, sonnet-2 line 225; haiku-2 and sonnet-2 wait for :DOWN first and then still poll). opus-1 and haiku-1 wait for :DOWN and then make a synchronous call, and opus-1 also uses :sys.get_state before refute_received, so both are clean, an improvement on the previous sweep, where all five violated. Process.sleep(:infinity) in haiku-2 line 172 is the body that keeps a listener alive, and the single assert Process.alive?(server) checks (opus-1 line 191, haiku-2 line 141, sonnet-2 lines 191 and 202) are not polling, so neither is counted. \"Replace dependencies at boundaries, through behaviours\" is clean in all five.",
+  "Other rule outside the list: sonnet-2 line 22 pipes a single step (\"Write pipelines that start with a value and read top to bottom\").",
+  "I ran the tests from copies in the scratch folder with elixir -r test-writing-input.ex subscriptions_test.exs, ten times each with random seeds. Every run passed every time with no compiler warnings (opus-1 15 tests, haiku-1 13, haiku-2 13, sonnet-1 20, sonnet-2 18). mix format --check-formatted passes on all five, which confirms format_ok in result.json."
+ ],
+ "runs": {
+  "baseline-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [],
+   "format_ok": true,
+   "tests": "15 passed, 0 failed",
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "clean",
+     "evidence": "line 4: use ExUnit.Case, async: true; the mailer double finds the test through a Registry keyed by the server pid (line 17: for {test_pid, _} <- Registry.lookup(Notify.SubscriptionsTest.Inboxes, self()) do; line 32: {:ok, _} = Registry.register(__MODULE__.Inboxes, server, nil)); no Process.register or Application.put_env"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "violated",
+     "evidence": "line 62: describe \"subscribe/3 and subscribers/2\" do (joins two functions); line 130: describe \"when a subscribed process exits\" do is a shared condition, which the rule allows; no test is named only by its return value"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 58: assert {:error, {%KeyError{key: :mailer}, _}} = Subscriptions.start_link(name: nil); line 90: assert_receive {:notification, \"news\", %{id: 1}}; lines 72-73: assert Subscriptions.subscribers(server, \"news\") == / [\"b@example.com\", \"a@example.com\", self()] compares the whole value; line 51: assert Process.whereis(Subscriptions) == pid compares the whole value against a held value (see notes)"
+    },
+    "Wait for messages, not for time": {
+     "verdict": "clean",
+     "evidence": "lines 133, 138-139: ref = Process.monitor(subscriber) / send(subscriber, :stop) / assert_receive {:DOWN, ^ref, :process, ^subscriber, :normal}; line 118: sync(server) (:sys.get_state, line 46) before refute_received; no Process.sleep"
+    },
+    "Start processes with `start_supervised!/1`": {
+     "verdict": "violated",
+     "evidence": "line 58: assert {:error, {%KeyError{key: :mailer}, _}} = Subscriptions.start_link(name: nil) is called from the test to assert a failed start; line 50: pid = start_supervised!({Subscriptions, mailer: TestMailer}, id: :default_name) registers the default global name in an async: true module; other servers use line 31: start_supervised!({Subscriptions, mailer: TestMailer, name: nil})"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 8-13: defmodule TestMailer do / ... / @behaviour Notify.Mailer, passed as mailer: TestMailer at line 31"
+    },
+    "Use setup for shared data": {
+     "verdict": "clean",
+     "evidence": "lines 30-34: setup returns %{server: server}; line 63: test \"a topic with no subscribers has none\", %{server: server} do"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: async: true (line 4); the mailer double reaches the test through a Registry keyed by the server pid, with no Process.register and no application environment",
+    "missed: the start-failure test calls start_link (line 58), and the default-name test starts a global name in the async module (line 50); other servers use start_supervised! with name: nil (line 31)",
+    "met: mailer replaced by a module implementing Notify.Mailer (lines 8-23)",
+    "met: notifications awaited with assert_receive, and refute_received after a :sys.get_state sync; no Process.sleep",
+    "met: exit tests monitor the subscriber and wait for :DOWN before asserting (lines 133-141, 147-153); no Process.alive? polling",
+    "met: assertions use patterns or == on whole values; no elem/2; no bind-then-== on a value under test",
+    "missed: describe \"subscribe/3 and subscribers/2\" joins two functions (line 62); no return-value-only test name",
+    "met: setup returns a map matched in test heads",
+    "met: only public functions tested",
+    "met: passes mix format --check-formatted; 15 passed, 0 failed",
+    "missed: expected reads (testing.md, processes.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Uses async: true with a Registry keyed by server pid for the behaviour mailer, unnamed servers under start_supervised!, :DOWN monitors and :sys.get_state syncs, and setup maps. It broke the grouping rule (a describe joining subscribe/3 and subscribers/2) and the start_supervised rule (start_link for the missing-mailer failure, and a default-name server in the async module). It read no skill files (baseline)."
+  },
+  "baseline-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "tests": "13 passed, 0 failed",
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 4: use ExUnit.Case, async: false; the shared state is the test's own line 20: Process.register(self(), :subscriptions_test_probe)"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "violated",
+     "evidence": "line 28: describe \"subscribe/3 and subscribers/2\" do (joins two functions); line 100: describe \"when a subscribed process exits\" do is a shared condition, which the rule allows"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 30: assert :ok = Subscriptions.subscribe(server, \"news\", \"a@example.com\"); line 36: assert Subscriptions.subscribers(server, \"news\") == [self()] compares the whole value; line 67: assert_receive {:notification, \"news\", \"hello\"}"
+    },
+    "Wait for messages, not for time": {
+     "verdict": "clean",
+     "evidence": "lines 156-159: ref = Process.monitor(pid) / send(pid, :stop) / assert_receive {:DOWN, ^ref, :process, ^pid, _reason}, used by every exit test before a synchronous subscribers/2 call; no Process.sleep"
+    },
+    "Start processes with `start_supervised!/1`": {
+     "verdict": "clean",
+     "evidence": "lines 22-23: name = :\"subscriptions_#{System.unique_integer([:positive])}\" / start_supervised!({Subscriptions, name: name, mailer: Mailer}); no start_link call; no start-failure test"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 8-9: defmodule Mailer do / @behaviour Notify.Mailer, passed as mailer: Mailer at line 23"
+    },
+    "Use setup for shared data": {
+     "verdict": "clean",
+     "evidence": "lines 18-26: setup returns %{server: name}; line 29: test \"returns :ok and lists the email subscriber\", %{server: server} do"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: async: false because the test process registers itself under a global name (lines 4, 20)",
+    "met: every server uses start_supervised! with a unique name (lines 22-23); no start_link; no start-failure test",
+    "met: mailer replaced by a module implementing Notify.Mailer (lines 8-16)",
+    "met: notifications awaited with assert_receive and refute_receive; no Process.sleep",
+    "met: exit tests monitor the subscriber and wait for :DOWN (lines 156-160) before asserting; no Process.alive? polling",
+    "met: assertions use patterns or == on whole values; no elem/2",
+    "missed: describe \"subscribe/3 and subscribers/2\" joins two functions (line 28); no return-value-only test name",
+    "met: setup returns a map matched in test heads",
+    "met: only public functions tested",
+    "met: passes mix format --check-formatted; 13 passed, 0 failed",
+    "missed: expected reads (testing.md, processes.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Uses a behaviour-based mailer, start_supervised! with unique names, :DOWN monitors before synchronous checks, and setup maps. It runs async: false because of its own registered test process (concurrency rule) and groups subscribe/3 and subscribers/2 in one describe (grouping rule). It read no skill files (baseline)."
+  },
+  "baseline-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "tests": "13 passed, 0 failed",
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 14: use ExUnit.Case, async: false; the shared state is the test's own line 20: Process.register(self(), :notify_test_mailer)"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "violated",
+     "evidence": "line 25: describe \"subscribe/3 and subscribers/2\" do (joins two functions); line 96: describe \"when a subscribed process exits\" do is a shared condition, which the rule allows"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 55: assert :ok = Subscriptions.publish(server, \"news\", \"hello\"); line 34: assert Subscriptions.subscribers(server, \"news\") == [\"reader@example.com\", second, first] compares the whole value; line 73: assert_receive {:delivered, \"reader@example.com\", \"New on news\"}"
+    },
+    "Wait for messages, not for time": {
+     "verdict": "violated",
+     "evidence": "line 167: true -> Process.sleep(10) && eventually(fun, attempts - 1), used after :DOWN in kill_and_wait_for_removal (line 159: eventually(fn -> pid not in Subscriptions.subscribers(server, topic) end)) and at lines 116 and 149"
+    },
+    "Start processes with `start_supervised!/1`": {
+     "verdict": "violated",
+     "evidence": "line 21: server = start_supervised!({Subscriptions, mailer: Notify.TestMailer}) starts every test's server under the default global name Notify.Subscriptions; no test is about the default name (see notes)"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 3-4: defmodule Notify.TestMailer do / @behaviour Notify.Mailer, passed as mailer: Notify.TestMailer at line 21"
+    },
+    "Use setup for shared data": {
+     "verdict": "clean",
+     "evidence": "lines 18-23: setup returns %{server: server}; line 26: test \"lists subscribers of a topic, most recent first\", %{server: server} do"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: async: false because the test process registers itself under a global name (lines 14, 20)",
+    "missed: every server is started with start_supervised! under the default global name, not a test-specific name or none (line 21); no start_link; no start-failure test",
+    "met: mailer replaced by a module implementing Notify.Mailer (lines 3-11)",
+    "missed: Process.sleep(10) in a polling helper (line 167)",
+    "met: exit tests monitor the subscriber and wait for :DOWN (lines 155-157) before checking; no Process.alive? polling (the Process.sleep polling that follows is counted in the line above)",
+    "met: assertions use patterns or == on whole values; no elem/2",
+    "missed: describe \"subscribe/3 and subscribers/2\" joins two functions (line 25); no return-value-only test name",
+    "met: setup returns a map matched in test heads",
+    "met: only public functions tested",
+    "met: passes mix format --check-formatted; 13 passed, 0 failed",
+    "missed: expected reads (testing.md, processes.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Uses a behaviour-based mailer, :DOWN monitors, a synchronous call before refute_receive, and setup maps. It runs async: false because of its own registered test process, starts every server under the default global name, polls with Process.sleep after each :DOWN, and groups subscribe/3 and subscribers/2 in one describe. It read no skill files (baseline)."
+  },
+  "baseline-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "tests": "20 passed, 0 failed",
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 4: use ExUnit.Case, async: false; the shared state is line 19: Application.put_env(:notify_test, :mail_sink, self()), read by the double at line 13: send(Application.fetch_env!(:notify_test, :mail_sink), {:delivered, to, subject})"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "violated",
+     "evidence": "line 69: describe \"subscribe/3 and subscribers/2\" do (joins two functions); line 70: test \"subscribe returns :ok\", %{server: server} do and line 104: test \"returns :ok\", %{server: server} do (name only the return value); line 159: describe \"when a subscribed process exits\" do is a shared condition, which the rule allows"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 65: assert {:error, _} = Subscriptions.start_link(name: name); lines 83-84: assert Subscriptions.subscribers(server, \"news\") == / [\"b@example.com\", self(), \"a@example.com\"] compares the whole value; line 112: assert_receive {:notification, \"news\", %{id: 1}}; line 58: assert Process.whereis(name) == pid compares the whole value against a held value (see notes)"
+    },
+    "Wait for messages, not for time": {
+     "verdict": "violated",
+     "evidence": "line 49: Process.sleep(10) inside eventually/2, used by every exit test, e.g. line 170: eventually(fn -> Subscriptions.subscribers(server, \"news\") == [\"a@example.com\"] end); lines 178-183 kill the subscriber without a monitor and poll"
+    },
+    "Start processes with `start_supervised!/1`": {
+     "verdict": "violated",
+     "evidence": "line 57: {:ok, pid} = Subscriptions.start_link(mailer: TestMailer, name: name) and line 65: assert {:error, _} = Subscriptions.start_link(name: name) are called from tests; other servers use line 28: start_supervised!(spec) with a unique name (line 26)"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 8-9: defmodule TestMailer do / @behaviour Notify.Mailer, passed as mailer: TestMailer at line 27"
+    },
+    "Use setup for shared data": {
+     "verdict": "clean",
+     "evidence": "lines 18-23: setup returns %{server: start_server(:default)}; line 74: test \"lists no subscribers for an unknown topic\", %{server: server} do"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: async: false because the test pid goes through the application environment (lines 4, 19)",
+    "missed: tests call start_link (lines 57, 65), including the start-failure test; other servers use start_supervised! with a unique name (lines 25-29)",
+    "met: mailer replaced by a module implementing Notify.Mailer (lines 8-16)",
+    "missed: Process.sleep(10) in a polling helper (line 49)",
+    "missed: only the first exit test monitors the subscriber (lines 166-168); the others kill it and poll the subscriber list (e.g. lines 178-183)",
+    "met: assertions use patterns or == on whole values; no elem/2",
+    "missed: describe \"subscribe/3 and subscribers/2\" joins two functions (line 69); test \"subscribe returns :ok\" (line 70) and test \"returns :ok\" (line 104) name only the return value",
+    "met: setup returns a map matched in test heads",
+    "met: only public functions tested",
+    "met: passes mix format --check-formatted; 20 passed, 0 failed",
+    "missed: expected reads (testing.md, processes.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Uses a behaviour-based mailer, start_supervised! with unique names in setup, a synchronous call before refute_receive, and setup maps. It runs async: false because it routes the test pid through the application env, calls start_link from two tests, polls with Process.sleep after exits (mostly without a :DOWN monitor), groups subscribe/3 and subscribers/2 in one describe, and names two tests only by their :ok return. It read no skill files (baseline)."
+  },
+  "baseline-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "tests": "18 passed, 0 failed",
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 4: use ExUnit.Case, async: false; the shared state is the test's own line 21: Process.register(self(), :fake_mailer_inbox)"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "violated",
+     "evidence": "line 62: describe \"subscribe/3 and subscribers/2\" do (joins two functions); line 146: describe \"when a subscribed process exits\" do is a shared condition, which the rule allows; no test is named only by its return value"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 58: assert {:error, _} = Subscriptions.start_link(name: :subs_no_mailer); line 78: assert Subscriptions.subscribers(server, \"news\") == [\"b@example.com\", pid, \"a@example.com\"] compares the whole value; line 96: assert_receive {:notification, \"news\", %{id: 1}}; line 51: assert Process.whereis(name) == pid compares the whole value against a held value (see notes)"
+    },
+    "Wait for messages, not for time": {
+     "verdict": "violated",
+     "evidence": "line 225: true -> Process.sleep(10) && wait_until(fun, attempts - 1), used by every exit test after waiting for :DOWN, e.g. line 154: wait_until(fn -> Subscriptions.subscribers(server, \"news\") == [\"a@example.com\"] end)"
+    },
+    "Start processes with `start_supervised!/1`": {
+     "verdict": "violated",
+     "evidence": "line 49: {:ok, pid} = Subscriptions.start_link(mailer: FakeMailer, name: name) and line 58: assert {:error, _} = Subscriptions.start_link(name: :subs_no_mailer) are called from tests; the setup server uses line 22: start_supervised!(... |> child_spec()) with no name"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 8-9: defmodule FakeMailer do / @behaviour Notify.Mailer, passed as mailer: FakeMailer at line 22"
+    },
+    "Use setup for shared data": {
+     "verdict": "violated",
+     "evidence": "line 23: {:ok, server: server} returns a keyword list, not a map (see notes); tests match it in their heads, e.g. line 63: test \"an unknown topic has no subscribers\", %{server: server} do"
+    }
+   },
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 22: server = start_supervised!({Subscriptions, mailer: FakeMailer, name: nil} |> child_spec()) (a single-step pipe)"
+   ],
+   "checks": [
+    "missed: async: false because the test process registers itself under a global name (lines 4, 21)",
+    "missed: tests call start_link (lines 49, 58), including the start-failure test; the setup server uses start_supervised! with no name (line 22)",
+    "met: mailer replaced by a module implementing Notify.Mailer (lines 8-18)",
+    "missed: Process.sleep(10) in a polling helper (line 225)",
+    "met: exit tests monitor the subscriber and wait for :DOWN (lines 215-218, 186-188) before checking; no Process.alive? polling (the Process.sleep polling that follows is counted in the line above)",
+    "met: assertions use patterns or == on whole values; no elem/2",
+    "missed: describe \"subscribe/3 and subscribers/2\" joins two functions (line 62); no return-value-only test name",
+    "missed: setup returns a keyword list ({:ok, server: server}, line 23), not a map, although tests match it in their heads",
+    "met: only public functions tested",
+    "met: passes mix format --check-formatted; 18 passed, 0 failed",
+    "missed: expected reads (testing.md, processes.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Uses a behaviour-based mailer, an unnamed start_supervised! server, :DOWN monitors and a synchronous flush before refute_receive. It runs async: false because of its own registered test process, calls start_link from two tests, still polls with Process.sleep after each :DOWN, groups subscribe/3 and subscribers/2 in one describe, returns setup data as a keyword list, and pipes a single step. It read no skill files (baseline)."
+  }
+ },
+ "per_rule": {
+  "Run tests concurrently unless they share global state": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Group tests by function and name them by behaviour": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Assert with patterns": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Wait for messages, not for time": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Start processes with `start_supervised!/1`": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Replace dependencies at boundaries, through behaviours": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Use setup for shared data": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "violated"
+  }
+ }
+}
