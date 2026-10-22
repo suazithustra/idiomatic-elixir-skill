@@ -21,6 +21,7 @@ Readability rules carry the same weight as correctness rules.
   | `Repo`, `Ecto`, schemas, migrations, Phoenix controllers, contexts, or LiveViews | `references/ecto-phoenix.md` |
 
 - **When to load it:** read this file before the first line of code. A review afterwards reports the patterns the rules describe; a design no rule names, such as a hand-built logger handler where `capture_log/2` would do, goes unreported, while code written with the skill loaded does not take that shape.
+- **Formatting:** format one file at a time, before you move on from it. After the last edit to a file, and before you edit another file or run the tests, run `mix format path/to/file.ex` on that file and read what it changed: a line the formatter broke is one to rewrite under the rules below (a shorter `do:` body, a named argument), not to accept. A file you come back to is formatted again before you leave it. Nothing is left for one `mix format` at the end, and when several agents write files, each formats its own.
 - **Reviewing code:** report a finding where the code contains the pattern a rule describes, and where the code builds by hand what a rule names a facility for, such as a lookup before an insert where the changeset rule names `unique_constraint/3`. For each finding, name the rule, quote the line, and show the fix. If you also write an improved version, it must apply every finding you reported.
 - **Existing projects:** follow the project's established conventions where they conflict with a readability rule here, and say so when you do.
 
@@ -334,7 +335,7 @@ A public function should read as a short sequence of named steps, with the detai
 
 ### Build a multi-line argument under a name before the call
 
-A call reads as one line when each argument is a name or a short literal. When an argument is a map, struct or keyword list that would span several lines, build it first under a name that says what it is, write it one field per line, and set each multi-line statement apart with a blank line. The reader then sees the steps in order: build the parts, build the whole, make the call. A call with its own options nested inside such a literal becomes a name too.
+Unless a call's result is bound to a name, each of its arguments is a name or a short literal: a map, struct or keyword list that would span several lines is built first under a name that says what it is, one field per line, with a blank line between multi-line statements. That holds whether the result is passed on, matched against, nested in another call or discarded. The reader then sees the steps in order: build the parts, build the whole, make the call. A call whose result is bound to a name may take its options inline, as `formatter` does below; a call with its own options nested inside a literal becomes a name too.
 
 ```elixir
 # Instead of
@@ -368,7 +369,7 @@ handler_config = %{
 
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
-Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
+Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function may mix the forms: a short clause on `do:`, a clause that needs a block as a block, each block clause set apart with a blank line. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
 
 ```elixir
 # Instead of
@@ -427,7 +428,7 @@ require Logger
 
 If you can run shell commands and Elixir is installed, do the steps below. Skip any step the user or the project's instructions tell you not to do; those instructions take precedence over this list.
 
-1. Run `mix format path/to/file.ex` on the files you wrote or changed. It also works outside a Mix project.
+1. Run `mix format path/to/file.ex` on any changed file you have not formatted since its last edit (see "Formatting" under "How to use this skill"). It also works outside a Mix project.
 2. Compile, and fix every warning in the code you wrote or changed, including unused variables and type warnings. Use `mix compile` in a Mix project. For a standalone file, run `elixir path/to/file.ex`, which compiles it in memory and leaves no `.beam` files behind.
 3. If the project has Credo, run `mix credo --strict` and fix what it reports in the code you wrote or changed.
 4. If the project has tests, run them. While you work on one module, `mix test test/my_app/orders_test.exs` runs only its tests, `mix test test/my_app/orders_test.exs:42` the one test at that line, and `mix test --failed` the tests that failed last time. Run the whole suite once more before you finish, since a change in one module can break a test in another.
