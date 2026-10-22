@@ -20,7 +20,8 @@ Readability rules carry the same weight as correctness rules.
   | `ExUnit`, files under `test/` | `references/testing.md` |
   | `Repo`, `Ecto`, schemas, migrations, Phoenix controllers, contexts, or LiveViews | `references/ecto-phoenix.md` |
 
-- **Reviewing code:** report a finding only where the code contains the pattern a rule describes. For each finding, name the rule, quote the line, and show the fix. If you also write an improved version, it must apply every finding you reported.
+- **When to load it:** read this file before the first line of code. A review afterwards reports the patterns the rules describe; a design no rule names, such as a hand-built logger handler where `capture_log/2` would do, goes unreported, while code written with the skill loaded does not take that shape.
+- **Reviewing code:** report a finding where the code contains the pattern a rule describes, and where the code builds by hand what a rule names a facility for, such as a lookup before an insert where the changeset rule names `unique_constraint/3`. For each finding, name the rule, quote the line, and show the fix. If you also write an improved version, it must apply every finding you reported.
 - **Existing projects:** follow the project's established conventions where they conflict with a readability rule here, and say so when you do.
 
 ## Pattern matching and data access
@@ -429,4 +430,4 @@ If you can run shell commands and Elixir is installed, do the steps below. Skip 
 1. Run `mix format path/to/file.ex` on the files you wrote or changed. It also works outside a Mix project.
 2. Compile, and fix every warning in the code you wrote or changed, including unused variables and type warnings. Use `mix compile` in a Mix project. For a standalone file, run `elixir path/to/file.ex`, which compiles it in memory and leaves no `.beam` files behind.
 3. If the project has Credo, run `mix credo --strict` and fix what it reports in the code you wrote or changed.
-4. If the project has tests, run them.
+4. If the project has tests, run them. While you work on one module, `mix test test/my_app/orders_test.exs` runs only its tests, `mix test test/my_app/orders_test.exs:42` the one test at that line, and `mix test --failed` the tests that failed last time. Run the whole suite once more before you finish, since a change in one module can break a test in another.

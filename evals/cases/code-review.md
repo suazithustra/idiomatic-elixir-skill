@@ -16,24 +16,25 @@ Count how many planted problems the review reports. The improved code must fix e
 
 | Line | Problem |
 | --- | --- |
-| 2, 5, 7, 44 | Comments restate the code; the module and function descriptions belong in `@moduledoc` and `@doc` |
+| 2, 5, 7, 48 | Comments restate the code; the module and function descriptions belong in `@moduledoc` and `@doc` |
 | 8 | `String.to_atom/1` on external input |
 | 8 | A missing role raises outside the `try`, unlike every other bad field |
-| 10–40 | `try/rescue _ ->` around the whole body; `String.to_integer/1` is used for its exception instead of `Integer.parse/1` |
-| 10–40 | `try` contains `if`, which contains `case`, which contains more `if`s |
+| 10–44 | `try/rescue _ ->` around the whole body; `String.to_integer/1` is used for its exception instead of `Integer.parse/1` |
+| 10–44 | `try` contains `if`, which contains `if`, which contains `case`, which contains more `if`s |
 | 12 | Single-step pipe |
 | 15–17 | `age` is rebound inside the `if`, so the cap never leaves the block; magic number `120` |
 | 21 | `&&` with boolean operands |
 | 21 | `is_binary(email)` can never be false, because `String.downcase/1` already raised on non-strings |
 | 21 | Magic number `18` |
-| 22–24 | Struct inserted without a changeset, so there is no validation or `unique_constraint` |
-| 26 | `notify` and `silent` are overlapping booleans |
-| 30 | `return_id` changes the return shape |
-| 32 | `_ ->` swallows the `{:error, changeset}` from `Repo.insert/1` |
-| 36, 39 | Every failure returns the same `{:error, :invalid}` |
-| 45 | Unsupervised `spawn/1`; the closure copies the whole `user` struct |
-| 49 | `user[:name]` on a struct raises `UndefinedFunctionError` |
-| 51 | Pipe into an anonymous function, which is also a single-step pipe |
+| 22–25 | Struct inserted without a changeset, so there is no validation or `unique_constraint` |
+| 24 | A lookup before the insert is a hand-built uniqueness check that two concurrent imports pass together; `unique_constraint/3` in the changeset is the facility, and the lookup's failure is folded into the same `{:error, :invalid}` |
+| 27 | `notify` and `silent` are overlapping booleans |
+| 31 | `return_id` changes the return shape |
+| 33 | `_ ->` swallows the `{:error, changeset}` from `Repo.insert/1` |
+| 37, 40, 43 | Every failure returns the same `{:error, :invalid}` |
+| 49 | Unsupervised `spawn/1`; the closure copies the whole `user` struct |
+| 53 | `user[:name]` on a struct raises `UndefinedFunctionError` |
+| 55 | Pipe into an anonymous function, which is also a single-step pipe |
 
 Must not report (correct code a rule could be misapplied to):
 
@@ -41,7 +42,7 @@ Must not report (correct code a rule could be misapplied to):
 | --- | --- |
 | 11 | The comment explains a reason the code cannot show, so it stays |
 | 19 | `"nickname"` is an optional key, so `params["nickname"]` and `\|\|` with a default are the right tools |
-| 26 | `opts[:notify]` and `opts[:silent]` can be `nil`, so `&&` and `!` are right there; the overlapping options are the problem, not the operators |
+| 27 | `opts[:notify]` and `opts[:silent]` can be `nil`, so `&&` and `!` are right there; the overlapping options are the problem, not the operators |
 
 Also check:
 

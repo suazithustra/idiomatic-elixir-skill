@@ -52,7 +52,7 @@ end
 
 ## Assert with patterns
 
-A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace. Put the call under test on the left of `==` and the expected value on the right: a failure prints left and right in that order, and `assert [] == subscribers(server, "news")` reads backwards.
+A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace. Put the call under test on the left of `==` and the expected value on the right: a failure prints left and right in that order, and `assert [] == subscribers(server, "news")` reads backwards. In a test body, every match that can fail takes `assert` in front, the arrange steps included: bare, `:ok = subscribe(server, "news", self())` fails as a `MatchError` without the assertion's formatted value. A destructure that cannot fail, such as `{result, log} = with_log(...)`, needs none.
 
 ```elixir
 # Instead of
@@ -95,6 +95,8 @@ ref = Process.monitor(pid)
 assert_receive {:DOWN, ^ref, :process, ^pid, :normal}
 ```
 
+Match the reason too, `:normal`, `:shutdown` or the one the test caused: a `_` there lets a crash for another reason pass.
+
 To assert on a GenServer's state after sending it casts, call `:sys.get_state(pid)` first, or any synchronous call to it. The process handles messages in order, so the reply means the earlier casts were handled too.
 
 ## Start processes with `start_supervised!/1`
@@ -127,10 +129,26 @@ test "admins can delete posts", %{user: user} do
 end
 ```
 
+## Capture logs with `capture_log/2`, not a handler
+
+`ExUnit.CaptureLog.capture_log/2` returns the log output of the function it runs, and `with_log/2` returns the function's result with it. Both take the default formatter's options, so `capture_log([format: "$level $metadata$message\n", metadata: :all, colors: [enabled: false]], fn -> ... end)` gives exact control of the format and the metadata, and both run under `async: true`. A handler added with `:logger.add_handler/3` in a test does the same work and brings its own removal, `StringIO` and flushing. Crash reports from other processes are captured too; wait for their `:DOWN` message inside the function. Wrap every call that logs, the ones whose return value is under test included, so the suite prints nothing. What `capture_log` cannot do is admit a level the primary level drops: a message below `Logger.level/0` reaches no handler, so a test of a lower level raises it for the module under test with `Logger.put_module_level/2` in `setup` and `Logger.delete_module_level/1` in `on_exit`, or, when it must be global, calls `Logger.configure/1` and runs `async: false`.
+
+```elixir
+test "logs a bounced address with the message id" do
+  log =
+    capture_log([metadata: [:message_id]], fn ->
+      assert {:error, :bounced} = Mailer.deliver(bounced_email(), message_id: "msg_1")
+    end)
+
+  assert log =~ "[warning]"
+  assert log =~ "message_id=msg_1"
+end
+```
+
 ## Other ExUnit features to reach for
 
 - `doctest MyModule` to run the examples in `@doc`.
-- `ExUnit.CaptureLog.capture_log/1` and `ExUnit.CaptureIO.capture_io/1` to check output instead of printing it.
+- `ExUnit.CaptureIO.capture_io/1` to check printed output instead of letting it print.
 - `@tag :tmp_dir` for a fresh temporary directory per test.
 - `assert_raise ArgumentError, ~r/must be positive/, fn -> ... end` for expected exceptions.
 
