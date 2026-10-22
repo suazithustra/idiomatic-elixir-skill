@@ -27,9 +27,18 @@ end
 
 ## Group tests by function and name them by behaviour
 
-Name a `describe` block after the function under test, or after a condition its tests share, the shape the ExUnit documentation shows with a named `setup` (`describe "when the subscriber has exited" do` followed by `setup [:subscribe_and_exit]`). A block that joins two functions (`describe "subscribe/3 and subscribers/2"`) no longer says which one a failure is about. Name each test by the behaviour it checks: `test "returns :ok"` states a return value most functions share, so a failure line names nothing; `test "notifies every subscriber of the topic"` says what broke.
+Name a `describe` block after the function under test, or after a condition its tests share, the shape the ExUnit documentation shows with a named `setup` (`describe "when the subscriber has exited" do` followed by `setup [:subscribe_and_exit]`). A block that joins two functions (`describe "subscribe/3 and subscribers/2"`) no longer says which one a failure is about.
+
+A test's name is the line a failure prints, so it says what the function did in the situation the test sets up: the value it returned, in the domain's words, or the effect it had. A name that only says the call did not fail (`"returns :ok"`, `"works"`, `"succeeds with an empty cart"`) tells the reader of a failure nothing; name the value and the condition (`"returns an error for an unknown coupon"`) or the effect (`"adds the item to the cart"`).
 
 ```elixir
+# Instead of
+describe "parse/1 and valid?/1" do
+  test "returns :ok" do
+    # ...
+  end
+end
+# write
 describe "parse/1" do
   test "returns a refund for refund.created events" do
     # ...

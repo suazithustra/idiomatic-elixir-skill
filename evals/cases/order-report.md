@@ -21,7 +21,7 @@ Write the code to <output>/orders.ex. You may use the shell to check it compiles
 - No GenServer, Agent, or Task is introduced for what is a pure computation over the list.
 - Boolean functions end in `?` (no `is_` names outside guards), and variables are named after the domain (`order`, `customer_id`, `totals`), not `data`, `res`, or `x`.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
-- `do:` appears only on a body of one expression; a body with several steps or a `case` uses `do ... end`; a function whose short clauses use `do:` sets a block clause apart with a blank line and writes all clauses as blocks when most of them need one; no one-expression body is too long for its head's line.
+- `do:` appears only on a body of one expression; a body with several steps or a `case` uses `do ... end`; a function whose short clauses use `do:` sets a block clause apart with a blank line and writes all clauses as blocks when most of them need one; no `do:` body is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 
