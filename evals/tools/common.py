@@ -40,6 +40,10 @@ def tier_of(model):
 
 
 TIERS = [tier_of(model) for model in PINNED_MODELS]
+# The cull lists are decided by the tiers people hand the skill's kind of work to. Haiku breaks
+# rules the other two keep, so counting it would drop rules the skill's readers already see
+# followed; its value is printed with each candidate instead.
+DECIDING_TIERS = ("opus", "sonnet")
 
 
 def run_name(condition, tier, n):

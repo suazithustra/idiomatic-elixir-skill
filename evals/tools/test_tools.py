@@ -38,12 +38,14 @@ COMMAND = [
 ]
 SWEEP_MATRIX = (("claude-opus-5-5", "opus", 1), ("claude-haiku-5-5", "haiku", 2), ("claude-sonnet-5-5", "sonnet", 2))
 
-CANDIDATES_TITLE = "Candidates (every tier exercised the rule and none violated it):"
-UNCONFIRMED_TITLE = "Unconfirmed (a tier never produced the construct the rule governs):"
+CANDIDATES_TITLE = "Candidates (Opus and Sonnet exercised the rule and neither violated it):"
+UNCONFIRMED_TITLE = "Unconfirmed (Opus or Sonnet never produced the construct the rule governs):"
 CONFIRMED_TITLE = "Confirmed (a candidate in both sweeps):"
-DROPPED_TITLE = "Dropped (a candidate the previous sweep had, violated in this one):"
-UNCONFIRMED_BEFORE_TITLE = "Unconfirmed (a candidate the previous sweep had; a tier did not exercise it this time):"
-NEW_CANDIDATES_TITLE = "New candidates (clean in every tier this sweep, not a candidate before):"
+DROPPED_TITLE = "Dropped (a candidate the previous sweep had; Opus or Sonnet violated it in this one):"
+UNCONFIRMED_BEFORE_TITLE = "Unconfirmed (a candidate the previous sweep had; Opus or Sonnet did not exercise it this time):"
+NEW_CANDIDATES_TITLE = "New candidates (clean on Opus and Sonnet this sweep, not a candidate before):"
+# The first sweep's README was written when every tier decided the lists.
+FROZEN_CANDIDATES_TITLE = "Candidates (every tier exercised the rule and none violated it):"
 
 FAKE_CLAUDE = r'''#!/usr/bin/env python3
 import json, os, sys, uuid
@@ -243,12 +245,33 @@ class AggregateTest(unittest.TestCase):
         self.assertEqual([row for row in printed_rows(r.stdout) if row.startswith(f"| {rule} |")],
                          [row.replace("| order-report |", "| order-report, ecto-phoenix |") for row in expected])
 
-    def test_prints_the_first_sweep_cull_candidates_as_the_readme_states_them(self):
+    def test_decides_the_first_sweep_cull_lists_by_opus_and_sonnet(self):
         r = tool("aggregate.py", FIRST_SWEEP / "grades", "--readme", FROZEN_README)
         self.assertEqual(r.returncode, 0, r.stderr)
         frozen = FROZEN_README.read_text()
-        self.assertEqual(bullets_after(r.stdout, CANDIDATES_TITLE), bullets_after(frozen, CANDIDATES_TITLE))
-        self.assertEqual(bullets_after(r.stdout, UNCONFIRMED_TITLE), bullets_after(frozen, UNCONFIRMED_TITLE))
+        candidates = bullets_after(r.stdout, CANDIDATES_TITLE)
+        unconfirmed = bullets_after(r.stdout, UNCONFIRMED_TITLE)
+        for line in bullets_after(frozen, FROZEN_CANDIDATES_TITLE):
+            self.assertIn(re.sub(r": Opus (\d+ runs?), Haiku \d+, Sonnet (\d+) in (.*)$", r": Opus \1, Sonnet \2 in \3; Haiku clean", line), candidates)
+        for row in index_rows_of(frozen):
+            rule, _, column = split_cells(row)
+            rule = rule.replace("\\|", "|")
+            values = dict(part.split(" ", 1) for part in column.split(", ")) if column.startswith("Opus ") else {}
+            deciding = [values.get("Opus"), values.get("Sonnet")]
+            self.assertEqual(any(line.startswith(f"- {rule}:") for line in candidates), deciding == ["clean", "clean"], rule)
+            self.assertEqual(any(line.startswith(f"- {rule}:") for line in unconfirmed),
+                             any(value in ("not exercised", "unavailable") for value in deciding), rule)
+
+    def test_a_haiku_violation_keeps_a_candidate_and_is_printed_with_it(self):
+        rule = "Treat lists as linked lists"
+        with tempfile.TemporaryDirectory() as tmp:
+            grades = copy_grades(tmp)
+            set_verdict(grades, "order-report", "baseline", rule, "violated", runs=["baseline-haiku-1"])
+            r = tool("aggregate.py", grades, "--readme", FROZEN_README, "--previous", FIRST_SWEEP / "grades")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"| {rule} | order-report | Opus clean, Haiku violated, Sonnet clean |", printed_rows(r.stdout))
+        self.assertIn(f"- {rule}: Opus 1 run, Sonnet 2 in order-report; Haiku violated", bullets_after(r.stdout, CONFIRMED_TITLE))
+        self.assertEqual(bullets_after(r.stdout, DROPPED_TITLE), ["- none"])
 
     def test_refuses_a_missing_verdict_naming_file_and_rule(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -278,18 +301,18 @@ class AggregateTest(unittest.TestCase):
         rule = "Treat lists as linked lists"
         with tempfile.TemporaryDirectory() as tmp:
             grades = copy_grades(tmp)
-            set_verdict(grades, "order-report", "baseline", rule, "unavailable", runs=["baseline-haiku-1"])
+            set_verdict(grades, "order-report", "baseline", rule, "unavailable", runs=["baseline-sonnet-1"])
             one = tool("aggregate.py", grades, "--readme", FROZEN_README)
-            set_verdict(grades, "order-report", "baseline", rule, "unavailable", runs=["baseline-haiku-2"])
+            set_verdict(grades, "order-report", "baseline", rule, "unavailable", runs=["baseline-sonnet-2"])
             both = tool("aggregate.py", grades, "--readme", FROZEN_README)
         self.assertEqual(one.returncode, 0, one.stderr)
         self.assertIn(f"| {rule} | order-report | Opus clean, Haiku clean, Sonnet clean |", printed_rows(one.stdout))
-        self.assertIn(f"- {rule}: Opus 1 run, Haiku 2, Sonnet 2 in order-report", bullets_after(one.stdout, CANDIDATES_TITLE))
+        self.assertIn(f"- {rule}: Opus 1 run, Sonnet 2 in order-report; Haiku clean", bullets_after(one.stdout, CANDIDATES_TITLE))
         self.assertEqual(both.returncode, 0, both.stderr)
-        self.assertIn(f"| {rule} | order-report | Opus clean, Haiku unavailable, Sonnet clean |", printed_rows(both.stdout))
-        self.assertIn(f"- {rule}: Opus clean, Haiku unavailable, Sonnet clean in order-report",
+        self.assertIn(f"| {rule} | order-report | Opus clean, Haiku clean, Sonnet unavailable |", printed_rows(both.stdout))
+        self.assertIn(f"- {rule}: Opus clean, Haiku clean, Sonnet unavailable in order-report",
                       bullets_after(both.stdout, UNCONFIRMED_TITLE))
-        self.assertNotIn(f"- {rule}: Opus 1 run, Haiku 2, Sonnet 2 in order-report", bullets_after(both.stdout, CANDIDATES_TITLE))
+        self.assertFalse([line for line in bullets_after(both.stdout, CANDIDATES_TITLE) if line.startswith(f"- {rule}:")])
 
     def test_compares_with_skill_counts_and_sorts_the_previous_candidates_against_a_previous_sweep(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -298,7 +321,7 @@ class AggregateTest(unittest.TestCase):
             set_violating(grades, "library-client", "skill", "Group related parameters", 2)
             set_violating(grades, "order-report", "skill", "Use the `Enum` or `Map` function made for the job", 1)
             set_violating(grades, "code-review", "skill", "Keep functions short and at one level of detail", 2)
-            set_verdict(grades, "order-report", "baseline", "Treat lists as linked lists", "violated", runs=["baseline-haiku-1"])
+            set_verdict(grades, "order-report", "baseline", "Treat lists as linked lists", "violated", runs=["baseline-sonnet-1"])
             set_verdict(grades, "macro-dsl", "baseline", "Write module names literally", "not exercised",
                         runs=["baseline-sonnet-1", "baseline-sonnet-2"])
             set_verdict(grades, "ecto-phoenix", "baseline", "Keep migrations to schema changes", "clean")
@@ -313,14 +336,14 @@ class AggregateTest(unittest.TestCase):
         self.assertIn("- Keep functions short and at one level of detail: without skill 5 of 5; with skill 2 of 5; "
                       "was 1 of 5: unchanged", lines)
         confirmed = bullets_after(r.stdout, CONFIRMED_TITLE)
-        self.assertIn("- Unquote each argument once: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl", confirmed)
+        self.assertIn("- Unquote each argument once: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean", confirmed)
         self.assertFalse([line for line in confirmed if line.startswith("- Treat lists as linked lists:")])
         self.assertEqual(bullets_after(r.stdout, DROPPED_TITLE),
-                         ["- Treat lists as linked lists: Opus clean, Haiku violated, Sonnet clean in order-report"])
+                         ["- Treat lists as linked lists: Opus clean, Haiku clean, Sonnet violated in order-report"])
         self.assertEqual(bullets_after(r.stdout, UNCONFIRMED_BEFORE_TITLE),
                          ["- Write module names literally: Opus clean, Haiku clean, Sonnet not exercised in macro-dsl"])
         self.assertEqual(bullets_after(r.stdout, NEW_CANDIDATES_TITLE),
-                         ["- Keep migrations to schema changes: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix"])
+                         ["- Keep migrations to schema changes: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean"])
 
     def test_compares_over_the_shared_cases_when_the_case_sets_differ(self):
         rule = "Treat lists as linked lists"

@@ -66,9 +66,9 @@ A check batch, which reruns one case with the skill (Haiku twice, Sonnet twice) 
 
 The third sweep (`sweeps/2026-10-22-b/`, at 0397dec, the first run with other skills and plugins hidden) then measured all four rewordings. The one-step `with` sentence fell from 5 to 2 of 20 with-skill runs over its four cases: 0 of 5 in order-report and rate-limiter, one private one-step `with` in webhook-parser (sonnet-1) and, in shop-project, sonnet-1 writing twice the public shape the new sentence names. The pin form of "Assert with patterns" fell from 2 to 0 of 5, and the captures rule from 1 to 0 of 5, with order-report's sonnet-1 writing the `&Decimal.add(&1.amount, &2)` the rule now allows. The `do:` rule, measured for the first time with and without the skill, went from 3 of 10 runs without it to 2 of 10 with it: 0 of 5 in order-report, and in macro-dsl haiku-2 on a wrapped `do:` line and sonnet-1 on the clause-consistency case, one run where the check batch had two. The clause-consistency sentence stays as written. One rule regressed: "Group tests by function and name them by behaviour" went from 0 to 2 of 5 with-skill runs in test-writing, both on a test name (haiku-1's `test "returns :ok"`, the rule's own example, and sonnet-2's `test "succeeds when the topic has no subscribers"`), none on a `describe` block; it is the next rewording candidate.
 
-The "Without skill" column holds the latest sweep; an earlier sweep's values stay in its `grades/` folder. After a second sweep, a candidate is confirmed when every tier was clean without the skill in both sweeps, dropped when any tier violated the rule without the skill in the second, and unconfirmed when a tier was unavailable or never produced the construct in the second; the cull section lists all three.
+The "Without skill" column holds the latest sweep; an earlier sweep's values stay in its `grades/` folder. After a second sweep, a candidate is confirmed when Opus and Sonnet were clean without the skill in both sweeps, dropped when either violated the rule without the skill in the later one, and unconfirmed when either was unavailable or never produced the construct in the later one; Haiku's value is printed with each candidate but does not decide, and the cull section says why.
 
-Tiers are named by model identifier, the exact name the transcript reports. A run starts with that identifier and falls back to the tier's alias only when the command line refuses it; a transcript that names another model fails the run, and a tier with no accepted route is unavailable, which leaves its rows unconfirmed.
+Tiers are named by model identifier, the exact name the transcript reports. A run starts with that identifier and falls back to the tier's alias only when the command line refuses it; a transcript that names another model fails the run, and a tier with no accepted route is unavailable, which leaves its rows unconfirmed when the tier is Opus or Sonnet.
 
 ## Which case exercises which rule
 
@@ -137,41 +137,45 @@ A rule with no case can regress unnoticed. The rule cell is the rule's exact hea
 
 ## Cull candidates
 
-A rule every tier followed without the skill is a candidate for deletion, not a deletion: with five runs per case, a rule broken in a third of runs shows clean about one time in six. Delete a rule only after a later sweep, on a later date, agrees. The lists below compare the third sweep, 2026-10-22-b at 0397dec, kept under `sweeps/2026-10-22-b/`, with the second, 2026-10-22 at db91c23, kept under `sweeps/2026-10-22/`; every tier was available in both, and the second sweep's comparison with the first (2026-10-21 at 93873be) is in this file at 8d4ba29. A rule is confirmed when every tier was clean without the skill in both sweeps, dropped when a tier violated it without the skill in the later one, and unconfirmed when a tier was unavailable or never produced the construct in the later one. Every rule confirmed below was also confirmed between the first two sweeps, so each has been clean in every tier three times. Two of the four dropped rows come from one shape: both code-review Haiku runs replaced `String.to_atom/1` with `String.to_existing_atom/1` inside a `rescue`, which breaks the atoms rule and the return-tuple rule at once. The other two fall on Sonnet: both webhook-parser runs bind a key in a head their guards do not use, and one test-writing run returns a keyword list from `setup`, a strict reading of "Return data from `setup` as a map".
+A rule Opus and Sonnet followed without the skill is a candidate for deletion, not a deletion: with five runs per case, a rule broken in a third of runs shows clean about one time in six. Haiku's result is printed with each candidate but does not decide it: Haiku is rarely the model given the work the skill is for, and it breaks rules the other two keep, so counting it would drop rules the skill's readers already see followed. The first two comparisons let every tier decide; the rule changed after the third sweep, and under the old one the atoms, return-tuple, return-shape, exception-struct and supervision rows below would have dropped on Haiku alone. Delete a rule only after a later sweep, on a later date, agrees. The lists below compare the third sweep, 2026-10-22-b at 0397dec, kept under `sweeps/2026-10-22-b/`, with the second, 2026-10-22 at db91c23, kept under `sweeps/2026-10-22/`; every tier was available in both, and the second sweep's comparison with the first (2026-10-21 at 93873be) is in this file at 8d4ba29. A rule is confirmed when Opus and Sonnet were clean without the skill in both sweeps, dropped when either violated it without the skill in the later one, and unconfirmed when either was unavailable or never produced the construct in the later one. The two dropped rows fall on Sonnet: both webhook-parser runs bind a key in a head their guards do not use, and one test-writing run returns a keyword list from `setup`, a strict reading of "Return data from `setup` as a map".
 
 Confirmed (a candidate in both sweeps):
-- Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it: Opus 1 run, Haiku 2, Sonnet 2 in code-review
-- Compare dates, times, and decimals with their module functions: Opus 1 run, Haiku 2, Sonnet 2 in order-report
-- Decide whether you need a process: Opus 1 run, Haiku 2, Sonnet 2 in order-report
-- Group writes that must succeed together: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
-- Keep database access in contexts: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
-- Keep each process behind one module: Opus 1 run, Haiku 2, Sonnet 2 in rate-limiter
-- Let Phoenix turn missing records into 404 responses: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
-- Load associations up front: Opus 1 run, Haiku 2, Sonnet 2 in ecto-phoenix
-- Read configuration at runtime, not into module attributes: Opus 1 run, Haiku 2, Sonnet 2 in library-client
-- Replace dependencies at boundaries, through behaviours: Opus 1 run, Haiku 2, Sonnet 2 in test-writing
-- Store and compute money as integer minor units or `Decimal`, never floats: Opus 1 run, Haiku 2, Sonnet 2 in order-report, shop-project
-- Treat lists as linked lists: Opus 1 run, Haiku 2, Sonnet 2 in order-report
-- Unquote each argument once: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
-- Update structs with `%{struct | field: value}`: Opus 1 run, Haiku 2, Sonnet 2 in shop-project
-- Write a function unless the job needs a macro: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
-- Write module names literally: Opus 1 run, Haiku 2, Sonnet 2 in macro-dsl
+- Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it: Opus 1 run, Sonnet 2 in code-review; Haiku clean
+- Compare dates, times, and decimals with their module functions: Opus 1 run, Sonnet 2 in order-report; Haiku clean
+- Convert external strings to atoms with explicit clauses: Opus 1 run, Sonnet 2 in code-review, order-report, shop-project, webhook-parser; Haiku violated
+- Decide whether you need a process: Opus 1 run, Sonnet 2 in order-report; Haiku clean
+- Give each function one return shape: Opus 1 run, Sonnet 2 in code-review, library-client; Haiku violated
+- Group writes that must succeed together: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
+- Keep database access in contexts: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
+- Keep each process behind one module: Opus 1 run, Sonnet 2 in rate-limiter; Haiku clean
+- Let Phoenix turn missing records into 404 responses: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
+- Load associations up front: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
+- Read configuration at runtime, not into module attributes: Opus 1 run, Sonnet 2 in library-client; Haiku clean
+- Replace dependencies at boundaries, through behaviours: Opus 1 run, Sonnet 2 in test-writing; Haiku clean
+- Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: Opus 1 run, Sonnet 2 in code-review, library-client, shop-project, webhook-parser; Haiku violated
+- Store and compute money as integer minor units or `Decimal`, never floats: Opus 1 run, Sonnet 2 in order-report, shop-project; Haiku clean
+- Supervise every long-lived process: Opus 1 run, Sonnet 2 in code-review, rate-limiter; Haiku violated
+- Treat lists as linked lists: Opus 1 run, Sonnet 2 in order-report; Haiku clean
+- Unquote each argument once: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
+- Update structs with `%{struct | field: value}`: Opus 1 run, Sonnet 2 in shop-project; Haiku clean
+- Use exception structs as error reasons: Opus 1 run, Sonnet 2 in library-client; Haiku violated
+- Write a function unless the job needs a macro: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
+- Write module names literally: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
 
-Dropped (a candidate the previous sweep had, violated in this one):
-- Convert external strings to atoms with explicit clauses: Opus clean, Haiku violated, Sonnet clean in code-review, order-report, shop-project, webhook-parser
+Dropped (a candidate the previous sweep had; Opus or Sonnet violated it in this one):
 - In multi-clause functions, bind in the head only what patterns and guards use: Opus clean, Haiku clean, Sonnet violated in webhook-parser
-- Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: Opus clean, Haiku violated, Sonnet clean in code-review, library-client, shop-project, webhook-parser
 - Use setup for shared data: Opus clean, Haiku clean, Sonnet violated in test-writing
 
-Unconfirmed (a candidate the previous sweep had; a tier did not exercise it this time):
+Unconfirmed (a candidate the previous sweep had; Opus or Sonnet did not exercise it this time):
 - none
 
-New candidates (clean in every tier this sweep, not a candidate before):
-- Assert with patterns: Opus 1 run, Haiku 2, Sonnet 2 in test-writing
-- Use captures for one-call lambdas and `fn` for anything longer: Opus 1 run, Haiku 2, Sonnet 2 in order-report
+New candidates (clean on Opus and Sonnet this sweep, not a candidate before):
+- Assert with patterns: Opus 1 run, Sonnet 2 in test-writing; Haiku clean
+- Take configuration as arguments, not from the application environment: Opus 1 run, Sonnet 2 in library-client; Haiku violated
+- Use captures for one-call lambdas and `fn` for anything longer: Opus 1 run, Sonnet 2 in order-report; Haiku clean
 
-Unconfirmed (a tier never produced the construct the rule governs):
-- Keep secrets out of logs and inspect output: Opus violated, Haiku not exercised, Sonnet violated in library-client
+Unconfirmed (Opus or Sonnet never produced the construct the rule governs):
+- none
 
 ### Decision after the second sweep
 
@@ -181,7 +185,7 @@ Two cautions apply to the confirmed list even for Claude. Eleven of the 18 rules
 
 ### Decision after the third sweep
 
-Sixteen of the 18 stay confirmed and stay in the skill, for the same reason: no sweep on another model yet. The third sweep dropped "Convert external strings to atoms with explicit clauses" and "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs", the two rules four cases had confirmed and the ones the previous decision called the better evidence; both fell to the same `rescue` around `String.to_existing_atom/1` in the two code-review Haiku runs, so one shape in one case removed them, which is how thin a candidate's evidence can be. The two new candidates, "Assert with patterns" and the captures rule, are each clean in one case in one sweep and need the next sweep to agree. The cautions above still hold, and one more applies: this sweep's sessions were shown 16 skills (29 for shop-project, test-writing and webhook-parser) where the earlier sweeps' sessions were shown 210, so a rule that is a candidate here and was one before has been clean under both conditions, and a dropped or new row may partly reflect the change.
+Twenty-one rules are confirmed, and all stay in the skill for the same reason: no sweep on another model yet. Twenty of them were also confirmed between the first two sweeps under this rule, so each has been clean on Opus and Sonnet three times; "Keep each process behind one module" was a new candidate in the second sweep. Sixteen are the previous decision's list less the multi-clause and `setup` rules, which Sonnet broke this time; the other five are candidates only because Haiku stopped deciding: "Give each function one return shape", "Use exception structs as error reasons", "Supervise every long-lived process", and the two Haiku alone broke this sweep, "Convert external strings to atoms with explicit clauses" and "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs". Those two are still worth a look: both code-review Haiku runs wrapped `String.to_existing_atom/1` in a `rescue`, breaking both rules at once, and they are the rules four cases had confirmed and the previous decision called the best evidence, so one shape in one case would have removed them under the old rule, which is how thin a candidate's evidence can be. The three new candidates ("Assert with patterns", the captures rule and "Take configuration as arguments, not from the application environment") are each clean in one case in one sweep and need the next sweep to agree. The cautions above still hold, and one more applies: this sweep's sessions were shown 16 skills (29 for shop-project, test-writing and webhook-parser) where the earlier sweeps' sessions were shown 210, so a rule that is a candidate here and was one before has been clean under both conditions, and a dropped or new row may partly reflect the change.
 
 ## Keep prompts neutral
 

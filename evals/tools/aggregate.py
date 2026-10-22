@@ -5,7 +5,7 @@ import pathlib
 import sys
 from typing import NamedTuple
 
-from common import CONDITIONS, README, TIERS, cases_named, index_rows, load_grades, run_tier
+from common import CONDITIONS, DECIDING_TIERS, README, TIERS, cases_named, index_rows, load_grades, run_tier
 
 ORDER = {"violated": 0, "clean": 1, "not exercised": 2, "unavailable": 3}
 
@@ -65,23 +65,33 @@ def violating(per_tier, cases=None):
     return sum(verdict == "violated" for verdict in runs), len(runs)
 
 
+def deciding_values(per_tier):
+    values = tier_values(per_tier)
+    return [values[tier] for tier in DECIDING_TIERS]
+
+
 def candidate(per_tier):
-    return all(value == "clean" for value in tier_values(per_tier).values())
+    return all(value == "clean" for value in deciding_values(per_tier))
 
 
 def unconfirmed(per_tier):
-    return any(value in ("not exercised", "unavailable") for value in tier_values(per_tier).values())
+    return any(value in ("not exercised", "unavailable") for value in deciding_values(per_tier))
+
+
+def dropped(per_tier):
+    return "violated" in deciding_values(per_tier)
 
 
 def candidate_line(rule, cases, per_tier):
     counts = []
-    for tier in TIERS:
+    for tier in DECIDING_TIERS:
         per_case = [sum(c == case for c, _ in per_tier.get(tier, [])) for case in cases]
         uniform = len(set(per_case)) == 1
         n = per_case[0] if uniform else sum(per_case)
-        unit = (" run" if n == 1 else " runs") if tier == TIERS[0] else ""
+        unit = (" run" if n == 1 else " runs") if tier == DECIDING_TIERS[0] else ""
         counts.append(f"{tier.capitalize()} {n}{unit}" + ("" if uniform else " in total"))
-    return f"- {rule}: {', '.join(counts)} in {', '.join(sorted(cases))}"
+    others = ", ".join(f"{tier.capitalize()} {value}" for tier, value in tier_values(per_tier).items() if tier not in DECIDING_TIERS)
+    return f"- {rule}: {', '.join(counts)} in {', '.join(sorted(cases))}; {others}"
 
 
 def value_line(rule, cases, per_tier):
@@ -110,26 +120,26 @@ def comparison(runs, earlier):
 
 def cull_sections(baseline, previous):
     unconfirmed_now = (
-        "Unconfirmed (a tier never produced the construct the rule governs):",
+        "Unconfirmed (Opus or Sonnet never produced the construct the rule governs):",
         [value_line(rule, cases, per_tier) for rule, (cases, per_tier) in baseline.items() if unconfirmed(per_tier)],
     )
     if not previous:
         return [
-            ("Candidates (every tier exercised the rule and none violated it):",
+            ("Candidates (Opus and Sonnet exercised the rule and neither violated it):",
              [candidate_line(rule, cases, per_tier) for rule, (cases, per_tier) in baseline.items() if candidate(per_tier)]),
             unconfirmed_now,
         ]
     earlier = [rule for rule, runs in previous.items() if candidate(runs.by_condition["baseline"]) and rule in baseline]
-    violated_now = [rule for rule in earlier if "violated" in tier_values(baseline[rule][1]).values()]
+    violated_now = [rule for rule in earlier if dropped(baseline[rule][1])]
     confirmed = [rule for rule in earlier if candidate(baseline[rule][1])]
     return [
         ("Confirmed (a candidate in both sweeps):",
          [candidate_line(rule, *baseline[rule]) for rule in confirmed]),
-        ("Dropped (a candidate the previous sweep had, violated in this one):",
+        ("Dropped (a candidate the previous sweep had; Opus or Sonnet violated it in this one):",
          [value_line(rule, *baseline[rule]) for rule in violated_now]),
-        ("Unconfirmed (a candidate the previous sweep had; a tier did not exercise it this time):",
+        ("Unconfirmed (a candidate the previous sweep had; Opus or Sonnet did not exercise it this time):",
          [value_line(rule, *baseline[rule]) for rule in earlier if rule not in confirmed and rule not in violated_now]),
-        ("New candidates (clean in every tier this sweep, not a candidate before):",
+        ("New candidates (clean on Opus and Sonnet this sweep, not a candidate before):",
          [candidate_line(rule, cases, per_tier) for rule, (cases, per_tier) in baseline.items()
           if candidate(per_tier) and rule not in earlier]),
         unconfirmed_now,
