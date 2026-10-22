@@ -333,7 +333,7 @@ A public function should read as a short sequence of named steps, with the detai
 
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
-Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line.
+Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
 
 ```elixir
 # Instead of
@@ -342,6 +342,9 @@ def decode(value), do: value |> Decoder.decode() |> normalize_result()
 
 def message(%__MODULE__{reason: {:unknown_type, type}}),
   do: "unknown event type #{inspect(type)}, expected one of the documented types"
+
+if amount < 0,
+  do: raise(ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}")
 # write
 def decode(nil), do: {:error, :missing_input}
 
@@ -353,6 +356,10 @@ end
 
 def message(%__MODULE__{reason: {:unknown_type, type}}) do
   "unknown event type #{inspect(type)}, expected one of the documented types"
+end
+
+if amount < 0 do
+  raise ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}"
 end
 ```
 
