@@ -123,6 +123,8 @@ LICENSE                Apache License 2.0
 - "LiveView streams are *not* enumerable": `Phoenix.LiveView.LiveStream` implements `Enumerable`. The real limit is that the server keeps no copy of the items, so filtering means refetching, which the file's own recipe does.
 - "You are FORBIDDEN from accessing the changeset in the template as it will cause errors": `<.form for={@changeset}>` and `@changeset.valid?` work; only `@changeset[:field]` raises, because structs do not implement `Access`.
 
+This skill works best without the generated file. The two overlap on the general Elixir rules, the file states its rules without reasons, and where they disagree an agent holds two instructions and follows each some of the time. If you keep `AGENTS.md`, keep its Phoenix-specific parts and remove the general Elixir ones this skill covers. If this skill gets something wrong, or conflicts with your project in a way it should not, open an issue or a pull request.
+
 ## Contributing
 
 Contributions are welcome, especially rules drawn from real Elixir output that was not idiomatic. Readability rules are as welcome as correctness rules.
