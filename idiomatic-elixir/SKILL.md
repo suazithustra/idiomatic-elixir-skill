@@ -331,6 +331,24 @@ Name magic numbers with module attributes: `@session_ttl :timer.hours(24)`.
 
 A public function should read as a short sequence of named steps, with the details in private functions below it. When a `case`, `if`, or `with` appears inside another one, move the inner one into a named private function. Put public functions before the private helpers they call.
 
+### Use `do:` for a one-expression body and `do ... end` for anything else
+
+Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A one-expression body too long for the head's line wants a block or a helper; a head that `mix format` wraps because of a long guard is fine as wrapped.
+
+```elixir
+# Instead of
+def decode(nil), do: {:error, :missing_input}
+def decode(value), do: value |> Decoder.decode() |> normalize_result()
+# write
+def decode(nil), do: {:error, :missing_input}
+
+def decode(value) do
+  value
+  |> Decoder.decode()
+  |> normalize_result()
+end
+```
+
 ### Write pipelines that start with a value and read top to bottom
 
 - Start a pipeline with a variable or literal, then one transformation per line.
