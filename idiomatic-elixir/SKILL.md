@@ -17,7 +17,7 @@ Readability rules carry the same weight as correctness rules.
   | `GenServer`, `Agent`, `Task`, `spawn`, `send`, `:ets`, a supervisor, or shared state | `references/processes.md` |
   | a Hex package, or a public module API other code depends on | `references/library-design.md` |
   | `defmacro`, `quote`, `__using__`, `use` of your own module, or `Module.concat` | `references/macros.md` |
-  | `ExUnit`, files under `test/` | `references/testing.md` |
+  | a test to write, change, run or review, whatever the task is otherwise about: `ExUnit`, `test/`, `mix test`, `assert` | `references/ex_unit.md` |
   | `Repo`, `Ecto`, schemas, migrations, Phoenix controllers, contexts, or LiveViews | `references/ecto-phoenix.md` |
 
 - **When to load it:** read this file before the first line of code. A review afterwards reports the patterns the rules describe; a design no rule names, such as a hand-built logger handler where `capture_log/2` would do, goes unreported, while code written with the skill loaded does not take that shape.

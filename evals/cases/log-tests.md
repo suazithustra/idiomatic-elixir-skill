@@ -22,7 +22,7 @@ Write the tests to <output>/charger_test.exs. The file must start ExUnit itself,
 - Every call to `charge/3` runs inside a capture, so the suite prints no log line.
 - Only public functions are tested.
 - The file passes `mix format --check-formatted` and the tests pass.
-- Expected reads: `testing.md`.
+- Expected reads: `ex_unit.md`.
 
 ## Seen so far
 - 2026-10-22, 3e3581d, claude-opus-5-5, without skill, 1 run: Collects log events through a per-test :logger handler under async: true, wraps every call in an option-less capture_log only to silence the console, asserts metadata on the event maps by binding and then comparing fields, and uses one behaviour module per outcome; breaks the capture_log and assert-with-patterns rules, leaves line 49 unformatted, and read no skill files.

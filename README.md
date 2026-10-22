@@ -24,7 +24,7 @@ Topic-specific rules live in `references/`, which the agent reads only when a ta
 | `processes.md` | GenServer, Agent, Task, ETS (Erlang Term Storage), supervision |
 | `library-design.md` | Hex packages and public APIs: options, configuration, error types |
 | `macros.md` | macros, `use`, and compile-time code |
-| `testing.md` | ExUnit |
+| `ex_unit.md` | ExUnit |
 | `ecto-phoenix.md` | Ecto schemas, queries, migrations, Phoenix controllers and contexts |
 
 The rules target current Elixir and were checked against Elixir 1.20. A few rules name the Elixir or Ecto version that introduced a function they rely on.

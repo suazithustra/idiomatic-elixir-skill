@@ -52,7 +52,7 @@ end
 
 ## Assert with patterns
 
-A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace. Put the call under test on the left of `==` and the expected value on the right: a failure prints left and right in that order, and `assert [] == subscribers(server, "news")` reads backwards. In a test body, every match that can fail takes `assert` in front, the arrange steps included: bare, `:ok = subscribe(server, "news", self())` fails as a `MatchError` without the assertion's formatted value. A destructure that cannot fail, such as `{result, log} = with_log(...)`, needs none.
+A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace. The value under test goes on the left of `==` and the expected value on the right, whether it is the call itself or a result bound a line earlier: a failure prints left and right in that order, so `assert {:ok, "ch_1"} == result` reads as if the literal were on trial. In a test body, every match that can fail takes `assert` in front, the arrange steps included: bare, `:ok = subscribe(server, "news", self())` fails as a `MatchError` without the assertion's formatted value. A destructure that cannot fail, such as `{result, log} = with_log(...)`, needs none.
 
 ```elixir
 # Instead of
@@ -74,6 +74,11 @@ assert [^subscriber] = Subscriptions.subscribers(server, "news")
 assert elem(result, 0) == :error
 # write
 assert {:error, {:missing_field, "amount"}} = Webhook.parse(payload)
+
+# Instead of
+assert :ok == Subscriptions.subscribe(server, "news", self())
+# write
+assert Subscriptions.subscribe(server, "news", self()) == :ok
 ```
 
 ## Wait for messages, not for time
