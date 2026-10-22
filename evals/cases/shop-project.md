@@ -35,6 +35,7 @@ In the project afterwards:
 - The cart struct is updated with `%{cart | items: ...}`, not `Map.put/3`.
 - Boolean functions end in `?`, and variables are named after the domain (`cart`, `sku`, `code`), not `data`, `res`, or `x`.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
+- A `defstruct` field whose default is `nil` is listed as a bare atom, not as `field: nil`.
 - Expected reads: `testing.md` when the run adds or changes tests.
 
 ## Seen so far

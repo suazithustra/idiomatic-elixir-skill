@@ -26,6 +26,8 @@ Write all the code (context, schema, migration, any script, controller) to <outp
 - The show action lets `Repo.get!/2` raise for a missing id, which Phoenix turns into a 404, instead of matching `nil` and rendering a 404 by hand.
 - Error reasons are atoms, tuples, or changesets, not strings.
 - No comments that restate the code; documentation is in `@moduledoc` and `@doc`.
+- A call whose argument would span several lines takes that argument from a named value built above the call, one field per line, with a blank line between multi-line statements.
+- `use`, `import`, `alias` and `require` are grouped in that order right after `@moduledoc`, in the context, schema, controller and migration modules.
 - Expected reads: `ecto-phoenix.md`.
 
 ## Seen so far

@@ -24,6 +24,7 @@ Write all the code to <output>/ratelimit.ex. You may use the shell to check it c
 - No comments that restate the code.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - The file passes `mix format --check-formatted`.
+- A call whose argument would span several lines, such as the ETS table options or a child spec, takes that argument from a named value built above the call, one field per line, with a blank line between multi-line statements.
 - Expected reads: `processes.md`.
 
 ## Seen so far

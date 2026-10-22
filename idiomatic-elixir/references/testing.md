@@ -52,7 +52,7 @@ end
 
 ## Assert with patterns
 
-A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace.
+A pattern asserts the shape and binds values for further checks, without repeating fields the test does not care about. Use `==` when the whole value matters. A value the test already holds goes into the pattern with the pin operator, `^subscriber`, or the whole value is compared with `==`; a match that binds the value and an `==` on it afterwards is the shape to replace. Put the call under test on the left of `==` and the expected value on the right: a failure prints left and right in that order, and `assert [] == subscribers(server, "news")` reads backwards.
 
 ```elixir
 # Instead of

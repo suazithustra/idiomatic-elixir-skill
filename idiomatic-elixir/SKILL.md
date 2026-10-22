@@ -76,7 +76,7 @@ def drive(%User{age: age} = user) when age < 18, do: "#{user.name} cannot drive"
 
 ### Update structs with `%{struct | field: value}`
 
-The update syntax raises if the field does not exist. `Map.put/3` with a misspelled key silently produces a broken struct.
+The update syntax raises if the field does not exist. `Map.put/3` with a misspelled key silently produces a broken struct. In `defstruct`, list a field whose default is `nil` as a bare atom, `defstruct [:items, :discount]`, not `discount: nil`; a keyword entry is for a real default, such as `items: %{}`.
 
 ### Convert external strings to atoms with explicit clauses
 
@@ -331,6 +331,40 @@ Name magic numbers with module attributes: `@session_ttl :timer.hours(24)`.
 
 A public function should read as a short sequence of named steps, with the details in private functions below it. When a `case`, `if`, or `with` appears inside another one, move the inner one into a named private function. Put public functions before the private helpers they call.
 
+### Build a multi-line argument under a name before the call
+
+A call reads as one line when each argument is a name or a short literal. When an argument is a map, struct or keyword list that would span several lines, build it first under a name that says what it is, write it one field per line, and set each multi-line statement apart with a blank line. The reader then sees the steps in order: build the parts, build the whole, make the call. A call with its own options nested inside such a literal becomes a name too.
+
+```elixir
+# Instead of
+:ok =
+  :logger.add_handler(@handler, :logger_std_h, %{
+    level: :all,
+    config: %{type: {:device, device}},
+    formatter:
+      Logger.Formatter.new(
+        format: "$level $metadata$message\n",
+        metadata: :all,
+        colors: [enabled: false]
+      )
+  })
+# write
+formatter =
+  Logger.Formatter.new(
+    format: "$level $metadata$message\n",
+    metadata: :all,
+    colors: [enabled: false]
+  )
+
+handler_config = %{
+  level: :all,
+  config: %{type: {:device, device}},
+  formatter: formatter
+}
+
+:ok = :logger.add_handler(@handler, :logger_std_h, handler_config)
+```
+
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
 Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
@@ -372,6 +406,21 @@ end
 ### Use captures for one-call lambdas and `fn` for anything longer
 
 `Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`. When the body does more than one call, or would need `&3`, write `fn` with named arguments.
+
+### Open a module with `use`, `import`, `alias`, `require`, in that order
+
+Right after `@moduledoc`, group each kind together, in that order, so what the module pulls in sits in the same place in every file.
+
+```elixir
+use GenServer
+
+import Ecto.Query, only: [from: 2]
+
+alias MyApp.Repo
+alias MyApp.Orders.Order
+
+require Logger
+```
 
 ## Before you finish
 

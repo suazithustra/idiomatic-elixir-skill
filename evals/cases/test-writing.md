@@ -22,6 +22,8 @@ Write the tests to <output>/subscriptions_test.exs. The file must start ExUnit i
 - Shared setup returns a map that tests match in their heads.
 - Only public functions are tested.
 - The file passes `mix format --check-formatted` and the tests pass.
+- In an `assert` with `==`, the call under test is on the left and the expected value on the right.
+- `use`, `import`, `alias` and `require` are grouped in that order right after `@moduledoc`.
 - Expected reads: `testing.md` and `processes.md`.
 
 ## Seen so far
