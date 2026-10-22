@@ -346,6 +346,24 @@ class AggregateTest(unittest.TestCase):
         self.assertEqual(bullets_after(r.stdout, NEW_CANDIDATES_TITLE),
                          ["- Keep migrations to schema changes: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean"])
 
+    def test_compares_over_the_shared_cases_when_the_previous_sweep_lacks_a_case(self):
+        rule = "Treat lists as linked lists"
+        readme = FROZEN_README.read_text().replace(f"| {rule} | order-report |", f"| {rule} | order-report, ecto-phoenix |")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "README.md"
+            path.write_text(readme)
+            grades = copy_grades(tmp)
+            set_verdict(grades, "ecto-phoenix", "baseline", rule, "clean")
+            set_verdict(grades, "ecto-phoenix", "skill", rule, "violated")
+            previous = pathlib.Path(tmp) / "previous"
+            previous.mkdir()
+            for name in ("order-report-baseline.json", "order-report-skill.json"):
+                shutil.copy(FIRST_SWEEP / "grades" / name, previous)
+            r = tool("aggregate.py", grades, "--readme", path, "--previous", previous)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"- {rule}: without skill 0 of 10; with skill 5 of 10; over order-report only: 0 of 5, was 0 of 5: unchanged",
+                      r.stdout.splitlines())
+
     def test_compares_over_the_shared_cases_when_the_case_sets_differ(self):
         rule = "Treat lists as linked lists"
         readme = FROZEN_README.read_text().replace(f"| {rule} | order-report |", f"| {rule} | order-report, ecto-phoenix |")

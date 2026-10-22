@@ -34,7 +34,9 @@ def collect(grades, rows):
             runs = [(condition, run_key, run)
                     for condition in CONDITIONS if (case, condition) in grades
                     for run_key, run in grades[(case, condition)]["runs"].items()]
-            if runs and all(run.get("verdicts", {}).get(row.rule) is None for _, _, run in runs):
+            if not runs:
+                continue
+            if all(run.get("verdicts", {}).get(row.rule) is None for _, _, run in runs):
                 notes.append(f"{case} was not graded for the rule {row.rule!r} in this sweep; its runs are left out of that row")
                 continue
             graded.append(case)
