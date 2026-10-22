@@ -43,6 +43,11 @@ def main():
         for job in jobs:
             runner.describe(setup, *job)
         return
+    with runner.extras_hidden() as hidden:
+        return run_jobs(setup, jobs, hidden)
+
+
+def run_jobs(setup, jobs, hidden):
     with open(setup.run_root / "progress.log", "a") as log:
         def note(message):
             line = f"{time.strftime('%H:%M:%S')} {message}"
@@ -51,6 +56,7 @@ def main():
             log.flush()
 
         note(f"run root {setup.run_root}; output {setup.output}; {len(jobs)} runs")
+        note("hidden for the sweep: " + (", ".join(hidden) or "nothing"))
         failed, not_clean = 0, []
         pool = ThreadPoolExecutor(max_workers=PARALLEL)
         futures = {pool.submit(runner.run_one, setup, *job): job for job in jobs}

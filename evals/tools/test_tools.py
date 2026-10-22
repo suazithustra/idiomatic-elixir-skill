@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from collections import Counter
 
 TOOLS = pathlib.Path(__file__).resolve().parent
@@ -33,6 +34,7 @@ PLACEHOLDERS = ("<output>", "<evals>", "<skill>", "<project>", "<elixir-version>
 COMMAND = [
     "claude", "-p", "--model", "claude-haiku-5-5", "--permission-mode", "acceptEdits",
     "--allowedTools", "Bash(elixir:*)", "Bash(mix:*)", "Bash(elixirc:*)", "--output-format", "json",
+    "--session-id", "<new for each attempt>",
 ]
 SWEEP_MATRIX = (("claude-opus-5-5", "opus", 1), ("claude-haiku-5-5", "haiku", 2), ("claude-sonnet-5-5", "sonnet", 2))
 
@@ -49,7 +51,9 @@ prompt = sys.stdin.read()
 args = sys.argv[1:]
 model = args[args.index("--model") + 1]
 mode = os.environ.get("FAKE_CLAUDE", "")
-sid = str(uuid.uuid4())
+sid = args[args.index("--session-id") + 1] if "--session-id" in args else str(uuid.uuid4())
+if mode == "inherit-id":
+    sid = os.environ["FAKE_CLAUDE_INHERITED_ID"]
 base = os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR", "~/.claude"))
 folder = os.path.join(base, "projects", os.getcwd().replace("/", "-"))
 os.makedirs(folder, exist_ok=True)
@@ -57,6 +61,14 @@ error_text = "There's an issue with the selected model"
 synthetic = {"type": "assistant", "isApiErrorMessage": True, "message": {
     "role": "assistant", "model": "<synthetic>", "content": [{"type": "text", "text": error_text}]}}
 user = {"type": "user", "message": {"role": "user", "content": prompt}}
+skills = os.path.join(base, "skills")
+extras = sorted(os.listdir(skills)) if os.path.isdir(skills) else []
+extras += ["plugins/synced"] if os.path.isdir(os.path.join(base, "plugins", "synced")) else []
+listing = {"type": "attachment", "attachment": {"type": "skill_listing", "skillCount": len(extras), "isInitial": True}}
+with open("seen.json", "w") as f:
+    json.dump({"extras": extras, "sync": [k for k in ("CLAUDE_CODE_SYNC_PLUGINS", "CLAUDE_CODE_SYNC_SKILLS") if k in os.environ]}, f)
+if mode == "resync":
+    os.makedirs(os.path.join(skills, "synced"))
 
 
 def write_transcript(entries):
@@ -77,7 +89,7 @@ if os.environ.get("FAKE_CLAUDE_READS") == "macros.md":
     text.append("@MACROS_PHRASE@")
 answer = {"type": "assistant", "message": {"role": "assistant", "model": reported, "content": [{"type": "text", "text": " ".join(text)}]}}
 if not os.environ.get("FAKE_CLAUDE_NO_TRANSCRIPT"):
-    write_transcript([user] + ([synthetic] if mode == "overloaded-once" else []) + [answer])
+    write_transcript([user, listing] + ([synthetic] if mode == "overloaded-once" else []) + [answer])
 with open("webhook.ex", "w") as f:
     f.write("defmodule Webhook do\nend\n")
 print(json.dumps({"session_id": sid, "total_cost_usd": 0.01, "num_turns": 1, "result": "done"}))
@@ -675,6 +687,72 @@ class ResultProvenanceTest(unittest.TestCase):
         self.assertEqual(rec["rc"], 0)
         self.assertTrue(rec["transcript"].startswith(str(config)), rec["transcript"])
         self.assertFalse((self.home / ".claude").exists())
+
+    def test_gives_each_attempt_its_own_session_id_and_finds_the_transcript_by_it(self):
+        r = self.run_with_skill()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = self.result()
+        self.assertEqual(str(uuid.UUID(rec["session_id"])), rec["session_id"])
+        self.assertTrue(rec["transcript"].endswith(f"/{rec['session_id']}.jsonl"), rec["transcript"])
+
+    def test_never_reads_another_session_transcript_that_shares_the_reported_id(self):
+        inherited = str(uuid.uuid4())
+        stale = self.home / ".claude" / "projects" / "-elsewhere" / f"{inherited}.jsonl"
+        stale.parent.mkdir(parents=True)
+        stale.write_text(json.dumps({"type": "assistant", "message": {"model": "claude-haiku-5-5", "content": [{"type": "text", "text": SKILL_PHRASE}]}}) + "\n")
+        r = self.run_with_skill(FAKE_CLAUDE="inherit-id", FAKE_CLAUDE_INHERITED_ID=inherited)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = self.result()
+        self.assertEqual(rec["rc"], "no transcript")
+        self.assertNotIn("transcript", rec)
+
+    def give_home_extras(self):
+        claude = self.home / ".claude"
+        for folder in ("skills/session-start-hook", "skills/synced/docx", "plugins/synced/council"):
+            (claude / folder).mkdir(parents=True)
+        return claude
+
+    def test_hides_the_skills_and_synced_plugins_from_the_session_and_puts_them_back(self):
+        claude = self.give_home_extras()
+        r = self.run_with_skill(CLAUDE_CODE_SYNC_PLUGINS="true", CLAUDE_CODE_SYNC_SKILLS="true")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("hidden for the run: plugins/synced, skills/session-start-hook, skills/synced", r.stdout)
+        self.assertEqual(json.loads((self.kept / "seen.json").read_text()), {"extras": [], "sync": []})
+        self.assertEqual(self.result()["skills_listed"], 0)
+        for folder in ("skills/session-start-hook", "skills/synced/docx", "plugins/synced/council"):
+            self.assertTrue((claude / folder).is_dir(), folder)
+        self.assertFalse((claude / "hidden-during-sweep").exists())
+
+    def test_a_sweep_hides_the_extras_for_its_runs_and_notes_them(self):
+        claude = self.give_home_extras()
+        r = tool(
+            "sweep.py", "--cases", "webhook-parser", "--conditions", "baseline", "--models", "claude-haiku-5-5=1",
+            "--output", self.out, "--run-root", self.root, "--skills-folder", self.tmp / "absent", env=self.env,
+        )
+        self.assertEqual(r.returncode, 0, r.stderr)
+        log = (self.root / "progress.log").read_text()
+        self.assertIn("hidden for the sweep: plugins/synced, skills/session-start-hook, skills/synced", log)
+        seen = json.loads((self.out / "webhook-parser" / "baseline-haiku-1" / "seen.json").read_text())
+        self.assertEqual(seen["extras"], [])
+        self.assertTrue((claude / "skills" / "synced" / "docx").is_dir())
+
+    def test_refuses_to_start_while_an_earlier_sweep_left_folders_hidden(self):
+        left = self.home / ".claude" / "hidden-during-sweep" / "skills" / "synced"
+        left.mkdir(parents=True)
+        r = self.run_with_skill()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("did not put back", r.stderr)
+        self.assertFalse(self.kept.exists())
+        self.assertTrue(left.is_dir())
+
+    def test_keeps_the_hidden_copy_when_a_folder_came_back_during_the_run(self):
+        claude = self.give_home_extras()
+        r = self.run_with_skill(FAKE_CLAUDE="resync")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(f"{claude / 'skills' / 'synced'} came back during the sweep", r.stderr)
+        self.assertTrue((claude / "hidden-during-sweep" / "skills" / "synced" / "docx").is_dir())
+        self.assertTrue((claude / "skills" / "session-start-hook").is_dir())
+        self.assertTrue((claude / "plugins" / "synced" / "council").is_dir())
 
     def test_postprocess_refreshes_the_result_in_the_run_root_and_the_kept_copy(self):
         r = self.run_with_skill()

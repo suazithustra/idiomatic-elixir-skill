@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -14,6 +15,9 @@ DEFAULT_SKILLS_FOLDER = pathlib.Path("~/.claude/skills/idiomatic-elixir")
 INPUT_SUFFIX = "-input.ex"
 CONDITIONS = ("baseline", "skill")
 PARALLEL = 5
+# A cloud session passes these to the sessions it starts, which then fetch the account's plugins
+# and skills again into the folders the sweep has just hidden.
+SYNC_VARIABLES = ("CLAUDE_CODE_SYNC_PLUGINS", "CLAUDE_CODE_SYNC_SKILLS")
 
 # The identifiers the first sweep's transcripts reported, each with its runs per case in a full
 # sweep. An alias such as "haiku" can move to another model later, so runs pass the identifier
@@ -24,6 +28,10 @@ PINNED_MODELS = list(SWEEP_RUNS)
 INDEX_HEADER = "| Rule | Cases | Without skill |"
 PHRASES_HEADER = "| File | Phrase |"
 SKILL_PHRASE = "Readability rules carry the same weight as correctness rules"
+
+
+def claude_home():
+    return pathlib.Path(os.environ.get("CLAUDE_CONFIG_DIR", "~/.claude")).expanduser()
 
 
 def tier_of(model):

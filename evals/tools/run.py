@@ -2,6 +2,7 @@
 non-interactive session per run, in its own folder outside the repository, kept afterwards
 under the output folder without build artefacts."""
 import argparse
+import contextlib
 import dataclasses
 import glob
 import gzip
@@ -17,12 +18,14 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import postprocess
 from common import (
     CONDITIONS, DEFAULT_CASES_DIR, DEFAULT_SKILL_DIR, DEFAULT_SKILLS_FOLDER, INPUT_SUFFIX, PINNED_MODELS,
-    REPO, detection_phrases, folder_hash, git_head, git_uncommitted, run_name, tier_of,
+    REPO, SYNC_VARIABLES, claude_home, detection_phrases, folder_hash, git_head, git_uncommitted, run_name,
+    tier_of,
 )
 
 BASELINE_LINE = "Do not invoke any skills."
@@ -35,6 +38,13 @@ MOVE_ASIDE = (
     'skills folder for the sweep and restore it after (evals/README.md, "Running a case", step 2)'
 )
 SESSION_TIMEOUT = 1500
+NEW_SESSION_ID = "<new for each attempt>"
+HIDDEN_FOLDER = "hidden-during-sweep"
+LEFT_HIDDEN = (
+    "refusing to start: {aside} holds folders an earlier sweep hid and did not put back; "
+    "move each one back to the same place under {home}, then remove {aside}"
+)
+CAME_BACK = "{path} came back during the sweep, so the hidden copy stays at {dest}; compare the two and keep one"
 
 _prepare_lock = threading.Lock()
 _sessions = set()
@@ -108,6 +118,44 @@ def refuse_if_installed(skills_folder, skill_dir):
         sys.exit(MOVE_ASIDE.format(path=path))
 
 
+def extras(home):
+    # Every entry of the skills folder and every synced plugin is listed to each session, so a
+    # baseline would carry them in its context and a with-skill run would weigh the skill against
+    # them; the user's machine and a cloud session list different sets.
+    synced = home / "plugins" / "synced"
+    found = [synced] if os.path.lexists(synced) else []
+    skills = home / "skills"
+    return found + (sorted(skills.iterdir()) if skills.is_dir() else [])
+
+
+@contextlib.contextmanager
+def extras_hidden():
+    home = claude_home()
+    aside = home / HIDDEN_FOLDER
+    if aside.is_dir() and any(aside.iterdir()):
+        sys.exit(LEFT_HIDDEN.format(aside=aside, home=home))
+    moved = []
+    try:
+        # Kept under the same home rather than the run root, so a crash leaves them on the same
+        # disk and outside any temporary folder the system clears.
+        for path in extras(home):
+            dest = aside / path.relative_to(home)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            os.rename(path, dest)
+            moved.append((path, dest))
+        yield [str(path.relative_to(home)) for path, _ in moved]
+    finally:
+        left = False
+        for path, dest in reversed(moved):
+            if os.path.lexists(path):
+                print(CAME_BACK.format(path=path, dest=dest), file=sys.stderr)
+                left = True
+            else:
+                os.rename(dest, path)
+        if not left:
+            shutil.rmtree(aside, ignore_errors=True)
+
+
 def prompt_for(cases_dir, case):
     text = (cases_dir / f"{case}.md").read_text()
     return re.search(r"```text\n(.*?)```", text, re.S).group(1).strip()
@@ -131,10 +179,13 @@ def build_prompt(setup, case, condition, sdir):
     return f"{prompt}\n\n{BASELINE_LINE}"
 
 
-def command(model_arg, condition, skill_copy):
+def command(model_arg, condition, skill_copy, session_id):
+    # Started from inside another session, the command line takes over that session's identifier
+    # unless given one, so every run's transcript would carry the same name.
     cmd = [
         "claude", "-p", "--model", model_arg, "--permission-mode", "acceptEdits",
         "--allowedTools", "Bash(elixir:*)", "Bash(mix:*)", "Bash(elixirc:*)", "--output-format", "json",
+        "--session-id", session_id,
     ]
     if condition == "skill":
         cmd += ["--add-dir", str(skill_copy)]
@@ -190,6 +241,7 @@ def launch(cmd, cwd, prompt):
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, start_new_session=True,
+        env={key: value for key, value in os.environ.items() if key not in SYNC_VARIABLES},
     )
     with _sessions_lock:
         _sessions.add(proc)
@@ -232,15 +284,15 @@ def refused(outcome, model_ids):
 
 
 def find_transcript(session_id):
-    base = os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR", "~/.claude"))
-    hits = glob.glob(f"{base}/projects/*/{session_id}.jsonl") if session_id else []
+    hits = glob.glob(f"{claude_home()}/projects/*/{session_id}.jsonl") if session_id else []
     return pathlib.Path(hits[0]) if hits else None
 
 
 def attempt(setup, sdir, model_arg, condition, prompt):
+    session_id = str(uuid.uuid4())
     # Variadic options such as --add-dir swallow a trailing prompt, so the prompt goes through stdin.
-    outcome = launch(command(model_arg, condition, setup.skill_copy), sdir, prompt)
-    transcript = find_transcript((outcome["parsed"] or {}).get("session_id"))
+    outcome = launch(command(model_arg, condition, setup.skill_copy, session_id), sdir, prompt)
+    transcript = find_transcript(session_id)
     model_ids = postprocess.model_ids(transcript.read_text()) if transcript else []
     return outcome, transcript, model_ids
 
@@ -259,7 +311,7 @@ def keep(sdir, dest):
 def describe(setup, case, condition, model, n):
     sdir = session_dir(setup, case, condition, tier_of(model), n)
     print(f"cwd: {sdir}")
-    print("command: " + shlex.join(command(model, condition, setup.skill_copy)))
+    print("command: " + shlex.join(command(model, condition, setup.skill_copy, NEW_SESSION_ID)))
     print("prompt:")
     print(build_prompt(setup, case, condition, sdir))
 
@@ -332,7 +384,8 @@ def main():
             describe(setup, args.case, args.condition, model, args.n)
         return
     print("run root", setup.run_root)
-    with ThreadPoolExecutor(max_workers=len(models)) as pool:
+    with extras_hidden() as hidden, ThreadPoolExecutor(max_workers=len(models)) as pool:
+        print("hidden for the run:", ", ".join(hidden) or "nothing")
         for rid, rc in pool.map(lambda model: run_one(setup, args.case, args.condition, model, args.n), models):
             print(rid, rc)
 
