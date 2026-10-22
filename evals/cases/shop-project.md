@@ -36,7 +36,7 @@ In the project afterwards:
 - Boolean functions end in `?`, and variables are named after the domain (`cart`, `sku`, `code`), not `data`, `res`, or `x`.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - A `defstruct` field whose default is `nil` is listed as a bare atom, not as `field: nil`.
-- `mix format path` runs on each file before the session edits another file or runs the tests, so a file edited, left and edited again is formatted each time it is left, not only in one run at the end.
+- `mix format path`, or its `--check-formatted` form, runs on each file before the session edits another file or runs the tests, so a file edited, left and edited again is formatted or checked each time it is left, not only in one run at the end.
 - Expected reads: `ex_unit.md` when the run adds or changes tests.
 
 ## Seen so far
