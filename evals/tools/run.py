@@ -363,6 +363,8 @@ def run_one(setup, case, condition, model, n):
         rec["rc"] = "no transcript"
     elif rec["rc"] == 0 and condition == "skill" and "SKILL.md" not in rec.get("reads", []):
         rec["rc"] = "skill not read"
+    elif rec["rc"] == 0 and not rec["files"] and "project" not in rec:
+        rec["rc"] = "no output"
     postprocess.write_result(sdir / "result.json", rec)
     keep(sdir, kept)
     return rid, rec["rc"]

@@ -92,8 +92,9 @@ if os.environ.get("FAKE_CLAUDE_READS") == "macros.md":
 answer = {"type": "assistant", "message": {"role": "assistant", "model": reported, "content": [{"type": "text", "text": " ".join(text)}]}}
 if not os.environ.get("FAKE_CLAUDE_NO_TRANSCRIPT"):
     write_transcript([user, listing] + ([synthetic] if mode == "overloaded-once" else []) + [answer])
-with open("webhook.ex", "w") as f:
-    f.write("defmodule Webhook do\nend\n")
+if not os.environ.get("FAKE_CLAUDE_NO_FILE"):
+    with open("webhook.ex", "w") as f:
+        f.write("defmodule Webhook do\nend\n")
 print(json.dumps({"session_id": sid, "total_cost_usd": 0.01, "num_turns": 1, "result": "done"}))
 '''.replace("@SKILL_PHRASE@", SKILL_PHRASE).replace("@MACROS_PHRASE@", MACROS_PHRASE)
 
@@ -675,6 +676,15 @@ class ResultProvenanceTest(unittest.TestCase):
         self.assertEqual(rec["model_id"], ["claude-haiku-5-5"])
         self.assertEqual(rec["rc"], "skill not read")
         self.assertIn("webhook-parser/skill-haiku-1 skill not read", r.stdout)
+
+    def test_fails_a_run_that_wrote_no_file(self):
+        r = self.run_with_skill(FAKE_CLAUDE_NO_FILE="1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        rec = self.result()
+        self.assertEqual(rec["files"], [])
+        self.assertEqual(rec["reads"], ["SKILL.md"])
+        self.assertEqual(rec["rc"], "no output")
+        self.assertIn("webhook-parser/skill-haiku-1 no output", r.stdout)
 
     def test_fails_a_run_that_left_no_transcript(self):
         r = self.run_with_skill(FAKE_CLAUDE_NO_TRANSCRIPT="1")
