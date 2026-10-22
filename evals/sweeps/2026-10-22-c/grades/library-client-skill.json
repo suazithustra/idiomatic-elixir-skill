@@ -1,0 +1,375 @@
+{
+ "case": "library-client",
+ "condition": "skill",
+ "notes": [
+  "Fourth sweep (2026-10-22-c, head 3e3581d, skill_hash 03a6bb2b...): five skill runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2). All have rc 0, a model_id matching the requested model, and reads of SKILL.md and library-design.md; each transcript shows Read calls on both files before the Write of weather.ex.",
+  "git diff 0397dec -- idiomatic-elixir/ changes SKILL.md (the When to load and Reviewing code bullets, a defstruct sentence in Update structs, the new Build a multi-line argument under a name before the call, two new sentences in the do: rule, the new directive-order rule, step 4 of Before you finish), the ETS example in processes.md, and testing.md. None of the nine rules in the case's list changed (Return/raise, Group related parameters, one return shape and Read configuration at runtime in SKILL.md; the five library-design.md rules, a file the diff does not touch), so all nine were graded to the standard of evals/sweeps/2026-10-22-b/grades/library-client-skill.json: Make polymorphism explicit is met when the API key taken from opts, and the other option values, reach a guard before the request (or the key is a guarded positional argument), and Add specs exempts @impl callbacks.",
+  "All nine case rules are clean in all five runs. Every run checks the API key's type before it reaches the header: opus-1, haiku-1 and haiku-2 in a guarded private function after Keyword.validate!/2 (opus-1 build/4 line 95, haiku-1 build/3 line 62, haiku-2 validate!/1 line 67), sonnet-1 and sonnet-2 as a guarded positional argument of new/2 (lines 118 and 50). haiku-1 and haiku-2 have no bang variant. sonnet-2 hides the key with @derive {Inspect, only: [:base_url]}, the key living only in its :req field; the other four derive except: [:api_key].",
+  "Changed rule outside the list, applied to other_violations under its current text: Use `do:` for a one-expression body and `do ... end` for anything else. The sentences that decide it: \"A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line.\" Violating runs: 1 of 5, haiku-2 (api_error/2, lines 90-91 and 93-94; its validate!/1 at lines 66-68 is the kept guard wrap). The b sweep's opus-1 violation does not recur: this opus-1 writes every Error.message/1 clause as a block. haiku-1's handle_response/1 keeps two short clauses on do: beside two blocks, one of which only has a guard wrap, so most clauses do not need blocks; set apart with blank lines, it is clean. No file has an if with do:.",
+  "Build a multi-line argument under a name before the call (new since 0397dec), graded on \"When an argument is a map, struct or keyword list that would span several lines, build it first under a name that says what it is, write it one field per line, and set each multi-line statement apart with a blank line.\" The rule's own write example binds a call whose keyword options span several lines to a name (formatter = Logger.Formatter.new(format: ..., metadata: ..., colors: ...)), so that shape is not counted: opts = Keyword.validate!(opts, [...]) across several lines (opus-1 lines 54-60, sonnet-1 lines 119-124, sonnet-2 lines 51-56), request = Req.new(...) (haiku-1 lines 67-72) and req = Req.new(...) (sonnet-2 lines 101-106). haiku-2 lines 71-75 write Req.new(...) as the whole body of build_request/1, whose result line 57 names request; counted the same way, a borderline call. Every other multi-line literal is built under a name first (opus-1 request_options line 75 and base_options lines 131-135, sonnet-1 options lines 176-180, sonnet-2 forecast lines 143-147) or is a return value. Result: 0 of 5. Counting the multi-line Keyword.validate!/2 defaults lists would make opus-1, sonnet-1 and sonnet-2 violate.",
+  "The other changed rules outside the list were not broken: every nil-default defstruct field is a bare atom (keyword entries are real defaults: haiku-2 line 21 base_url: @default_base_url, sonnet-1 line 90 req_options: []); each module opens with alias only; no run has tests for Before you finish step 4.",
+  "Unchanged rules outside the list, judged as in the b sweep: sonnet-1 writes a one-step with (line 144), which Chain fallible steps with `with` forbids. Match every expected shape is flagged for sonnet-2, whose Error doc defines :api_error as a 4xx/5xx status while every non-2xx response lands there (a 302 through a stub Req returns reason: :api_error, status: 302), as the b sweep flagged its sonnet runs; sonnet-1 now documents :api as a non-2xx status (line 7), opus-1 documents its catch-all as a body the client does not understand, and haiku-1 and haiku-2 define no reason kinds for the docs to contradict. sonnet-2's fetch_forecast/3 returns {:error, %Error{}} but is an HTTP fetch, not the key lookup the naming bullet describes, so it is not counted.",
+  "Before you finish is flagged only where the file fails mix format --check-formatted, as in the previous sweeps: all five pass (rechecked in the scratch folder). opus-1 and sonnet-1 ran mix format; haiku-1's one elixir syntax check was refused by the permission prompt; haiku-2 and sonnet-2 ran no shell command. No session compiled its file.",
+  "Not graded, as in the previous sweeps, but noted in the summaries and matching result.json compiles: sonnet-1 and sonnet-2 compile, and against a stub Req a non-binary API key fails with FunctionClauseError in WeatherClient.new/2 in both. opus-1, haiku-1 and haiku-2 do not compile, independently of Req, because WeatherClient builds %WeatherClient.Error{} (and in the Haiku runs %WeatherClient.Forecast{}) before the file defines that module."
+ ],
+ "runs": {
+  "skill-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 87-91: def forecast!(%__MODULE__{} = client, lat, lon) do / case forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error; no rescue in the file; transport failures become %Error{reason: :transport_error} (line 79); the only other raise is the ArgumentError for invalid options in build/4 (line 116)"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 54-55: opts = / Keyword.validate!(opts, [; line 36: ## Options in new/1's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 71: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "lines 17-18: @default_base_url \"https://api.weather.example.com\" / @default_receive_timeout :timer.seconds(15) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 53: def new(opts) when is_list(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 204: defexception [:reason, :status, :detail]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "every option value is checked, including the key taken from opts (lines 94-96: defp build(api_key, base_url, receive_timeout, req_options) / when is_binary(api_key) and api_key != \"\" and is_binary(base_url) and / is_integer(receive_timeout) and receive_timeout > 0 and is_list(req_options) do); coordinates guarded (lines 72-74: def forecast(%__MODULE__{} = client, lat, lon) / when is_number(lat) and lat >= -90 and lat <= 90 and / is_number(lon) and lon >= -180 and lon <= 180 do)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "lines 52, 71, 86: @spec on new/1, forecast/3, forecast!/3; the @doc false Forecast.parse/1 has one (lines 173-174: @doc false / @spec parse(term()) :: {:ok, t()} | :error); Error.message/1 has none but sits under line 214: @impl true, which the rule exempts; no macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 20: @derive {Inspect, except: [:api_key]}; build/4's error message also keeps the key out (line 124: # The key itself must not end up in an exception message or a log.)"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "met: Keyword.validate!/2 (line 55) and ## Options in new/1's @doc (line 36)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; forecast!/3 built on it",
+    "met: error reason is WeatherClient.Error, a defexception",
+    "met: no option changes a return shape",
+    "met: @derive {Inspect, except: [:api_key]} on the client struct (line 20)",
+    "met: every public function has a @spec, including the @doc false Forecast.parse/1 (message/1 is an @impl callback)",
+    "met: API key checked as a non-empty binary in build/4 (line 95), coordinates guarded with is_number and ranges (lines 72-74)",
+    "met: all modules under WeatherClient",
+    "met: passes mix format --check-formatted (the session ran mix format)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/1 with Keyword.validate!/2 and every option value checked in a guarded build/4 (including the API key, kept out of the ArgumentError message), range-guarded coordinates, a defexception error with a message/1 per reason, a bang built on the non-bang and an Inspect derive, breaking none of the case's rules or any other; it ran mix format but not a compile, and read SKILL.md and library-design.md. Separately from Req, the file does not compile: WeatherClient uses %Error{} (line 79) before the file defines WeatherClient.Error (line 189), per result.json."
+  },
+  "skill-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 54: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; every failure in handle_response/1 and parse_forecast/1 (lines 77-95) is an {:error, %Error{}}; no bang, no raise, no rescue"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "line 39: opts = Keyword.validate!(opts, @options), with line 17: @options [:api_key, base_url: @default_base_url, timeout: @default_timeout]; line 31: ## Options in new/1's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 54 spec; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "lines 15-17: @default_base_url \"https://api.weather.example\" / @default_timeout :timer.seconds(15) / @options [...] are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 38: def new(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 118: defexception [:status, :reason]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the key taken from opts is checked before it reaches the header, as are the other option values (lines 61-62: defp build(api_key, base_url, timeout) / when is_binary(api_key) and is_binary(base_url) and is_integer(timeout) and timeout > 0 do); coordinates guarded (line 55: def forecast(%__MODULE__{} = client, lat, lon) when is_latitude(lat) and is_longitude(lon) do, with line 19: defguardp is_latitude(lat) when is_number(lat) and lat >= -90 and lat <= 90)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "lines 37, 54: @spec on new/1 and forecast/3, the only public functions; Error.message/1 has none but sits under line 122: @impl true, which the rule exempts; no @doc false or macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 22: @derive {Inspect, except: [:api_key]}"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "met: Keyword.validate!/2 (line 39) and ## Options in new/1's @doc (line 31)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; no bang variant",
+    "met: error reason is WeatherClient.Error, a defexception",
+    "met: no option changes a return shape",
+    "met: @derive {Inspect, except: [:api_key]} on the client struct (line 22)",
+    "met: every public function has a @spec (message/1 is an @impl callback)",
+    "met: API key checked as a binary in build/3 (line 62), coordinates guarded with is_number and ranges (lines 19-20, 55)",
+    "met: all modules under WeatherClient",
+    "met: passes mix format --check-formatted (its elixir syntax check was refused by the permission prompt; it never ran mix format)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/1 with Keyword.validate!/2, every option value checked in a guarded build/3 (including the API key), range-guarded coordinates through defguardp, a defexception error and an Inspect derive, with no bang variant, breaking none of the case's rules or any other; the file is formatted though the session's only shell command was refused, and it read SKILL.md and library-design.md. Separately from Req, the file does not compile: WeatherClient uses %Error{} (line 81) and %Forecast{} (line 92) before the file defines WeatherClient.Forecast (line 98) and WeatherClient.Error (line 109), per result.json."
+  },
+  "skill-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 53: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; line 62: {:error, exception} -> {:error, %Error{message: Exception.message(exception)}}; no bang, no raise, no rescue"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 40-41: opts = / Keyword.validate!(opts, [:api_key, base_url: @default_base_url, timeout: @default_timeout]); line 32: ## Options in new/1's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 53 spec; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "lines 15-16: @default_base_url \"https://api.weather.example\" / @default_timeout 5_000 are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 39: def new(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 120: defexception [:status, :message]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the key taken from opts is checked before it reaches the header, as are the other option values (lines 66-67: defp validate!(%__MODULE__{api_key: api_key, base_url: base_url, timeout: timeout} = client) / when is_binary(api_key) and is_binary(base_url) and is_integer(timeout) and timeout > 0,); coordinates guarded (lines 54-56: def forecast(%__MODULE__{} = client, lat, lon) / when is_number(lat) and lat >= -90 and lat <= 90 and / is_number(lon) and lon >= -180 and lon <= 180 do)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "lines 38, 53: @spec on new/1 and forecast/3, the only public functions; no @doc false, @impl or macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 19: @derive {Inspect, except: [:api_key]}"
+    }
+   },
+   "other_violations": [
+    "Use `do:` for a one-expression body and `do ... end` for anything else: lines 90-91: defp api_error(status, %{\"error\" => message}) when is_binary(message), / do: %Error{status: status, message: message} and lines 93-94: defp api_error(status, _body), / do: %Error{status: status, message: \"request failed with status #{status}\"} (mix format moved both do: bodies onto their own line; the heads are short, line 93 has no guard and line 90's guard is not broken, so this is not the kept guard wrap, which lines 66-68 are)"
+   ],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "met: Keyword.validate!/2 (line 41) and ## Options in new/1's @doc (line 32)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; no bang variant",
+    "met: error reason is WeatherClient.Error, a defexception",
+    "met: no option changes a return shape",
+    "met: @derive {Inspect, except: [:api_key]} on the client struct (line 19)",
+    "met: every public function has a @spec",
+    "met: API key checked as a binary in validate!/1 (line 67), coordinates guarded with is_number and ranges (lines 54-56)",
+    "met: all modules under WeatherClient",
+    "met: passes mix format --check-formatted (the session ran no shell command)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/1 with Keyword.validate!/2 and struct!/2, every option value checked in a guarded validate!/1 (including the API key), range-guarded coordinates, a defexception error holding a status and message and an Inspect derive, with no bang variant, breaking none of the case's rules but the current do: rule (two api_error/2 clauses whose do: bodies mix format wrapped, lines 90-94); the file is formatted though the session ran no shell command, and it read SKILL.md and library-design.md. Separately from Req, the file does not compile: WeatherClient uses %Error{} (line 62) and %Forecast{} (line 83) before the file defines WeatherClient.Forecast (line 97) and WeatherClient.Error (line 112), per result.json."
+  },
+  "skill-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 153-157: def forecast!(%__MODULE__{} = client, lat, lon) do / case forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error; no rescue and no other raise"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 119-120: opts = / Keyword.validate!(opts,; line 102: ## Options in new/2's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 140: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "lines 85-86: @default_base_url \"https://api.weather.example.com\" / @default_receive_timeout :timer.seconds(10) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 118: def new(api_key, opts \\\\ []) when is_binary(api_key) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 16: defexception [:reason, :status, :details]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the API key is a guarded positional argument (line 118: def new(api_key, opts \\\\ []) when is_binary(api_key) do) and every option value goes through a guarded validator (lines 128-130: base_url: validate_base_url(opts[:base_url]), / receive_timeout: validate_timeout(opts[:receive_timeout]), / req_options: validate_req_options(opts[:req_options]); line 188: defp validate_base_url(base_url) when is_binary(base_url), do: base_url; line 191: defp validate_timeout(timeout) when is_integer(timeout) and timeout > 0, do: timeout; line 193: defp validate_req_options(req_options) when is_list(req_options), do: req_options); coordinates guarded (lines 141-143: def forecast(%__MODULE__{} = client, lat, lon) / when is_number(lat) and lat >= -90 and lat <= 90 and / is_number(lon) and lon >= -180 and lon <= 180 do)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "lines 117, 140, 152: @spec on new/2, forecast/3, forecast!/3; the @doc false Forecast.parse/1 has one (lines 59-60: @doc false / @spec parse(term()) :: {:ok, t()} | {:error, Error.t()}); Error.message/1 has none but sits under line 24: @impl true, which the rule exempts; no macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 88: @derive {Inspect, except: [:api_key]}"
+    }
+   },
+   "other_violations": [
+    "Chain fallible steps with `with`; normalize each step's error in a small private function: line 144: with {:ok, body} <- get_forecast(client, lat, lon) do (one <- step; the rule says one step is a case)"
+   ],
+   "checks": [
+    "met: API key is a positional argument; base URL and timeout are options; no Application call",
+    "met: Keyword.validate!/2 (line 120) and ## Options in new/2's @doc (line 102)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; forecast!/3 built on it",
+    "met: error reason is WeatherClient.Error, a defexception",
+    "met: no option changes a return shape",
+    "met: @derive {Inspect, except: [:api_key]} on the client struct (line 88)",
+    "met: every public function has a @spec, including the @doc false Forecast.parse/1 (message/1 is an @impl callback)",
+    "met: API key guarded as a binary (line 118), coordinates guarded with is_number and ranges (lines 141-143)",
+    "met: all modules under WeatherClient",
+    "met: passes mix format --check-formatted (the session ran mix format)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/2 (API key positional and guarded, each option value checked by a guarded validator after Keyword.validate!/2), range-guarded coordinates, a defexception error with a reason per failure kind documented to match its non-2xx catch-all, a @doc false parser with a spec, a bang built on the non-bang and an Inspect derive, breaking none of the case's rules, but wrote a one-step with (line 144); it ran mix format and read SKILL.md and library-design.md. It defines Error and Forecast first, so it compiles against a stub Req, and a non-binary key fails with FunctionClauseError in WeatherClient.new/2."
+  },
+  "skill-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 91-95: def fetch_forecast!(client, lat, lon) do / case fetch_forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error; no rescue and no other raise"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 51-52: opts = / Keyword.validate!(opts,; line 34: ## Options in new/2's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 78: @spec fetch_forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "lines 21-22: @default_base_url \"https://api.weather.example.com\" / @default_receive_timeout :timer.seconds(5) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 50: def new(api_key, opts \\\\ []) when is_binary(api_key) and api_key != \"\" do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 170: defexception [:reason, :status, :message, :details]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the API key is a guarded positional argument (line 50: def new(api_key, opts \\\\ []) when is_binary(api_key) and api_key != \"\" do) and every option value is checked (lines 98-100: defp build(api_key, base_url, receive_timeout, req_options) / when is_binary(base_url) and is_integer(receive_timeout) and receive_timeout > 0 and / is_list(req_options) do); coordinates guarded (line 79: def fetch_forecast(%__MODULE__{req: req}, lat, lon) when is_number(lat) and is_number(lon) do)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "lines 49, 78, 90: @spec on new/2, fetch_forecast/3, fetch_forecast!/3; every @doc false function has one (lines 139-140: @doc false / @spec parse(term()) :: {:ok, t()} | {:error, Error.t()}; lines 179-180: @doc false / @spec api_error(pos_integer(), term()) :: t(); lines 189-190 transport/1; lines 196-197 invalid_response/1); no @impl or macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 25: @derive {Inspect, only: [:base_url]} (the struct keeps the key only inside :req, which the derive leaves out; line 24: # The inspected struct omits `:req`, whose headers hold the API key.)"
+    }
+   },
+   "other_violations": [
+    "Match every expected shape and let unexpected ones crash: line 115: defp parse_response(%Req.Response{status: status, body: body}) do (every non-2xx status, including 1xx and 3xx, becomes reason :api_error, which the Error doc at line 161 defines as a 4xx/5xx status; a 302 against a stub Req returns %WeatherClient.Error{reason: :api_error, status: 302})"
+   ],
+   "checks": [
+    "met: API key is a positional argument; base URL and timeout are options; no Application call",
+    "met: Keyword.validate!/2 (line 52) and ## Options in new/2's @doc (line 34)",
+    "met: fetch_forecast/3 returns {:ok, _} | {:error, _}; fetch_forecast!/3 built on it",
+    "met: error reason is WeatherClient.Error, a defexception",
+    "met: no option changes a return shape",
+    "met: API key hidden from inspect with @derive {Inspect, only: [:base_url]} (line 25), the key living only in the excluded :req field",
+    "met: every public function has a @spec, including the four @doc false ones",
+    "met: API key guarded as a non-empty binary (line 50), coordinates guarded with is_number (line 79)",
+    "met: all modules under WeatherClient",
+    "met: passes mix format --check-formatted (the session ran no shell command)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct holding a prebuilt Req request through new/2 (API key positional and guarded, every option value checked in a guarded build/4 after Keyword.validate!/2), guarded coordinates, a defexception error with @doc false constructors that all have specs, a bang built on the non-bang and an Inspect derive that keeps only :base_url, breaking none of the case's rules, but sent non-2xx statuses its docs exclude to :api_error; the file is formatted though the session ran no shell command, and it read SKILL.md and library-design.md. It compiles against a stub Req, and a non-binary key fails with FunctionClauseError in WeatherClient.new/2."
+  }
+ },
+ "per_rule": {
+  "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Group related parameters": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Give each function one return shape": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Read configuration at runtime, not into module attributes": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Take configuration as arguments, not from the application environment": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Use exception structs as error reasons": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Make polymorphism explicit": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Add specs, and hide technical functions from the docs": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Keep secrets out of logs and inspect output": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  }
+ }
+}
