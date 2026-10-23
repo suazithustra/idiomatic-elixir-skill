@@ -457,6 +457,30 @@ if amount < 0 do
 end
 ```
 
+### Break a `->` clause whose pattern and body together pass 70 characters
+
+A clause of `case`, `cond`, `with ... else` or `receive` stays on one line while its pattern, the `->` and its body together fit in 70 characters, not counting indentation. Past that, the body goes on the line after the `->`: the reader then sees what the clause matches on one line and what it does on the next, instead of finding the `->` by eye inside a line that `mix format` leaves alone, since the formatter wraps only at 98 columns. Once one clause breaks, `mix format` moves every clause's body down and separates the clauses with a blank line; keep that layout, and do not pull the short clauses back onto one line. A one-line `fn` passed as an argument is outside this rule; a long one becomes a named function.
+
+```elixir
+# Instead of
+defp value_end(string, offset, depth) do
+  case string do
+    <<_::binary-size(^offset)>> -> offset
+    <<_::binary-size(^offset), byte, _::binary>> -> step(byte, string, offset, depth)
+  end
+end
+# write
+defp value_end(string, offset, depth) do
+  case string do
+    <<_::binary-size(^offset)>> ->
+      offset
+
+    <<_::binary-size(^offset), byte, _::binary>> ->
+      step(byte, string, offset, depth)
+  end
+end
+```
+
 ### Write pipelines that start with a value and read top to bottom
 
 - Start a pipeline with a variable or literal, then one transformation per line.

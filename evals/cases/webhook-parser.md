@@ -27,6 +27,7 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - A function that checks a value and returns `{:error, reason}` is not named `fetch_*`; `fetch` names a lookup that returns `{:ok, value}` or `:error`. A variable may carry the name of the payload key it holds, such as `data` for `"data"`.
 - No comments that restate a clause. Documentation is in `@moduledoc` and `@doc`.
+- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 

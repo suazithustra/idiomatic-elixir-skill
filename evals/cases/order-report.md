@@ -22,6 +22,7 @@ Write the code to <output>/orders.ex. You may use the shell to check it compiles
 - Boolean functions end in `?` (no `is_` names outside guards), and variables are named after the domain (`order`, `customer_id`, `totals`), not `data`, `res`, or `x`.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - `do:` appears only on a body of one expression; a body with several steps or a `case` uses `do ... end`; a function that mixes `do:` and block clauses sets each block clause apart with a blank line; no `do:` body, on a function or an `if`, is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
+- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 
