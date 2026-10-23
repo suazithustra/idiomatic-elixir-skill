@@ -152,7 +152,7 @@ A rule with no case can regress unnoticed. The rule cell is the rule's exact hea
 | Start processes with `start_supervised!/1` | test-writing | Opus violated, Haiku violated, Sonnet violated |
 | Replace dependencies at boundaries, through behaviours | test-writing, log-tests | Opus clean, Haiku clean, Sonnet clean |
 | Use setup for shared data | test-writing | Opus clean, Haiku clean, Sonnet violated |
-| Capture logs with `capture_log/2`, not a handler | log-tests; the primary-level sentence is not provocable: a plain `elixir` run logs at `:debug` | Opus violated, Haiku violated, Sonnet violated |
+| Capture logs with `capture_log/2`, not a handler | log-tests; the primary-level and crash-report sentences are not provocable: a plain `elixir` run logs at `:debug` | Opus violated, Haiku violated, Sonnet violated |
 
 ## Cull candidates
 
