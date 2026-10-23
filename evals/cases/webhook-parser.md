@@ -19,7 +19,9 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - No `String.to_atom/1` on the event type. Known types are mapped with explicit clauses.
 - Selecting the event type is separate from validating its fields, so a known type with a missing field is not reported as an unsupported event.
 - Missing-field and invalid-field errors name the actual field. They are not guessed from which other keys matched.
-- Functions with several clauses bind in the head only what the clause's pattern or guard uses; fields the body alone needs are read from the matched value.
+- The head that parses the payload matches the keys it requires, with a clause below it that catches a payload lacking them; a key bound there that the guard does not read is not a miss, because its presence selects the clause.
+- No pattern that selects a clause is moved into a body: a function whose clause tells a present key from an absent one does not become one clause that reads the key with dot access and raises.
+- A field no pattern or guard uses is not bound in every head of a function with three or more clauses, nor in any head of a multi-clause function whose pattern spreads over several lines; fields the body alone needs are read from the matched value, and a head that spreads while binding only what its guard reads is fine.
 - Structs have `@enforce_keys` and `@type t`.
 - Steps are chained with `with` over small private functions that return `{:ok, value}` or `{:error, reason}`. There is no large `else` block that maps errors back to steps.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.

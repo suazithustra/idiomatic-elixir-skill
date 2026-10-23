@@ -38,6 +38,31 @@ Readability rules carry the same weight as correctness rules.
 {point.x, point.y, point[:z]}
 ```
 
+A pattern is the way to read a value where the match also decides something: a function head or a `case` clause, where a failed match sends the value to the next clause, or the result of a call, where `{:ok, %Req.Response{} = response} = Req.get(req)` asserts the shape at the point it arrives. A pattern in a body that pulls one atom key or struct field out of a value the function already holds, with no literal and no guard, is dot access written long. Keep such a pattern when it binds two or more fields the body uses together, matches a literal, or carries a guard.
+
+```elixir
+# Instead of
+%{default: default} = config
+{:ok, %{default: default, limits: Map.get(config, :users, %{})}}
+# write
+{:ok, %{default: config.default, limits: Map.get(config, :users, %{})}}
+```
+
+A chain such as `request.user.profile.name` reads a nested required field in one expression; binding `user` and `profile` on the way earns its lines only when a value is reused or has a name the domain uses. Each step of the chain assumes the previous value is a map that holds the field, so when a step may be `nil` the chain raises there: handle an optional step with a `case` on it, or read `get_in(request.user.profile.name)` (Elixir 1.17 or later) when `nil` is the answer you want. `get_in/1` passes a `nil` step through as `nil`; a key that is absent still raises `KeyError`.
+
+```elixir
+# Instead of
+user = request.user
+profile = user.profile
+name = profile.name
+# write
+name = request.user.profile.name
+# or, when a profile is optional and nil is the right answer
+name = get_in(request.user.profile.name)
+```
+
+`map[:key]` and `Map.get/2` return the same `nil` for an absent key and for a key set to `nil`. When those two need different handling, `Map.fetch/2` returns `:error` for the absent key and `{:ok, nil}` for the other.
+
 ### Match every expected shape and let unexpected ones crash
 
 A `_ ->` clause after `{:ok, value}` turns every other return value, including ones added later, into the same error and hides bugs. Match the error shape explicitly. Destructure results with a pattern so malformed input raises at the cause instead of producing wrong values.
@@ -65,16 +90,49 @@ When the input set is open by design (event types from an external system, messa
 
 ### In multi-clause functions, bind in the head only what patterns and guards use
 
-When a function has several clauses, binding body-only fields in every head makes it hard to see what selects each clause.
+A head binds what selects its clause: a value matched against a literal, a value a guard reads, or a key whose presence selects, because another clause catches the input that lacks it. A struct always has its fields, so a struct field selects only through a literal, a nested pattern that must match, or a guard. A field no pattern or guard in the clause uses, bound in every clause of a function with three or more clauses, or bound in a head whose pattern `mix format` spreads over several lines, makes the reader scan every head to find what selects. Take the value whole with `= order` and read `order.total` in the body. A head that `mix format` wraps only to move a long guard onto its own line is fine as wrapped; a single-clause function may destructure in its head; and the `= order` alias beside a pattern is not a bound field.
 
 ```elixir
 # Instead of
-def drive(%User{name: name, age: age}) when age >= 18, do: "#{name} can drive"
-def drive(%User{name: name, age: age}) when age < 18, do: "#{name} cannot drive"
+def label(%Order{id: id, customer: customer, total: total, status: :paid}) do
+  "order #{id} for #{customer.name}: paid #{total}"
+end
+
+def label(%Order{id: id, customer: customer, total: total, status: :refunded}) do
+  "order #{id} for #{customer.name}: refunded #{total}"
+end
+
+def label(%Order{id: id, customer: customer, total: total, status: status})
+    when status in [:pending, :shipped] do
+  "order #{id} for #{customer.name}: #{status}, #{total} due"
+end
 # write
-def drive(%User{age: age} = user) when age >= 18, do: "#{user.name} can drive"
-def drive(%User{age: age} = user) when age < 18, do: "#{user.name} cannot drive"
+def label(%Order{status: :paid} = order) do
+  "order #{order.id} for #{order.customer.name}: paid #{order.total}"
+end
+
+def label(%Order{status: :refunded} = order) do
+  "order #{order.id} for #{order.customer.name}: refunded #{order.total}"
+end
+
+def label(%Order{status: status} = order) when status in [:pending, :shipped] do
+  "order #{order.id} for #{order.customer.name}: #{status}, #{order.total} due"
+end
 ```
+
+A pattern that selects never moves from the head into the body. A failed head pattern lets the next clause run; a failed body match raises `MatchError`, and a missing field read with dot access raises `KeyError`. So the first `dispatch/1` below matches a `:created` command that has no `:id` and raises on `command.id`, where the second sends that command to the clause that answers `{:error, :missing_id}`.
+
+```elixir
+# Instead of
+def dispatch(%{type: :created} = command), do: create(command.id)
+def dispatch(_command), do: {:error, :unsupported_command}
+# write
+def dispatch(%{type: :created, id: id}), do: create(id)
+def dispatch(%{type: :created}), do: {:error, :missing_id}
+def dispatch(_command), do: {:error, :unsupported_command}
+```
+
+A function that parses string-keyed input matches the keys it requires in its head, `def parse(%{"id" => id, "type" => type, "data" => data} = payload)`, with `def parse(_payload), do: {:error, :invalid_payload}` below it: those keys select the clause by their presence, so they belong in the head even when the guard reads none of them. The clause that catches the rest names only what it can know, `:invalid_payload`, never a cause it cannot tell apart; selecting the type and validating its fields stay separate functions, as the rule above says.
 
 ### Update structs with `%{struct | field: value}`
 

@@ -19,6 +19,8 @@ Write the package's main module(s) using Req as the HTTP library. Put all module
 - Every public function has a `@spec`, including `@doc false` ones and ones defined inside `quote`; a function under `@impl` needs none.
 - Public functions check their arguments with guards or patterns (a binary for the API key, numbers for coordinates), so a bad argument fails in `WeatherClient`, not inside Req.
 - All modules are under `WeatherClient`.
+- A body does not re-match one atom key or struct field out of a value the function already holds (`%Req.Response{status: status} = response` followed by one use of `status`); dot access reads it. A pattern that binds several fields used together, matches a literal, carries a guard, or sits in a `case` clause or on a call's result is kept.
+- A field no pattern or guard uses is not bound in every head of a function with three or more clauses, nor in any head of a multi-clause function whose pattern spreads over several lines; fields the body alone needs are read from the matched value, and a head that spreads while binding only what its guard reads is fine.
 - The file passes `mix format --check-formatted`.
 - Expected reads: `library-design.md`.
 

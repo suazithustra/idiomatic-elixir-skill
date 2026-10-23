@@ -1,0 +1,362 @@
+{
+ "case": "library-client",
+ "condition": "skill",
+ "notes": [
+  "Check batch 2026-10-23-check (head 83e7f5b with uncommitted changes to idiomatic-elixir/SKILL.md and the case files, skill_hash 7d944095...): four skill runs (haiku-1, haiku-2, sonnet-1, sonnet-2), no opus, so per_rule gives opus as unavailable. All have rc 0, a model_id matching the requested model and reads of SKILL.md and library-design.md; each transcript shows Read calls on both files before the Write of weather.ex.",
+  "git diff ba24972 -- idiomatic-elixir/ (working tree) changes \"Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys\" (three new paragraphs), rewrites \"In multi-clause functions, bind in the head only what patterns and guards use\", and adds one sentence to \"Capture logs with `capture_log/2`, not a handler\" in ex_unit.md. The nine rules graded for this case before are unchanged and are graded to the standard of evals/sweeps/2026-10-22-d/grades/library-client-skill.json. The two changed rules are newly indexed for this case and graded against their current text.",
+  "Read required keys: the sentence that decides the verdict for this case is \"A pattern in a body that pulls one atom key or struct field out of a value the function already holds, with no literal and no guard, is dot access written long.\" The rule's text names maps and structs, so opts[:api_key] on the keyword list Keyword.validate!/2 returns (haiku-1 line 47, sonnet-2 line 107) is outside it; library-design.md's own example reads opts[:parts] the same way. First new bullet (re-match of a held value): 0 of 4 runs violated; 3 of 4 exercised it (haiku-1, sonnet-1 and sonnet-2 read client fields with dot access in a body). haiku-2 did not exercise it: it reads the client's :req through a single-clause head pattern (line 54) and its bodies read no field of a value they hold. A run counts as exercising the bullet when a body reads an atom key or struct field out of a value the function holds; a case clause or pattern on a call's result is the kept form and does not count on its own.",
+  "In multi-clause functions: the sentence that decides the verdict is \"A field no pattern or guard in the clause uses, bound in every clause of a function with three or more clauses, or bound in a head whose pattern `mix format` spreads over several lines, makes the reader scan every head to find what selects.\" Second new bullet (clutter in a function of three or more clauses): 0 of 4 runs violated; 4 of 4 exercised it (handle_response/1 has four, three, five and three clauses; haiku-1's Error.message/1 has three). Tuple elements bound beside a selecting tag (haiku-1 Error.message/1) are not counted as fields, as in the webhook-parser grades.",
+  "The bullet and the rule text disagree in two places. First, the bullet says no head's pattern spreads over several lines, while the rule text forbids that only when the head binds a field no pattern or guard uses: sonnet-1's handle_response/1 head at lines 140-150 spreads over eleven lines but binds only keys its guard reads (line 151), so it is clean under the rule and would be violated under the bullet's literal wording. Second, \"a field ... bound in every clause\" is read here as the same field in every clause. haiku-2's handle_response/1 binds body body-only in both Req.Response heads (lines 75, 80) and status in line 80, and escapes only because its third head is {:error, exception}. A reading where every head binds some body-only field, not necessarily the same one, changes nothing for the four check runs. I would align the bullet to the rule text and say in the rule whether \"every clause\" means the same field, since the previous sweep's results below turn on that.",
+  "Previous sweep re-read (evals/sweeps/2026-10-22-d/library-client, five baseline and five skill runs; grade files not edited). First bullet: 0 of 10 violated. The only body pattern on a held value is skill-haiku-1 to_forecast/1 line 120, %{\"temperature_c\" => temp_c, \"condition\" => condition, \"wind_kph\" => wind_kph} = body, which binds three string keys used together and is kept by the bullet. Second bullet under the rule text: 0 of 10 violated. Under the bullet's literal multi-line wording, 1 of 10: baseline-haiku-2 parse_forecast/1, a three-clause function whose second head spreads over lines 95-99 while binding only keys the guard reads (line 100). Under the every-head-binds-some-body-only-field reading, 3 of 10: baseline-opus-1 Error.message/1 (lines 204, 208, 212: status and message, message, body), skill-opus-1 Error.message/1 (lines 85, 89, 94, 98: details, status, status, details) and skill-sonnet-1 Error.message/1 (lines 149, 154, 158, 162: status, status, details, details); skill-sonnet-2's Error.message/1 escapes because line 178 binds only a guarded field.",
+  "Unchanged rules where this batch differs from the d sweep: haiku-1 breaks Group related parameters by listing its options under \"## Options for `new/1`\" in the @moduledoc (line 10) while new/1's @doc only points there (line 34). The earlier grades named the same placement as part of every such violation, though always alongside a missing Keyword.validate!/2; here the verdict rests on \"document each one under `## Options` in `@doc`\" alone. haiku-1 also breaks Use exception structs as error reasons: its @doc false Forecast.from_map/1 returns {:error, :invalid_body} (line 147), which forecast/3 wraps in a WeatherClient.Error (line 99) before any caller sees it. The 2026-10-22 baseline grade counted a private parser's atom reason the same way.",
+  "Unchanged rules outside the list, judged as in the d sweep: sonnet-1 breaks Match every expected shape, because its Error doc defines :api_error as a 4xx or 5xx status (line 7) while every non-200 status reaches it (lines 160 and 165, confirmed with a stub Req for 201 and 302). haiku-1, haiku-2 and sonnet-2 document their catch-alls to match. Before you finish is flagged only where the file fails mix format --check-formatted: haiku-2 fails at lines 96 and 102 and ran no shell command; the other three pass (rechecked in the scratch folder). haiku-1 checked syntax and formatting; sonnet-1 and sonnet-2 ran mix format and compiled.",
+  "Not graded, as in the previous sweeps, but noted in the summaries and matching result.json compiles: haiku-1, sonnet-1 and sonnet-2 compile apart from the absent Req; haiku-2 does not, because WeatherClient builds %Error{} (line 85) before the file defines WeatherClient.Error (line 119). haiku-1's @moduledoc interpolates @default_base_url and @default_timeout (lines 13-14) before they are set (lines 21-22), so compiling warns and the rendered docs show empty defaults; its session did not compile. With a stub Req, a non-binary key fails inside WeatherClient in every run: ArgumentError from haiku-1's build/3 catch-all (line 84), FunctionClauseError in haiku-2's and sonnet-2's build/3 and in sonnet-1's new/2."
+ ],
+ "runs": {
+  "skill-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 91: headers = [{\"x-api-key\", client.api_key}]; line 93: Req.new(base_url: client.base_url, receive_timeout: client.timeout, headers: headers) -- client fields read with dot access; the required response keys are read with patterns (line 103: defp handle_response({:ok, %Req.Response{status: status, body: %{\"error\" => message}}}); lines 133-137: def from_map(%{ / \"temperature_c\" => temperature_c, / \"condition\" => condition, / \"wind_kph\" => wind_kph / })); no map[:key] or Map.get on a map or struct, and no body pattern re-matching a held value"
+    },
+    "In multi-clause functions, bind in the head only what patterns and guards use": {
+     "verdict": "clean",
+     "evidence": "handle_response/1 has four clauses (line 96: defp handle_response({:ok, %Req.Response{status: 200, body: body}}) do; line 103: defp handle_response({:ok, %Req.Response{status: status, body: %{\"error\" => message}}}); line 108: defp handle_response({:ok, %Req.Response{status: status}}) do; line 112: defp handle_response({:error, exception}) do): body is bound body-only in the first head and status in the third, but no field is bound in every clause, and every head pattern sits on one line (line 104 is the guard's wrap); Error.message/1 (lines 166, 170, 174) selects each clause by the literal tag in :reason and binds the tuple elements beside it, not counted, as in the webhook-parser grades"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 68-72: def forecast!(%__MODULE__{} = client, lat, lon) do / case forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error / end; no rescue; the only raise is build/3's catch-all for invalid options (line 85: raise ArgumentError,), which library-design.md allows"
+    },
+    "Group related parameters": {
+     "verdict": "violated",
+     "evidence": "line 10: ## Options for `new/1`; line 34: Builds a client from the options listed in the module docs. -- Keyword.validate!/2 is there (line 41: Keyword.validate!(opts, [), but the options are listed in the @moduledoc, not under ## Options in new/1's @doc, which the rule asks for (\"document each one under `## Options` in `@doc`\")"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "lines 55-56: @spec forecast(t(), number(), number()) :: / {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "line 21: @default_base_url \"https://weather.example.com\"; line 22: @default_timeout :timer.seconds(10) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 39: def new(opts) when is_list(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "violated",
+     "evidence": "line 147: def from_map(_body), do: {:error, :invalid_body}; line 132: @spec from_map(term()) :: {:ok, t()} | {:error, :invalid_body} -- the @doc false public parser returns an atom reason; forecast/3 turns it into a WeatherClient.Error (line 99: {:error, _reason} -> {:error, Error.exception(reason: {:unexpected_response, 200})}), and the other reasons use the defexception at line 161"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the key taken from opts (line 47: build(opts[:api_key], opts[:base_url], opts[:timeout])) and the other option values reach a guard before the request (lines 75-76: defp build(api_key, base_url, timeout) / when is_binary(api_key) and is_binary(base_url) and is_integer(timeout) and timeout > 0 do); coordinates guarded (line 57: def forecast(%__MODULE__{} = client, lat, lon) when is_number(lat) and is_number(lon) do)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "@spec on new/1 (line 38), forecast/3 (lines 55-56), forecast!/3 (line 67) and the @doc false from_map/1 (line 132: @spec from_map(term()) :: {:ok, t()} | {:error, :invalid_body}); Error.message/1 sits under line 165: @impl true, which the rule exempts"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 24: @derive {Inspect, except: [:api_key]} with line 25: defstruct [:api_key, :base_url, :timeout] (a stub Req inspects the client as #WeatherClient<base_url: ..., timeout: 10000, ...>)"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "missed: Keyword.validate!/2 is used (line 41), but the options are documented under \"## Options for `new/1`\" in the @moduledoc (line 10), not in new/1's @doc",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; forecast!/3 built on it (lines 68-72)",
+    "missed: forecast/3's reasons are WeatherClient.Error (defexception, line 161), but the @doc false Forecast.from_map/1 returns {:error, :invalid_body} (line 147)",
+    "met: no option changes a return shape",
+    "met: API key hidden with @derive {Inspect, except: [:api_key]} (line 24)",
+    "met: every public function has a @spec, including @doc false from_map/1; message/1 is under @impl",
+    "met: API key checked as a binary in build/3's guard (line 76), coordinates with is_number (line 57)",
+    "met: all modules under WeatherClient",
+    "met: no body re-matches a field of a held value; client fields are read with dot access (lines 91, 93)",
+    "met: no field is bound body-only in every head of handle_response/1 or Error.message/1, and no head pattern spreads over several lines",
+    "met: passes mix format --check-formatted",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/1 with Keyword.validate!/2 and every option value checked in a guarded build/3 (including the API key), guarded coordinates, a defexception error with a message/1 per reason, a bang built on the non-bang and an Inspect derive, but listed the options in the @moduledoc instead of new/1's @doc and let its @doc false parser return {:error, :invalid_body}, breaking Group related parameters and Use exception structs as error reasons; the file is formatted and compiles apart from the absent Req, but its @moduledoc interpolates @default_base_url and @default_timeout before they are set (lines 13-14), so compiling warns and the docs show empty defaults; the session checked syntax and formatting but did not compile; it read SKILL.md and library-design.md."
+  },
+  "skill-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": false,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 54: def forecast(%__MODULE__{req: req}, lat, lon) reads the client's one field with a pattern in a single-clause head; required response keys are read with patterns (line 88: defp api_error(status, %{\"error\" => message}) when is_binary(message) do; line 96: defp parse_forecast(%{\"temperature_c\" => temperature, \"condition\" => condition, \"wind_kph\" => wind})); no map[:key] or Map.get on a map or struct, and no body pattern re-matching a held value"
+    },
+    "In multi-clause functions, bind in the head only what patterns and guards use": {
+     "verdict": "clean",
+     "evidence": "handle_response/1 has three clauses (line 75: defp handle_response({:ok, %Req.Response{status: status, body: body}}); line 80: defp handle_response({:ok, %Req.Response{status: status, body: body}}) do; line 84: defp handle_response({:error, exception}) do): body is bound body-only in both Req.Response heads and status in the second, but the {:error, exception} head binds no field, so no field is bound in every clause, and each head pattern sits on one line (line 76 is the guard's wrap); see notes"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "no rescue and no raise; failures are returned as {:error, %Error{}} (line 85: {:error, %Error{kind: :transport, message: Exception.message(exception)}}); no bang variant"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 36-41: Keyword.validate! with defaults; line 26: ## Options in new/1's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 53: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "line 14: @default_base_url \"https://api.weather.example\"; line 15: @default_timeout 15_000 are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 35: def new(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 130: defexception [:kind, :status, :message]; every {:error, reason} carries a %Error{}"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the key taken from opts (line 43: build(Keyword.fetch!(opts, :api_key), opts[:base_url], opts[:timeout])) and the other option values reach a guard before the request (lines 62-64: defp build(api_key, base_url, timeout) / when is_binary(api_key) and api_key != \"\" and is_binary(base_url) and / is_integer(timeout) and timeout > 0 do); coordinates range-guarded (lines 55-56)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "@spec on new/1 (line 34) and forecast/3 (line 53), the only public functions; no @doc false or macro-defined functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 17: @derive {Inspect, except: [:req]} with line 18: defstruct [:req]; the key lives only in the request's headers (line 68: headers: [{\"x-api-key\", api_key}],), which the derive leaves out (a stub Req inspects the client as #WeatherClient<...>)"
+    }
+   },
+   "other_violations": [
+    "Before you finish: line 96: defp parse_forecast(%{\"temperature_c\" => temperature, \"condition\" => condition, \"wind_kph\" => wind}) and line 102: {:error, %Error{kind: :invalid_response, message: \"unexpected response body: #{inspect(body)}\"}} are not formatted; the session never ran mix format"
+   ],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "met: Keyword.validate!/2 (lines 36-41) and ## Options in new/1's @doc (line 26)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; there is no bang variant",
+    "met: error reason is WeatherClient.Error, a defexception (line 130)",
+    "met: no option changes a return shape",
+    "met: API key hidden with @derive {Inspect, except: [:req]} (line 17), the key living only in the excluded :req field",
+    "met: both public functions have a @spec",
+    "met: API key checked as a non-empty binary in build/3's guard (line 63), coordinates guarded with is_number and ranges (lines 55-56)",
+    "met: all modules under WeatherClient",
+    "untested: no body reads a field of a value the function holds; the client's :req is read through a single-clause head pattern (line 54)",
+    "met: handle_response/1 (three clauses) binds no field body-only in every head and no head pattern spreads over several lines",
+    "missed: fails mix format --check-formatted (lines 96 and 102)",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct holding a prebuilt Req request through new/1 with Keyword.validate!/2 and every option value checked in a guarded build/3 (including the API key), range-guarded coordinates, a defexception error with a kind per failure and an Inspect derive that leaves out :req, with no bang variant, breaking none of the case's rules, but left two lines unformatted; it read SKILL.md and library-design.md and ran no shell command. Separately from Req, the file does not compile: WeatherClient uses %Error{} (line 85) before the file defines WeatherClient.Error (line 119), per result.json; with the modules reordered and a stub Req, a non-binary key fails with FunctionClauseError in WeatherClient.build/3."
+  },
+  "skill-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 106: base_url: client.base_url,; line 108: headers: [{\"x-api-key\", client.api_key}],; line 109: receive_timeout: client.timeout; line 113: |> Keyword.merge(client.req_options) -- client fields read with dot access; required response keys read with patterns (lines 144-148, line 160); no map[:key] or Map.get on a map or struct, and no body pattern re-matching a held value"
+    },
+    "In multi-clause functions, bind in the head only what patterns and guards use": {
+     "verdict": "clean",
+     "evidence": "handle_response/1 has five clauses (lines 140, 155, 160, 165, 170): the head that spreads over lines 140-150 binds only temperature_c, condition and wind_kph, which the guard reads (line 151: when is_number(temperature_c) and is_binary(condition) and is_number(wind_kph) do), and status is bound body-only only in line 160: defp handle_response({:ok, %Req.Response{status: status, body: %{\"error\" => message}}}) and line 165: defp handle_response({:ok, %Req.Response{status: status}}) do, not in every clause; see notes on the bullet's wording"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 122-126: def forecast!(%__MODULE__{} = client, lat, lon) do / case forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error / end; no rescue and no other raise"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 83-88: Keyword.validate! with defaults; line 73: ## Options in new/2's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 99: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "line 56: @default_base_url \"https://api.weather.example.com\"; line 57: @default_timeout :timer.seconds(10) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 82: def new(api_key, opts \\\\ []) when is_binary(api_key) and api_key != \"\" do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 21: defexception [:reason, :status, :message, :cause]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the API key is a guarded positional argument (line 82: def new(api_key, opts \\\\ []) when is_binary(api_key) and api_key != \"\" do); the option values reach a guard before the request (lines 129-131: defp build(api_key, base_url, timeout, req_options) / when is_binary(base_url) and is_integer(timeout) and timeout > 0 and / is_list(req_options) do); coordinates range-guarded (lines 100-102)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "@spec on new/2 (line 81), forecast/3 (line 99) and forecast!/3 (line 121), the only public functions"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 59: @derive {Inspect, except: [:api_key]} with line 61: defstruct [:api_key, :base_url, :timeout, :req_options]"
+    }
+   },
+   "other_violations": [
+    "Match every expected shape and let unexpected ones crash: line 160: defp handle_response({:ok, %Req.Response{status: status, body: %{\"error\" => message}}}); line 165: defp handle_response({:ok, %Req.Response{status: status}}) do (every status other than 200 lands on reason :api_error, including other 2xx and 3xx, which the Error doc at line 7 defines as \"the API answered with a 4xx or 5xx status\"; a 201 and a 302 against a stub Req return %WeatherClient.Error{reason: :api_error, status: 201} and status: 302)"
+   ],
+   "checks": [
+    "met: API key is new/2's positional argument, base URL and timeout are options; no Application call",
+    "met: Keyword.validate!/2 (lines 83-88) and ## Options in new/2's @doc (line 73)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; forecast!/3 built on it (lines 122-126)",
+    "met: error reason is WeatherClient.Error, a defexception (line 21)",
+    "met: no option changes a return shape",
+    "met: API key hidden with @derive {Inspect, except: [:api_key]} (line 59)",
+    "met: every public function has a @spec",
+    "met: API key guarded as a non-empty binary in new/2 (line 82), coordinates guarded with is_number and ranges (lines 100-102)",
+    "met: all modules under WeatherClient",
+    "met: no body re-matches a field of a held value; client fields are read with dot access (lines 106-113)",
+    "met under the rule text, missed under the bullet's literal wording: no field is bound body-only in every head of handle_response/1, but its first head's pattern spreads over lines 140-150, binding only keys the guard reads",
+    "met: passes mix format --check-formatted",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/2 (API key positional and guarded, every option value checked in a guarded build/4 after Keyword.validate!/2), range-guarded coordinates, a five-clause handle_response/1 whose first head matches the forecast keys over eleven lines, a defexception error, a bang built on the non-bang and an Inspect derive, breaking none of the case's rules, but sent non-200 statuses its docs call 4xx/5xx to :api_error; it ran mix format and compiled the file, and read SKILL.md and library-design.md. It defines Error and Forecast first, so it compiles against a stub Req, and a non-binary key fails with FunctionClauseError in WeatherClient.new/2."
+  },
+  "skill-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [
+    "SKILL.md",
+    "library-design.md"
+   ],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 122: base_url: client.base_url,; line 123: headers: [{\"x-api-key\", client.api_key}],; line 124: receive_timeout: client.timeout -- client fields read with dot access; required response keys read with patterns (line 42: def parse(%{\"temperature_c\" => temperature_c, \"condition\" => condition, \"wind_kph\" => wind_kph}); line 152: defp handle_response(%Req.Response{status: status, body: %{\"error\" => message}})); no map[:key] or Map.get on a map or struct, and no body pattern re-matching a held value"
+    },
+    "In multi-clause functions, bind in the head only what patterns and guards use": {
+     "verdict": "clean",
+     "evidence": "handle_response/1 has three clauses (line 150: defp handle_response(%Req.Response{status: 200, body: body}), do: Forecast.parse(body); line 152: defp handle_response(%Req.Response{status: status, body: %{\"error\" => message}}); line 157: defp handle_response(%Req.Response{status: status}) do): body is bound body-only in the first head and status in the third, while the second's status is read by its guard (line 153), so no field is bound body-only in every clause, and each head pattern sits on one line"
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "lines 137-141: def forecast!(%__MODULE__{} = client, lat, lon) do / case forecast(client, lat, lon) do / {:ok, forecast} -> forecast / {:error, error} -> raise error / end; no rescue and no other raise"
+    },
+    "Group related parameters": {
+     "verdict": "clean",
+     "evidence": "lines 104-105: Keyword.validate! with defaults; line 89: ## Options in new/1's @doc"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 116: @spec forecast(t(), number(), number()) :: {:ok, Forecast.t()} | {:error, Error.t()}; no option changes it"
+    },
+    "Read configuration at runtime, not into module attributes": {
+     "verdict": "clean",
+     "evidence": "line 73: @default_base_url \"https://api.weather.example.com\"; line 74: @default_timeout :timer.seconds(10) are literals; no Application call in the file"
+    },
+    "Take configuration as arguments, not from the application environment": {
+     "verdict": "clean",
+     "evidence": "line 103: def new(opts) when is_list(opts) do; no Application call in the file"
+    },
+    "Use exception structs as error reasons": {
+     "verdict": "clean",
+     "evidence": "line 23: defexception [:reason, :status, :message]"
+    },
+    "Make polymorphism explicit": {
+     "verdict": "clean",
+     "evidence": "the key taken from opts (line 107: build(opts[:api_key], opts[:base_url], opts[:timeout])) and the other option values reach a guard before the request (lines 144-146: defp build(api_key, base_url, timeout) / when is_binary(api_key) and api_key != \"\" and is_binary(base_url) and / (timeout == :infinity or (is_integer(timeout) and timeout > 0)) do); coordinates range-guarded (lines 117-119)"
+    },
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "@spec on new/1 (line 102), forecast/3 (line 116), forecast!/3 (line 136) and the @doc false Forecast.parse/1 (line 41: @spec parse(term()) :: {:ok, t()} | {:error, WeatherClient.Error.t()})"
+    },
+    "Keep secrets out of logs and inspect output": {
+     "verdict": "clean",
+     "evidence": "line 76: @derive {Inspect, except: [:api_key]} with line 78: defstruct [:api_key, :base_url, :timeout]"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: API key, base URL and timeout are options to new/1; no Application call",
+    "met: Keyword.validate!/2 (line 105) and ## Options in new/1's @doc (line 89)",
+    "met: forecast/3 returns {:ok, _} | {:error, _}; forecast!/3 built on it (lines 137-141)",
+    "met: error reason is WeatherClient.Error, a defexception (line 23)",
+    "met: no option changes a return shape",
+    "met: API key hidden with @derive {Inspect, except: [:api_key]} (line 76)",
+    "met: every public function has a @spec, including @doc false Forecast.parse/1",
+    "met: API key checked as a non-empty binary in build/3's guard (line 145), coordinates guarded with is_number and ranges (lines 117-119)",
+    "met: all modules under WeatherClient",
+    "met: no body re-matches a field of a held value; client fields are read with dot access (lines 122-124), and the Req result is matched in case clauses (lines 127-130)",
+    "met: handle_response/1 (three clauses) binds no field body-only in every head and no head pattern spreads over several lines",
+    "met: passes mix format --check-formatted",
+    "met: Expected reads library-design.md is in reads"
+   ],
+   "summary": "Built a client struct through new/1 with Keyword.validate!/2 and every option value checked in a guarded build/3 (including the API key), range-guarded coordinates, a guarded @doc false parser with a spec, a defexception error whose :api_error is guarded to 4xx/5xx as documented, a bang built on the non-bang and an Inspect derive, breaking none of the case's rules or any other; it ran mix format and compiled the file, and read SKILL.md and library-design.md. It defines Error and Forecast first, so it compiles against a stub Req, and a non-binary key fails with FunctionClauseError in WeatherClient.build/3."
+  }
+ },
+ "per_rule": {
+  "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "In multi-clause functions, bind in the head only what patterns and guards use": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Group related parameters": {
+   "opus": "unavailable",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Give each function one return shape": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Read configuration at runtime, not into module attributes": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Take configuration as arguments, not from the application environment": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Use exception structs as error reasons": {
+   "opus": "unavailable",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Make polymorphism explicit": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Add specs, and hide technical functions from the docs": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Keep secrets out of logs and inspect output": {
+   "opus": "unavailable",
+   "haiku": "clean",
+   "sonnet": "clean"
+  }
+ }
+}

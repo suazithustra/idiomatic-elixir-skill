@@ -2,7 +2,7 @@
 
 A lightweight agent skill for Elixir developers that attempts to fill in known gaps in code quality.
 
-This skill gives the agent a set of rules for discovered cases and is tested against an evaluation suite to cull redundancy as models improve. Rules for specialized areas are referenced in separate files to economize token consumption. The skill follows the [Agent Skills specification](https://agentskills.io/specification), so it works with any agent that supports skills.
+This skill gives the agent a set of rules for discovered cases and is tested against an evaluation suite to cull redundancies as models improve. Rules for specialized areas are referenced in separate files to economize token consumption. The skill follows the [Agent Skills specification](https://agentskills.io/specification), so it works with any agent that supports skills.
 
 ## What it covers
 
@@ -133,7 +133,7 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
 
 1. Check that the rule isn't already there under another name. Search `SKILL.md` and `references/` for the functions and patterns it involves.
 2. Put rules that apply to all Elixir code in `SKILL.md`. Put rules that apply to one topic in the matching reference file.
-3. Write the rule in the same shape as the existing ones: a heading that says what to write, one or two sentences on why, and a wrong-then-right example where it helps.
+3. Write the rule in the same shape as the existing ones: a heading that says what to write, a wrong-then-right example where it helps, and as many sentences as it takes to name the shape to write, the shape it replaces, what goes wrong with the replaced shape, and the test an agent can apply. A sentence that does none of those is cut; brevity itself is not a goal. The sweeps under `evals/` show that a rule takes when it names the exact shape agents were writing and shows it.
 
    ````markdown
    ### Use `and`, `or`, `not` when the operands are booleans
