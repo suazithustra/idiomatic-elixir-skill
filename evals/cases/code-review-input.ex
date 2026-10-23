@@ -21,16 +21,20 @@ defmodule Accounts.UserImporter do
       if is_binary(email) && age >= 18 do
         user = %User{email: email, age: age, role: role, nickname: nickname}
 
-        case Repo.insert(user) do
-          {:ok, user} ->
-            if opts[:notify] && !opts[:silent] do
-              send_welcome(user)
-            end
+        if Repo.get_by(User, email: email) == nil do
+          case Repo.insert(user) do
+            {:ok, user} ->
+              if opts[:notify] && !opts[:silent] do
+                send_welcome(user)
+              end
 
-            if opts[:return_id], do: user.id, else: {:ok, user}
+              if opts[:return_id], do: user.id, else: {:ok, user}
 
-          _ ->
-            {:error, :insert_failed}
+            _ ->
+              {:error, :insert_failed}
+          end
+        else
+          {:error, :invalid}
         end
       else
         {:error, :invalid}

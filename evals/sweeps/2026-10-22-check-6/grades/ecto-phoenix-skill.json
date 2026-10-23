@@ -1,0 +1,269 @@
+{
+  "case": "ecto-phoenix",
+  "condition": "skill",
+  "notes": [
+    "Check batch 2026-10-22-check-6: four runs (haiku-1, haiku-2, sonnet-1, sonnet-2), no opus, at head 192abf3 with uncommitted skill changes; every run has rc 0, a model_id matching its tier, and skill_hash 40c55876... which equals evals/tools/common.py folder_hash of the working tree's idiomatic-elixir/, so all runs are graded against the current text.",
+    "Rule list: the six ecto-phoenix.md rules plus the rule new to this case's index row, Build a multi-line argument under a name before the call (uncommitted in SKILL.md, no previous verdict). references/ecto-phoenix.md is unchanged since 0397dec (git diff 0397dec -- idiomatic-elixir/ touches only SKILL.md and references/testing.md), so the six are graded to the 2026-10-22-b standard, including its reading of Keep migrations to schema changes: a separate script that uses MyApp.Blog.Post misses the case check, not the rule, which forbids schema modules only inside migrations (haiku-2 line 139: alias MyApp.Blog.Post).",
+    "Build a multi-line argument under a name before the call: graded on the sentence \"When an argument is a map, struct or keyword list that would span several lines, or holds a call of its own, build it first under a name that says what it is, write it one field per line, and set each multi-line statement apart with a blank line.\" Read literally, the \"or holds a call of its own\" clause covers a one-line keyword list or map whose value is a call, and that is what decides haiku-2 (line 105: |> change(published_at: DateTime.utc_now()); line 159: render(conn, :show, post: Blog.get_post!(id))). An argument that is itself a call and not a map, struct or keyword literal (haiku-1 line 118 and sonnet-1 line 106: |> Post.publish_changeset(DateTime.utc_now(:second))) and an fn argument (Repo.transact(fn -> ...), sonnet-2 line 152 Ecto.Migrator.with_repo(Repo, fn repo -> backfill(repo) end)) are outside the rule's text and not counted; sonnet-2 names that value anyway (line 109: published_at = DateTime.utc_now(:second)).",
+    "Every multi-line map/struct/keyword argument in the four files, quoted: the audit-log attrs map is built under the name attrs, one field per line, with a blank line before the %Log{} |> Log.changeset(attrs) |> Repo.insert() pipeline, in all four runs (haiku-1 lines 123-128, haiku-2 lines 110-115, sonnet-1 lines 112-115, sonnet-2 lines 119-124). The only other multi-line keyword lists are the Ecto from/2 query clauses. The query macro needs those clauses as a literal, so they cannot be named themselves; they were graded by whether the query is named before the Repo call. haiku-1 (lines 79-85: query = / from p in Post, ... / Repo.all(query)), sonnet-1 (lines 70-76) and sonnet-2 (lines 72-79) name it, with a blank line before Repo.all(query), and haiku-1's backfill script does the same (lines 156-161). haiku-2 pipes an unnamed multi-line from(...) into the Repo call twice (lines 72-77 and 142-147). Those are counted under Write pipelines that start with a value, following the 2026-10-22 and 2026-10-21 grades that flagged from(...) |> Repo.all(); its verdict on the new rule rests on lines 105 and 159 alone. The controllers' render/3 calls take a short keyword of names in haiku-1 (line 174), sonnet-1 (line 157) and sonnet-2 (line 173). Result: haiku-1, sonnet-1 and sonnet-2 clean; haiku-2 violated.",
+    "The other six rules: 0 of 4 violated. All four runs cast only [:title, :body] and set user_id on the struct; three use assoc_constraint(:user), and sonnet-2 uses foreign_key_constraint(:user_id) (line 33). All four use Repo.transact/2, preload the author (sonnet-2 by join plus preload), keep the migration to add :published_at and show via Blog.get_post!/1 over Repo.get!/2. The backfills are a script on the \"posts\" table (haiku-1), a raw-SQL script (sonnet-1), a release task with raw SQL (sonnet-2), and a script over MyApp.Blog.Post (haiku-2), which misses that case check.",
+    "Other rules changed since 0397dec were checked for other_violations: no run uses defstruct (the new nil-default sentence); every module opens use, import, alias in that order (the new Open a module rule); no do: bodies (the rewritten do: rule); every with has two steps; no tests. other_violations found: haiku-2 starts two pipelines with from(...) (Write pipelines), and sonnet-2 writes fn repo -> backfill(repo) end where &backfill/1 fits (Use captures, unchanged since 0397dec). No public context function lacks @doc and every MyApp.Blog has @moduledoc.",
+    "format_ok: result.json reports false for all four because plain mix format adds parentheses to the Ecto and Phoenix DSL calls. As in the previous sweeps, the grader recomputed it with Code.format_string!/2, with the DSL calls (field, belongs_to, timestamps, from, add, alter, execute and others) in locals_without_parens, and all four pass. Nothing compiles because Phoenix and Ecto are not installed.",
+    "Transcripts show every run reading exactly SKILL.md and references/ecto-phoenix.md, then writing blog.ex in one Write call (the Haiku runs first made the folder with mkdir). No run ran elixir or mix."
+  ],
+  "runs": {
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Build a multi-line argument under a name before the call": {
+          "verdict": "clean",
+          "evidence": "line 79: query =; line 80: from p in Post,; line 81: where: p.user_id == ^user_id,; line 82: order_by: [desc: p.inserted_at, desc: p.id],; line 83: preload: [:user]; line 85: Repo.all(query) (query named, blank line before the call); line 123: attrs = %{; line 124: action: \"post.published\",; line 125: resource: \"post\",; line 126: resource_id: post.id,; line 127: user_id: post.user_id; line 128: }; line 130: %Log{}; line 131: |> Log.changeset(attrs) (one field per line, blank line before the pipeline); backfill line 156: query = ... line 161: {count, _} = Repo.update_all(query, []); line 174: render(conn, :show, post: post)"
+        },
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 38: |> cast(attrs, [:title, :body]); line 39: |> validate_required([:title, :body]); line 40: |> assoc_constraint(:user); line 70: %Post{user_id: user.id}; publish through a changeset, line 118: |> Post.publish_changeset(DateTime.utc_now(:second)); line 119: |> Repo.update(); audit row, line 130: %Log{}; line 131: |> Log.changeset(attrs)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 95: post = Repo.get!(Post, id); line 173: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 108: Repo.transact(fn ->; line 109: with {:ok, published} <- set_published_at(post),; line 110: {:ok, _log} <- insert_audit_log(published) do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 83: preload: [:user]"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 143: alter table(:posts) do; line 144: add :published_at, :utc_datetime; backfill in a separate script on the table name, line 157: from p in \"posts\","
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 173: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 38-40)",
+        "met: user_id set on the struct, not cast (line 70)",
+        "met: listing preloads the author (line 83); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 108)",
+        "met: migration only adds the column (lines 142-146); backfill is a separate script on the \"posts\" table (line 157), not MyApp.Blog.Post",
+        "met: controller calls Blog.get_post!/1 only (line 173)",
+        "met: show action relies on Repo.get!/2 raising (line 95)",
+        "met: no string error reasons; errors are changesets",
+        "met: no restating comments; MyApp.Blog has @moduledoc and every public context function has @doc",
+        "met: the multi-line attrs map is built under a name, one field per line, with a blank line before the call (lines 123-130); the query is named before Repo.all (lines 79-85)",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Repo.transact/2 publish, column-only migration with a separate table-name backfill script, a get!-based show action and named attrs and query values before their calls, breaking no listed rule; read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Build a multi-line argument under a name before the call": {
+          "verdict": "violated",
+          "evidence": "line 159: render(conn, :show, post: Blog.get_post!(id)) (keyword argument holding a call, not built under a name); line 105: |> change(published_at: DateTime.utc_now()) (keyword argument holding a call); the attrs map is named, line 110: attrs = %{ ... line 115: }, with a blank line before line 117: %Log{}; the from(...) queries are not named (line 72: from(p in Post, ... line 77: |> Repo.all(); line 143: from(p in Post, ... line 147: |> Repo.update_all([])) but are counted under Write pipelines, not here"
+        },
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 35: |> cast(attrs, [:title, :body]); line 36: |> validate_required([:title, :body]); line 37: |> assoc_constraint(:user); line 61: %Post{user_id: user.id}; publish through a changeset, line 105: |> change(published_at: DateTime.utc_now()); line 106: |> Repo.update(); audit row, line 117: %Log{}; line 118: |> Log.changeset(attrs)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 85: |> Repo.get!(id); line 159: render(conn, :show, post: Blog.get_post!(id))"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 95: Repo.transact(fn ->; line 96: with {:ok, published} <- set_published_at(post),; line 97: {:ok, _log} <- insert_publish_log(published) do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 75: preload: [:user]"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 128: alter table(:posts) do; line 129: add :published_at, :utc_datetime_usec. The separate backfill script uses the schema module (line 139: alias MyApp.Blog.Post; line 143: from(p in Post,), but the rule forbids schema modules only inside migrations, so this misses the case check, not the rule"
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 159: render(conn, :show, post: Blog.get_post!(id))"
+        }
+      },
+      "other_violations": [
+        "Write pipelines that start with a value and read top to bottom: line 72: from(p in Post, ... line 77: |> Repo.all(); line 143: from(p in Post, ... line 147: |> Repo.update_all([])"
+      ],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 35-37)",
+        "met: user_id set on the struct, not cast (line 61)",
+        "met: listing preloads the author (line 75); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 95)",
+        "missed: migration only adds the column (lines 127-131) and the backfill is a separate script, but it uses MyApp.Blog.Post (line 139: alias MyApp.Blog.Post)",
+        "met: controller calls Blog.get_post!/1 only (line 159)",
+        "met: show action relies on Repo.get!/2 raising (line 85)",
+        "met: no string error reasons; errors are changesets",
+        "met: no restating comments; MyApp.Blog has @moduledoc and every public context function has @doc",
+        "missed: keyword arguments holding calls are passed inline (line 159: render(conn, :show, post: Blog.get_post!(id)); line 105: |> change(published_at: DateTime.utc_now())), and the multi-line queries are piped in unnamed (lines 72-77, 142-147); the attrs map is named (lines 110-115)",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Repo.transact/2 publish, column-only migration and get!-based show action, but passed keyword arguments holding calls inline (lines 105, 159), breaking Build a multi-line argument under a name before the call; its separate backfill script uses MyApp.Blog.Post, and it starts two pipelines with from(...); read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Build a multi-line argument under a name before the call": {
+          "verdict": "clean",
+          "evidence": "line 70: query =; line 71: from p in Post,; line 72: where: p.user_id == ^user.id,; line 73: order_by: [desc: p.inserted_at, desc: p.id],; line 74: preload: :user; line 76: Repo.all(query) (query named, blank line before the call); line 112: attrs = %{; line 113: action: \"post.published\",; line 114: details: \"Post #{post.id} published by user #{post.user_id}\"; line 115: }; line 117: %Log{}; line 118: |> Log.changeset(attrs) (one field per line, blank line before the pipeline); line 157: render(conn, :show, post: post)"
+        },
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 29: |> cast(params, [:title, :body]); line 30: |> validate_required([:title, :body]); line 31: |> assoc_constraint(:user); line 61: %Post{user_id: user.id}; publish through a changeset, line 106: |> Post.publish_changeset(DateTime.utc_now(:second)); line 107: |> Repo.update(); audit row, line 117: %Log{}; line 118: |> Log.changeset(attrs)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 86: |> Repo.get!(id); line 155: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 96: Repo.transact(fn ->; line 97: with {:ok, published} <- update_published_at(post),; line 98: {:ok, _log} <- insert_publish_log(published) do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 74: preload: :user"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 128: alter table(:posts) do; line 129: add :published_at, :utc_datetime; backfill in a separate raw-SQL script, line 140: Repo.query!(\"UPDATE posts SET published_at = inserted_at WHERE published_at IS NULL\")"
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 155: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 29-31)",
+        "met: user_id set on the struct, not cast (line 61)",
+        "met: listing preloads the author (line 74); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 96)",
+        "met: migration only adds the column (lines 127-131); backfill is a separate raw-SQL script (line 140), not MyApp.Blog.Post",
+        "met: controller calls Blog.get_post!/1 only (line 155)",
+        "met: show action relies on Repo.get!/2 raising (line 86)",
+        "met: no string error reasons; errors are changesets",
+        "met: no restating comments; MyApp.Blog has @moduledoc and every public context function has @doc",
+        "met: the multi-line attrs map is built under a name, one field per line, with a blank line before the call (lines 112-117); the query is named before Repo.all (lines 70-76)",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Repo.transact/2 publish, column-only migration with a separate raw-SQL backfill script, a get!-based show action and named attrs and query values before their calls, breaking no listed rule; read SKILL.md and ecto-phoenix.md."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ecto-phoenix.md"
+      ],
+      "format_ok": true,
+      "verdicts": {
+        "Build a multi-line argument under a name before the call": {
+          "verdict": "clean",
+          "evidence": "line 72: query =; line 73: from p in Post,; line 74: join: u in assoc(p, :user),; line 75: where: p.user_id == ^user.id,; line 76: order_by: [desc: p.inserted_at, desc: p.id],; line 77: preload: [user: u]; line 79: Repo.all(query) (query named, blank line before the call); line 109: published_at = DateTime.utc_now(:second); line 112: |> Post.publish_changeset(published_at); line 119: attrs = %{; line 120: action: \"post.published\",; line 121: subject_type: \"post\",; line 122: subject_id: post.id,; line 123: user_id: post.user_id; line 124: }; line 126: %Log{}; line 127: |> Log.changeset(attrs) (one field per line, blank line before the pipeline); line 173: render(conn, :show, post: post)"
+        },
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 31: |> cast(params, [:title, :body]); line 32: |> validate_required([:title, :body]); line 33: |> foreign_key_constraint(:user_id); line 63: %Post{user_id: user.id}; publish through a changeset, line 112: |> Post.publish_changeset(published_at); line 113: |> Repo.update(); audit row, line 126: %Log{}; line 127: |> Log.changeset(attrs)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 90: |> Repo.get!(id); line 171: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 100: Repo.transact(fn ->; line 101: with {:ok, published} <- update_published_at(post),; line 102: {:ok, _log} <- insert_publish_log(published) do"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 74: join: u in assoc(p, :user),; line 77: preload: [user: u]"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "clean",
+          "evidence": "line 137: alter table(:posts) do; line 138: add :published_at, :utc_datetime; backfill in a separate release task with raw SQL, line 146: defmodule MyApp.ReleaseTasks.BackfillPublishedAt do; line 158: repo.query!(\"UPDATE posts SET published_at = inserted_at WHERE published_at IS NULL\")"
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 171: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [
+        "Use captures for one-call lambdas and `fn` for anything longer: line 152: {:ok, _, _} = Ecto.Migrator.with_repo(Repo, fn repo -> backfill(repo) end) (&backfill/1)"
+      ],
+      "checks": [
+        "met: cast/3, validate_required/2 and foreign_key_constraint(:user_id) (lines 31-33)",
+        "met: user_id set on the struct, not cast (line 63)",
+        "met: listing joins and preloads the author (lines 74, 77); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transact/2 (line 100)",
+        "met: migration only adds the column (lines 136-140); backfill is a separate release task with raw SQL (lines 146-162), not MyApp.Blog.Post",
+        "met: controller calls Blog.get_post!/1 only (line 171)",
+        "met: show action relies on Repo.get!/2 raising (line 90)",
+        "met: no string error reasons; errors are changesets",
+        "met: no restating comments; MyApp.Blog has @moduledoc and every public context function has @doc",
+        "met: the multi-line attrs map is built under a name, one field per line, with a blank line before the call (lines 119-126); the query is named before Repo.all (lines 72-79), and so is the publish time (line 109)",
+        "met: expected reads ecto-phoenix.md is in reads"
+      ],
+      "summary": "Wrote a changeset with foreign_key_constraint(:user_id), joined preload, Repo.transact/2 publish, column-only migration with a separate raw-SQL release task, a get!-based show action and named attrs, query and timestamp values before their calls, breaking no listed rule, though it writes fn repo -> backfill(repo) end where a capture fits (line 152); read SKILL.md and ecto-phoenix.md."
+    }
+  },
+  "per_rule": {
+    "Build a multi-line argument under a name before the call": {
+      "opus": "unavailable",
+      "haiku": "violated",
+      "sonnet": "clean"
+    },
+    "Validate input with changesets": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Let Phoenix turn missing records into 404 responses": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Group writes that must succeed together": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Load associations up front": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep migrations to schema changes": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep database access in contexts": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

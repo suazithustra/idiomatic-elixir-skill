@@ -1,0 +1,270 @@
+{
+  "case": "ecto-phoenix",
+  "condition": "baseline",
+  "notes": [
+    "format_ok: result.json reports false for the four runs that wrote blog.ex because postprocess.py runs plain `mix format --check-formatted`, which adds parentheses to Ecto and Phoenix DSL calls when their formatter configs are absent. As in the previous sweeps, the grader recomputed it with Code.format_string!/2 and the DSL calls (field, belongs_to, timestamps, from, alter, add, remove, execute, embed_templates) in locals_without_parens; all four pass. Sonnet-2 has no file, so its format_ok is null. Nothing compiles because Phoenix and Ecto are not installed.",
+    "None of the six listed rules changed since db91c23 (the diff touches only the one-step `with` sentence, the new `do:` rule, the captures rule and testing.md's Assert with patterns), so all are graded to the standard of sweeps/2026-10-22/grades/ecto-phoenix-baseline.json.",
+    "Baseline-sonnet-2 has rc 0 but wrote nothing: its one Write call targeted /tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-c0bc-571c-a7e7-3b8d4cc5c310/... (a hyphen where the prompt's path has a slash), the permission check refused it, and the session gave up and said so. With no output every rule is 'not exercised' for that run; the sonnet tier's per_rule values come from sonnet-1. Not graded, for the record: the refused Write's content backfilled published_at inside the migration (its line 14: execute \"UPDATE posts SET published_at = inserted_at\") and had assoc_constraint(:user) (its line 51).",
+    "Validate input with changesets: both Haiku runs omit the user constraint, decided by the sentence \"Declare database constraints in the changeset (`unique_constraint/3`, and `foreign_key_constraint/3` or `assoc_constraint/3` for a `belongs_to`) so a violation returns `{:error, changeset}` instead of raising.\" Haiku-2 also casts :published_at (line 46), which publish_post/2 sets, against \"Keep fields the code sets, such as `user_id` or `status`, out of the list passed to `cast/3`\"; this is recorded as extra evidence, not a separate verdict. The audit Log rows are built through Log.changeset/2 in every run, so the `%User{}`-to-`Repo.insert/1` sentence is not triggered.",
+    "Keep migrations to schema changes: every written run backfills with execute \"UPDATE posts ...\" in the column migration's up/0; opus-1 adds flush() first and a comment saying it avoids the schema, but the data change is still in the migration. No run wrote a separate script, Mix task or release task.",
+    "Rules outside the list were checked to the previous standard: single-step pipes, a missing @moduledoc on the context, and Multi's raw 4-tuple. Every run that uses Ecto.Multi normalizes its error to {:error, changeset}. Missing @moduledoc on schema, controller and HTML modules is not flagged, as before. The new `do:` rule was checked: no run writes a multi-step body on `do:`, and the one-call block bodies (opus-1 change_post/2 and publish_changeset/2, sonnet-1 publish_changeset/2) are delegations rather than the accessor, predicate or short pattern-matching clause the rule names, so nothing is flagged. Haiku-2's two-step `with` (lines 110-111) with a one-clause `else` that rolls back is not the error-mapping `else` the with rule names. No captures are used.",
+    "All five runs have rc 0 and a model_id matching their tier, read no skill files, and ran neither elixir nor mix (the Haiku runs ran only mkdir before their Write). skills_listed is 16 in every run, against 210 in the 2026-10-22 sweep, so differences from that sweep partly reflect the shorter skill list."
+  ],
+  "runs": {
+    "baseline-opus-1": {
+      "model_id": "claude-opus-5-5",
+      "reads": [],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 51: |> cast(attrs, [:title, :body]); line 52: |> validate_required([:title, :body]); line 54: |> assoc_constraint(:user); line 106: %Post{user_id: user_id}"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 99: |> Repo.get!(id); line 158: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "lines 126-138: Multi.new() ... |> Repo.transaction()"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 87: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "violated",
+          "evidence": "line 13: flush(); line 17: execute \"UPDATE posts SET published_at = inserted_at WHERE published_at IS NULL\" (the backfill runs in the column migration; it uses the table, not the schema, but is still data logic in a migration)"
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 158: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 51, 52, 54)",
+        "met: user_id set on the struct, not cast (line 106)",
+        "met: listing preloads the author (line 87); no Repo call inside Enum.map/2",
+        "met: publishing uses Ecto.Multi with Repo.transaction() (lines 126-138)",
+        "missed: backfill runs inside the migration (lines 13, 17); it does avoid MyApp.Blog.Post",
+        "met: controller calls Blog.get_post!/1 only (line 158)",
+        "met: show action lets Repo.get!/2 raise (line 99)",
+        "met: error reasons are changesets (line 141: {:error, _step, changeset, _changes_so_far} -> {:error, changeset})",
+        "met: comments explain reasons; MyApp.Blog has @moduledoc and @doc on each public function",
+        "missed: expected reads ecto-phoenix.md; reads is empty, as a baseline run was told not to invoke skills"
+      ],
+      "summary": "Wrote a constrained changeset, preloaded listing, Ecto.Multi publish normalized to {:error, changeset} and a get!-based show action, but backfilled published_at with raw SQL inside the migration after flush() (line 17), breaking Keep migrations to schema changes; read no skill files (baseline)."
+    },
+    "baseline-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "violated",
+          "evidence": "line 49: |> cast(attrs, [:title, :body]); line 50: |> validate_required([:title, :body]); line 51: end (no foreign_key_constraint/3 or assoc_constraint/3 for line 40: belongs_to :user, MyApp.Accounts.User)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 90: |> Repo.get!(id); line 125: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "lines 100-110: Multi.new() ... |> Repo.transaction()"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 80: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "violated",
+          "evidence": "line 20: execute \"UPDATE posts SET published_at = inserted_at\""
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 125: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 55: defmodule MyApp.Blog do (no @moduledoc)"
+      ],
+      "checks": [
+        "missed: no foreign_key_constraint/3 or assoc_constraint/3 for the user (lines 47-51)",
+        "met: user_id set on the struct, not cast (line 68)",
+        "met: listing preloads the author (line 80); no Repo call inside Enum.map/2",
+        "met: publishing uses Ecto.Multi with Repo.transaction() (lines 100-110)",
+        "missed: backfill runs inside the migration (line 20)",
+        "met: controller calls Blog.get_post!/1 only (line 125)",
+        "met: show action lets Repo.get!/2 raise (line 90)",
+        "met: error reasons are changesets (line 113)",
+        "missed: MyApp.Blog has no @moduledoc (line 55); its public functions have @doc and the comments explain reasons",
+        "missed: expected reads ecto-phoenix.md; reads is empty, as a baseline run was told not to invoke skills"
+      ],
+      "summary": "Wrote a preloaded listing, Ecto.Multi publish and get!-based show action, but left the user constraint out of the changeset and backfilled published_at inside the migration, breaking Validate input with changesets and Keep migrations to schema changes; MyApp.Blog also has no @moduledoc; read no skill files (baseline)."
+    },
+    "baseline-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "violated",
+          "evidence": "line 46: |> cast(attrs, [:title, :body, :published_at]); line 47: |> validate_required([:title, :body]); line 48: end (no foreign_key_constraint/3 or assoc_constraint/3 for line 38: belongs_to :user, MyApp.Accounts.User; published_at, which publish_post/2 sets at line 110, is also in the cast list)"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 98: |> Repo.get!(id); line 144: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "line 109: Repo.transaction(fn ->; line 114: {:error, reason} -> Repo.rollback(reason)"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 89: preload: [:user]"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "violated",
+          "evidence": "line 16: execute \"UPDATE posts SET published_at = inserted_at\""
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 144: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [
+        "Write pipelines that start with a value and read top to bottom: line 107: now = DateTime.utc_now() |> DateTime.truncate(:second); line 110: with {:ok, post} <- post |> Ecto.Changeset.change(published_at: now) |> Repo.update(), (two transformations on one line)"
+      ],
+      "checks": [
+        "missed: no foreign_key_constraint/3 or assoc_constraint/3 for the user (lines 44-48), and published_at is cast from form params (line 46)",
+        "met: user_id set on the struct, not cast (line 75)",
+        "met: listing preloads the author (line 89); no Repo call inside Enum.map/2",
+        "met: publishing uses Repo.transaction/1 with a two-step with and Repo.rollback/1 (lines 109-116)",
+        "missed: backfill runs inside the migration (line 16)",
+        "met: controller calls Blog.get_post!/1 only (line 144)",
+        "met: show action lets Repo.get!/2 raise (line 98)",
+        "met: error reasons are changesets rolled back from the transaction (line 114)",
+        "met: comments explain reasons; MyApp.Blog has @moduledoc and @doc on each public function",
+        "missed: expected reads ecto-phoenix.md; reads is empty, as a baseline run was told not to invoke skills"
+      ],
+      "summary": "Wrote a preloaded listing, a Repo.transaction/1 publish with rollback and a get!-based show action, but left the user constraint out of the changeset (and cast published_at) and backfilled published_at inside the migration, breaking Validate input with changesets and Keep migrations to schema changes; it also pipes a single step and puts a two-step pipeline on one line; read no skill files (baseline)."
+    },
+    "baseline-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [],
+      "format_ok": true,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "clean",
+          "evidence": "line 48: |> cast(attrs, [:title, :body]); line 49: |> validate_required([:title, :body]); line 51: |> assoc_constraint(:user); line 77: %Post{user_id: user.id}"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "clean",
+          "evidence": "line 101: |> Repo.get!(id); line 137: post = Blog.get_post!(id)"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "clean",
+          "evidence": "lines 110-120: Multi.new() ... |> Repo.transaction()"
+        },
+        "Load associations up front": {
+          "verdict": "clean",
+          "evidence": "line 90: |> preload(:user)"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "violated",
+          "evidence": "line 17: execute \"UPDATE posts SET published_at = inserted_at\""
+        },
+        "Keep database access in contexts": {
+          "verdict": "clean",
+          "evidence": "line 137: post = Blog.get_post!(id)"
+        }
+      },
+      "other_violations": [
+        "Write pipelines that start with a value and read top to bottom: line 108: now = DateTime.utc_now() |> DateTime.truncate(:second)"
+      ],
+      "checks": [
+        "met: cast/3, validate_required/2 and assoc_constraint(:user) (lines 48, 49, 51)",
+        "met: user_id set on the struct, not cast (line 77)",
+        "met: listing preloads the author (line 90); no Repo call inside Enum.map/2",
+        "met: publishing uses Ecto.Multi with Repo.transaction() (lines 110-120)",
+        "missed: backfill runs inside the migration (line 17)",
+        "met: controller calls Blog.get_post!/1 only (line 137)",
+        "met: show action lets Repo.get!/2 raise (line 101)",
+        "met: error reasons are changesets (line 123)",
+        "met: comments explain reasons; MyApp.Blog has @moduledoc and @doc on each public function",
+        "missed: expected reads ecto-phoenix.md; reads is empty, as a baseline run was told not to invoke skills"
+      ],
+      "summary": "Wrote a changeset with assoc_constraint(:user), preloaded listing, Ecto.Multi publish normalized to {:error, changeset} and a get!-based show action, but backfilled published_at inside the migration, breaking Keep migrations to schema changes, plus one single-step pipe; read no skill files (baseline)."
+    },
+    "baseline-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [],
+      "format_ok": null,
+      "verdicts": {
+        "Validate input with changesets": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        },
+        "Let Phoenix turn missing records into 404 responses": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        },
+        "Group writes that must succeed together": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        },
+        "Load associations up front": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        },
+        "Keep migrations to schema changes": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        },
+        "Keep database access in contexts": {
+          "verdict": "not exercised",
+          "evidence": "no output: the run's only Write targeted a mistyped path (/tmp/claude-0/-home-user-idiomatic-elixir-skill-1e47a876-.../blog.ex, a hyphen in place of the slash before the session id) and was refused for lack of permission, so blog.ex was never written"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "missed: no blog.ex was written (files is empty); none of the content checks can be met",
+        "missed: expected reads ecto-phoenix.md; reads is empty, as a baseline run was told not to invoke skills"
+      ],
+      "summary": "Wrote nothing: rc is 0, but its single Write went to a mistyped path outside the run folder and was refused, and the session replied that it could not write blog.ex, so every listed rule is not exercised; read no skill files (baseline)."
+    }
+  },
+  "per_rule": {
+    "Validate input with changesets": {
+      "opus": "clean",
+      "haiku": "violated",
+      "sonnet": "clean"
+    },
+    "Let Phoenix turn missing records into 404 responses": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Group writes that must succeed together": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Load associations up front": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Keep migrations to schema changes": {
+      "opus": "violated",
+      "haiku": "violated",
+      "sonnet": "violated"
+    },
+    "Keep database access in contexts": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

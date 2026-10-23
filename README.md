@@ -24,7 +24,7 @@ Topic-specific rules live in `references/`, which the agent reads only when a ta
 | `processes.md` | GenServer, Agent, Task, ETS (Erlang Term Storage), supervision |
 | `library-design.md` | Hex packages and public APIs: options, configuration, error types |
 | `macros.md` | macros, `use`, and compile-time code |
-| `testing.md` | ExUnit |
+| `ex_unit.md` | ExUnit |
 | `ecto-phoenix.md` | Ecto schemas, queries, migrations, Phoenix controllers and contexts |
 
 The rules target current Elixir and were checked against Elixir 1.20. A few rules name the Elixir or Ecto version that introduced a function they rely on.
@@ -122,6 +122,8 @@ LICENSE                Apache License 2.0
 - "prepend to stream - `stream(socket, :messages, [new_msg], at: -1)`": `at: -1` appends; `at: 0` prepends.
 - "LiveView streams are *not* enumerable": `Phoenix.LiveView.LiveStream` implements `Enumerable`. The real limit is that the server keeps no copy of the items, so filtering means refetching, which the file's own recipe does.
 - "You are FORBIDDEN from accessing the changeset in the template as it will cause errors": `<.form for={@changeset}>` and `@changeset.valid?` work; only `@changeset[:field]` raises, because structs do not implement `Access`.
+
+This skill works best without the generated file. The two overlap on the general Elixir rules, the file states its rules without reasons, and where they disagree an agent holds two instructions and follows each some of the time. If you keep `AGENTS.md`, keep its Phoenix-specific parts and remove the general Elixir ones this skill covers. If this skill gets something wrong, or conflicts with your project in a way it should not, open an issue or a pull request.
 
 ## Contributing
 

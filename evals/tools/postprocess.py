@@ -41,6 +41,18 @@ def model_ids(text):
     return sorted(ids)
 
 
+def skills_listed(text):
+    for line in text.splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        attachment = entry.get("attachment") or {}
+        if attachment.get("type") == "skill_listing":
+            return attachment.get("skillCount")
+    return None
+
+
 def reads(text, phrases):
     return sorted(file for file, phrase in phrases.items() if phrase in text)
 
@@ -58,6 +70,9 @@ def enrich(rundir, rec, phrases):
     if text is not None:
         rec["model_id"] = model_ids(text)
         rec["reads"] = reads(text, phrases)
+        listed = skills_listed(text)
+        if listed is not None:
+            rec["skills_listed"] = listed
     written = sorted(
         p.name for p in rundir.iterdir()
         if p.is_file() and p.suffix in (".ex", ".exs", ".md") and not p.name.endswith(INPUT_SUFFIX)

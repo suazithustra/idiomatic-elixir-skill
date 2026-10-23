@@ -1,0 +1,376 @@
+{
+ "case": "macro-dsl",
+ "condition": "baseline",
+ "notes": [
+  "Same standards as the previous sweep's macro-dsl grade files (evals/sweeps/2026-10-22/grades/macro-dsl-*.json) for unchanged rules: git diff db91c23 -- idiomatic-elixir/ touches only SKILL.md (the one-step with rule, the new do: rule, the captures rule) and testing.md (Assert with patterns); macros.md and library-design.md are unchanged, so the seven macro and library rules are graded as before. A route recorded by a direct attribute write inside get's quote, with no function call, counts against Keep quote blocks small, while validation in the macro body (outside quote) does not; the import/alias rule is graded on what __using__ injects and whether the effects of use sit in an admonition at the top of @moduledoc; __using__ and __before_compile__ without @doc false are accepted because their __ names hide them; `unless` is listed under the branching rule, `if ... else raise` and validation cond/case are not; a one-line multi-step pipeline is listed under the pipeline rule; a catch-all public match clause is listed under Make polymorphism explicit; an if nested in a case is listed under Keep functions short and at one level of detail; a format failure whose only change is parentheses on the two get calls is recorded as ok apart from locals_without_parens.",
+  "New rule since db91c23 (added in 8d4ba29), graded against its current text in idiomatic-elixir/SKILL.md (Readability): Use `do:` for a one-expression body and `do ... end` for anything else. The sentences that decide the verdicts: \"A body with several steps, a `case` or `with`, or a comment gets `do ... end`.\" (sonnet-2 line 71, a two-step pipeline on do:, the shape of the rule's own Instead-of example) and \"A one-expression body too long for the head's line wants a block or a helper; a head that `mix format` wraps because of a long guard is fine as wrapped.\" (haiku-2 bind/3 lines 62-63 and 65-66 and sonnet-1 generated do_match lines 55-56, wrapped do: lines with no guard; sonnet-2 line 54, a 102-character do: line that mix format wraps the same way). Violating runs: 3 of 5 (haiku-2, sonnet-1, sonnet-2); opus-1 and haiku-1 clean. sonnet-1's validate_handler!/2 (lines 117-119) is a guard-wrapped do: head, which the rule accepts. The mixed-clause sentences (\"keeps them on do: even when one clause needs a block; set that clause apart with a blank line\" and \"When most of a function's clauses need blocks, write all of them as blocks\") decide no verdict: every mixed function has blocks for at most half its clauses, each set apart by a blank line, and each one-expression block body would be over 120 characters as a do: line (measured with awk on the rewritten heads), so the blocks are required.",
+  "Unlike the previous sweep's baseline-opus-1, this sweep's opus-1 writes the route straight into the attribute inside get's quote (line 47) and expands the handler with Macro.expand (line 99), so the opus tier is violated for Keep quote blocks small and for the compile-time-dependency rule, and clean for the spec rule (it defines no public function in TinyRouter besides the macros). Every run this sweep has the direct-attribute-write shape.",
+  "Compile-time dependencies verified with mix xref trace in scratch Mix projects (one per run, the run's file copied unchanged to lib/tiny_router.ex, so xref line numbers match the run file) with real MyApp.PageHandler and MyApp.UserHandler modules in lib/my_app. All five use Macro.expand on the handler and xref reports alias MyApp.PageHandler (compile) and alias MyApp.UserHandler (compile) on the two get lines.",
+  "Bad-declaration checks: each run's project loaded, then one router declaring get 123, MyApp.PageHandler and another declaring get \"/\", \"not a module\" compiled with Code.compile_string. All ten fail with CompileError raised while get expands in the router module.",
+  "Format: mix format on copies changes the parentheses on the two get calls in all five runs (result.json format_ok is false for that reason); haiku-1 also reflows line 100, haiku-2 line 101 and sonnet-2 line 54, which are listed under Before you finish. All five compile with mix compile --warnings-as-errors.",
+  "Reads: result.json reads is empty for all five runs, and the transcripts never mention SKILL.md, macros.md or library-design.md, as expected for baseline runs.",
+  "Smoke test outside the rules: all five return the routes in declaration order, match \"/\", \"/users/42\" and \"/users/42/\", and return :error for \"/nope\". opus-1, sonnet-1 and sonnet-2 return string param keys (%{\"id\" => \"42\"}); haiku-1 and haiku-2 return atom keys (%{id: \"42\"}) built with String.to_atom from the route string, which is source code, not external input, so it is not counted under the atom rule. match(123) raises FunctionClauseError in the generated match/1 in opus-1 and haiku-1, raises FunctionClauseError in String.split/3 in haiku-2 (match/1 has no guard, listed under Make polymorphism explicit), and returns :error in sonnet-1 and sonnet-2 (catch-all clauses)."
+ ],
+ "runs": {
+  "baseline-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [],
+   "format_ok": "ok apart from locals_without_parens",
+   "compiles": true,
+   "compile_time_failures": {
+    "bad_path": "fails: CompileError: route path must be a string literal, got: 123",
+    "bad_handler": "fails: CompileError: route handler must be a module name, got: \"not a module\""
+   },
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 59: @spec routes() :: [{String.t(), module()}] and line 63: @spec match(String.t()) :: {:ok, module(), %{String.t() => String.t()}} | :error inside the __before_compile__ quote, directly above each def (after @doc); TinyRouter defines no public function besides the macros, and the generated __tiny_router_match__ clauses are defp; __using__ and __before_compile__ are @doc false (lines 26, 51)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "only __using__ (line 27), get (line 41) and __before_compile__ (line 52) are macros; match_clause/1, validate_path!/2, validate_handler!/2, parse_segments!/2 and compile_error!/2 are defp"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 47: @tiny_router_routes {unquote(path), unquote(handler), unquote(Macro.escape(segments))} (recorded directly inside get's quote, not by calling a function; validation runs outside quote in validate_path!/2, validate_handler!/2 and parse_segments!/2)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 47 each once; line 60 once; line 87 handler once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: A tiny compile-time router. (no admonition at the top of @moduledoc, and @moduledoc never says that use TinyRouter imports get/2 and defines routes/0 and match/1); __using__ (lines 28-32) injects only import, the attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "violated",
+     "evidence": "line 99: expanded = Macro.expand(handler, env) (mix xref trace: lib/tiny_router.ex:134: alias MyApp.PageHandler (compile))"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 99: expanded = Macro.expand(handler, env) keeps the user's alias; no Module.concat or interpolation of module names (Macro.var(String.to_atom(name), __MODULE__) at lines 76 and 82 builds variable names)"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+     "verdict": "clean",
+     "evidence": "line 60: def routes, do: unquote(Macro.escape(pairs)); lines 64-66: def match(path) when is_binary(path) do / path |> String.split(\"/\", trim: true) |> __tiny_router_match__() / end (two steps, a block); line 92: defp validate_path!(path, _env) when is_binary(path), do: path and lines 94-96 the one block clause, set apart with a blank line (127 characters as a do: line); compile_error!/2 (lines 126-128) a block, 114 characters as a do: line; no wrapped do: line"
+    }
+   },
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 53: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse(); line 65: path |> String.split(\"/\", trim: true) |> __tiny_router_match__()"
+   ],
+   "checks": [
+    "missed: get's quote writes the attribute directly (line 47); validation runs at expansion time in validate_path!/2, validate_handler!/2 and parse_segments!/2, outside quote, not in a function the quote calls",
+    "met: path, handler and segments unquoted once each",
+    "missed: __using__ injects only import, attribute registration and @before_compile, but @moduledoc never states its effects and has no admonition at the top",
+    "met: no public function exists only for generated code; the generated helper __tiny_router_match__ is defp; __using__ and __before_compile__ are @doc false",
+    "met: only __using__, get and __before_compile__ are macros",
+    "met: handlers kept as written; no Module.concat or interpolation",
+    "missed: handlers are compile-time dependencies through Macro.expand (mix xref trace)",
+    "met: routes/0 and match/1 have @spec inside the quote; only TinyRouter is defined",
+    "met: do: only on one-expression bodies; multi-step bodies and too-long bodies are blocks, the block clause of validate_path!/2 set apart with a blank line; no wrapped do: line",
+    "met: both bad declarations raise CompileError while get expands in the router module",
+    "met: mix format changes only the parentheses on the two get calls (lines 134-135); compiles without warnings",
+    "missed: Expected reads (macros.md, library-design.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Validates at expansion time in private functions, generates one private match clause per route with specced routes/0 and match/1, but writes the route attribute directly in get's quote and makes handlers compile-time dependencies through Macro.expand; breaks Keep quote blocks small, the use documentation rule and the compile-time-dependency rule, plus two one-line pipelines; read no skill files (baseline)."
+  },
+  "baseline-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": "not ok: mix format reflows line 100 besides the get parentheses",
+   "compiles": true,
+   "compile_time_failures": {
+    "bad_path": "fails: CompileError: TinyRouter: route path must be a string literal, got: 123",
+    "bad_handler": "fails: CompileError: TinyRouter: route handler must be a module name, got: \"not a module\""
+   },
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 40: def routes, do: unquote(Macro.escape(routes)) (no @spec); line 42: def match(path) when is_binary(path) do (no @spec); line 49: def match_routes(compiled, path) do (no @spec; @doc false at line 48); line 61: def split(path), do: String.split(path, \"/\", trim: true) (no @spec; @doc false at line 60)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "only __using__ (line 13), get (line 22) and __before_compile__ (line 31) are macros; match_routes/2 and split/1 are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 27: @tiny_router_routes {unquote(path), unquote(handler)} (recorded directly inside get's quote, not by calling a function; validation runs outside quote in check_path!/2 and check_handler!/2)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 27 each once; line 40 once; line 43 once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "lines 5-7: Declare routes with `get/2` inside a module that does `use TinyRouter`. / Each declared route becomes a `{path, handler}` pair, and the module gets / `routes/0` and `match/1`. (effects stated near the top in prose, not in an admonition)"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "violated",
+     "evidence": "line 83: case Macro.expand(handler, caller) do (mix xref trace: lib/tiny_router.ex:107: alias MyApp.PageHandler (compile))"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 83: case Macro.expand(handler, caller) do keeps the user's alias; no Module.concat or interpolation of module names"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+     "verdict": "clean",
+     "evidence": "line 63: defp bind([], [], params), do: {:ok, params}; lines 65-67: the one block clause, set apart with blank lines (141 characters as a do: line); line 69: defp bind([segment | pattern], [segment | request], params), do: bind(pattern, request, params); line 71: defp bind(_pattern, _request, _params), do: :error (one of four clauses needs a block, so the short clauses stay on do:); line 73 do: plus the check_path!/2 block clause at lines 75-80, set apart with a blank line; no wrapped do: line"
+    }
+   },
+   "other_violations": [
+    "Keep functions short and at one level of detail: line 85: if String.starts_with?(Atom.to_string(module), \"Elixir.\") do (inside the case at line 83)",
+    "Before you finish: line 100 left unformatted: raise CompileError, file: caller.file, line: caller.line, description: \"TinyRouter: \" <> description"
+   ],
+   "checks": [
+    "missed: get's quote writes the attribute directly (line 27); validation runs at expansion time in check_path!/2 and check_handler!/2, outside quote, not in a function the quote calls",
+    "met: path and handler unquoted once each",
+    "missed: __using__ injects only import, attribute registration and @before_compile, and lines 5-7 state its effects near the top of @moduledoc, but in prose, not in an admonition",
+    "met: match_routes/2 and split/1, called from the generated match/1 and __before_compile__, are @doc false",
+    "met: only __using__, get and __before_compile__ are macros",
+    "met: handlers kept as written; no Module.concat or interpolation",
+    "missed: handlers are compile-time dependencies through Macro.expand (mix xref trace)",
+    "missed: routes/0, match/1, match_routes/2 and split/1 have no @spec; met: only TinyRouter is defined",
+    "met: do: only on one-expression bodies; the one block clause of bind/3 and of check_path!/2 is set apart with a blank line; no wrapped do: line",
+    "met: both bad declarations raise CompileError while get expands in the router module",
+    "missed: mix format reflows line 100 besides the get parentheses; compiles without warnings",
+    "missed: Expected reads (macros.md, library-design.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Validates at expansion time in private functions and matches at runtime through @doc false match_routes/2 and split/1; breaks the spec rule (no public function has a @spec), Keep quote blocks small, the use documentation rule (prose, no admonition) and the compile-time-dependency rule (Macro.expand), plus an if nested in a case and an unformatted line; read no skill files (baseline)."
+  },
+  "baseline-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": "not ok: mix format reflows line 101 besides the get parentheses",
+   "compiles": true,
+   "compile_time_failures": {
+    "bad_path": "fails: CompileError: TinyRouter expects a string path, got: 123",
+    "bad_handler": "fails: CompileError: TinyRouter expects a module name as handler, got: \"not a module\""
+   },
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 42: def routes, do: unquote(Macro.escape(routes)) (no @spec); line 44: def match(path), do: TinyRouter.dispatch(unquote(Macro.escape(compiled)), path) (no @spec); line 49: def dispatch(compiled, path) do (no @spec; @doc false at line 48)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "only __using__ (line 16), get (line 28) and __before_compile__ (line 37) are macros; dispatch/2 and the helpers are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 33: @tiny_router_routes {unquote(path), unquote(handler)} (recorded directly inside get's quote, not by calling a function; validation runs outside quote in expand_path!/2 and expand_handler!/2)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 33 each once; line 42 once; line 44 once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: Declares routes with a small DSL. (no admonition at the top of @moduledoc, and @moduledoc never says that use TinyRouter imports get/2 and defines routes/0 and match/1)"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "violated",
+     "evidence": "line 93: case Macro.expand(handler, caller) do (mix xref trace: lib/tiny_router.ex:109: alias MyApp.PageHandler (compile))"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 93: case Macro.expand(handler, caller) do keeps the user's alias; no Module.concat or interpolation of module names"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+     "verdict": "violated",
+     "evidence": "lines 62-63: defp bind([{:param, key} | pattern], [segment | segments], params), / do: bind(pattern, segments, Map.put(params, key, segment)); lines 65-66: defp bind([{:literal, literal} | pattern], [literal | segments], params), / do: bind(pattern, segments, params) (one-expression bodies too long for the head's line, wrapped onto a do: line with no guard, instead of a block)"
+    }
+   },
+   "other_violations": [
+    "Make polymorphism explicit: line 44: def match(path), do: TinyRouter.dispatch(unquote(Macro.escape(compiled)), path) (no guard, so MyApp.Router.match(123) fails with FunctionClauseError in String.split/3 instead of in match/1)",
+    "Write pipelines that start with a value and read top to bottom: line 38: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse()",
+    "Before you finish: line 101 left unformatted: description: \"TinyRouter expects a module name as handler, got: #{Macro.to_string(handler)}\""
+   ],
+   "checks": [
+    "missed: get's quote writes the attribute directly (line 33); validation runs at expansion time in expand_path!/2 and expand_handler!/2, outside quote, not in a function the quote calls",
+    "met: path and handler unquoted once each",
+    "missed: __using__ injects only import, attribute registration and @before_compile, but @moduledoc never states its effects",
+    "met: dispatch/2, called from the generated match/1, is @doc false",
+    "met: only __using__, get and __before_compile__ are macros",
+    "met: handlers kept as written; no Module.concat or interpolation",
+    "missed: handlers are compile-time dependencies through Macro.expand (mix xref trace)",
+    "missed: routes/0, match/1 and dispatch/2 have no @spec; met: only TinyRouter is defined",
+    "missed: bind/3 wraps two long one-expression bodies onto do: lines (lines 62-63, 65-66) instead of blocks",
+    "met: both bad declarations raise CompileError while get expands in the router module",
+    "missed: mix format reflows line 101 besides the get parentheses; compiles without warnings",
+    "missed: Expected reads (macros.md, library-design.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Validates at expansion time in private functions and matches at runtime through a @doc false dispatch/2; breaks the spec rule (no public function has a @spec), Keep quote blocks small, the use documentation rule, the compile-time-dependency rule (Macro.expand) and the do: rule (two wrapped do: lines), plus an unguarded match/1, a one-line pipeline and an unformatted line; read no skill files (baseline)."
+  },
+  "baseline-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": "ok apart from locals_without_parens",
+   "compiles": true,
+   "compile_time_failures": {
+    "bad_path": "fails: CompileError: route path must be a string, got: 123",
+    "bad_handler": "fails: CompileError: route handler must be a module name (e.g. MyApp.PageHandler), got: \"not a module\""
+   },
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 62: @spec routes() :: [{String.t(), module()}] and line 68: @spec match(String.t()) :: {:ok, module(), %{optional(String.t()) => String.t()}} | :error inside the __before_compile__ quote, directly above each def (after @doc); TinyRouter defines no public function besides the macros, and the generated do_match clauses are defp"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "only __using__ (line 23), get (line 35) and __before_compile__ (line 47) are macros; compile_path/2, validate_path!/2, validate_handler!/2 and compile_error!/2 are defp"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 43: @tiny_router_routes {unquote(path), unquote(handler)} (recorded directly inside get's quote, not by calling a function; validation runs outside quote in validate_path!/2 and validate_handler!/2)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 43 each once; line 55 pattern once and line 56 handler and params once each; line 63 once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: A tiny compile-time router DSL. (no admonition at the top of @moduledoc, and @moduledoc never says that use TinyRouter imports get/2 and defines routes/0 and match/1)"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "violated",
+     "evidence": "line 37: handler = Macro.expand(handler, __CALLER__) (mix xref trace: lib/tiny_router.ex:136: alias MyApp.PageHandler (compile))"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 37: handler = Macro.expand(handler, __CALLER__) keeps the user's alias; no Module.concat or interpolation of module names (Macro.var(String.to_atom(name), __MODULE__) at line 85 builds a variable name)"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+     "verdict": "violated",
+     "evidence": "lines 55-56: defp do_match(unquote(pattern)), / do: {:ok, unquote(handler), %{unquote_splicing(params)}} (a one-expression body too long for the head's line, wrapped onto a do: line with no guard, instead of a block); lines 117-119, a guard-wrapped do: head, are fine as wrapped"
+    }
+   },
+   "other_violations": [
+    "Branch with function clauses and guards before reaching for `if` or `cond`: line 101: unless String.starts_with?(path, \"/\") do",
+    "Make polymorphism explicit: line 70: def match(_path), do: :error (MyApp.Router.match(123) returns :error instead of raising FunctionClauseError)",
+    "Write pipelines that start with a value and read top to bottom: line 48: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse()"
+   ],
+   "checks": [
+    "missed: get's quote writes the attribute directly (line 43); validation runs at expansion time in validate_path!/2 and validate_handler!/2, outside quote, not in a function the quote calls",
+    "met: path and handler unquoted once each",
+    "missed: __using__ injects only import, attribute registration and @before_compile, but @moduledoc never states its effects",
+    "met: no public function exists only for generated code; the generated helpers are defp",
+    "met: only __using__, get and __before_compile__ are macros",
+    "met: handlers kept as written; no Module.concat or interpolation",
+    "missed: handlers are compile-time dependencies through Macro.expand (mix xref trace)",
+    "met: routes/0 and match/1 have @spec inside the quote; only TinyRouter is defined",
+    "missed: the generated do_match/1 clause wraps a long one-expression body onto a do: line (lines 55-56) instead of a block",
+    "met: both bad declarations raise CompileError while get expands in the router module",
+    "met: mix format changes only the parentheses on the two get calls (lines 136-137); compiles without warnings",
+    "missed: Expected reads (macros.md, library-design.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Generates documented, specced routes/0 and match/1 with one private clause per route and validates at expansion time in private functions; breaks Keep quote blocks small, the use documentation rule, the compile-time-dependency rule (Macro.expand) and the do: rule (a wrapped do: line in the generated clause), plus unless, a catch-all match/1 and a one-line pipeline; read no skill files (baseline)."
+  },
+  "baseline-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": "not ok: mix format reflows line 54 besides the get parentheses",
+   "compiles": true,
+   "compile_time_failures": {
+    "bad_path": "fails: CompileError: route path must be a string literal, got: 123",
+    "bad_handler": "fails: CompileError: route handler must be a module name (e.g. MyApp.Handler), got: \"not a module\""
+   },
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 79: @doc false; line 80: def split(path), do: String.split(path, \"/\", trim: true) (no @spec); routes/0 and match/1 have @spec inside the quote (line 62: @spec routes() :: [{String.t(), module()}]; line 70: @spec match(term()) :: {:ok, module(), %{optional(String.t()) => String.t()}} | :error)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "only __using__ (line 22), get (line 36) and __before_compile__ (line 46) are macros; split/1 and the helpers are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 42: @tiny_router_routes {unquote(path), unquote(handler), unquote(Macro.escape(segments))} (recorded directly inside get's quote, not by calling a function; validation runs outside quote in validate_path!/2, validate_handler!/2 and parse_segments!/2)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 42 each once; line 54 patterns, handler and bindings each once; line 63 once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: A tiny compile-time router DSL. (no admonition at the top of @moduledoc, and @moduledoc never says that use TinyRouter imports get/2 and defines routes/0 and match/1)"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "violated",
+     "evidence": "line 115: case Macro.expand(handler, caller) do (mix xref trace: lib/tiny_router.ex:155: alias MyApp.PageHandler (compile))"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 115: case Macro.expand(handler, caller) do keeps the user's alias; no Module.concat or interpolation of module names (Macro.var(:\"param_#{i}\", __MODULE__) at line 91 builds a variable name)"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+     "verdict": "violated",
+     "evidence": "line 71: def match(path) when is_binary(path), do: path |> TinyRouter.split() |> do_match() (a two-step pipeline on do:, the rule's Instead-of shape); line 54: defp do_match(unquote(patterns)), do: {:ok, unquote(handler), %{unquote_splicing(bindings)}} (102 characters; mix format wraps it onto a do: line, a one-expression body too long for the head's line)"
+    }
+   },
+   "other_violations": [
+    "Branch with function clauses and guards before reaching for `if` or `cond`: line 100: unless String.starts_with?(path, \"/\") do",
+    "Make polymorphism explicit: line 72: def match(_path), do: :error (MyApp.Router.match(123) returns :error instead of raising FunctionClauseError)",
+    "Write pipelines that start with a value and read top to bottom: line 47: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse(); line 71: def match(path) when is_binary(path), do: path |> TinyRouter.split() |> do_match()",
+    "Before you finish: line 54 left unformatted: defp do_match(unquote(patterns)), do: {:ok, unquote(handler), %{unquote_splicing(bindings)}}"
+   ],
+   "checks": [
+    "missed: get's quote writes the attribute directly (line 42); validation runs at expansion time in validate_path!/2, validate_handler!/2 and parse_segments!/2, outside quote, not in a function the quote calls",
+    "met: path, handler and segments unquoted once each",
+    "missed: __using__ injects only import, attribute registration and @before_compile, but @moduledoc never states its effects",
+    "met: TinyRouter.split/1, called from the generated match/1, is @doc false",
+    "met: only __using__, get and __before_compile__ are macros",
+    "met: handlers kept as written; no Module.concat or interpolation",
+    "missed: handlers are compile-time dependencies through Macro.expand (mix xref trace)",
+    "missed: TinyRouter.split/1 has no @spec; met: routes/0 and match/1 have @spec inside the quote; only TinyRouter is defined",
+    "missed: match/1 puts a two-step pipeline on do: (line 71), and the generated do_match/1 clause is a do: line too long for its head (line 54)",
+    "met: both bad declarations raise CompileError while get expands in the router module",
+    "missed: mix format reflows line 54 besides the get parentheses; compiles without warnings",
+    "missed: Expected reads (macros.md, library-design.md): reads is empty, as the baseline prompt told the session not to invoke skills"
+   ],
+   "summary": "Generates documented, specced routes/0 and match/1 with one private clause per route and validates at expansion time in private functions; breaks the spec rule (@doc false split/1 unspecced), Keep quote blocks small, the use documentation rule, the compile-time-dependency rule (Macro.expand) and the do: rule (a pipeline and an over-long body on do:), plus unless, a catch-all match/1, two one-line pipelines and an unformatted line; read no skill files (baseline)."
+  }
+ },
+ "per_rule": {
+  "Add specs, and hide technical functions from the docs": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Write a function unless the job needs a macro": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Keep `quote` blocks small": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Unquote each argument once": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Offer `import` or `alias` instead of `use` when they are enough": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Avoid compile-time dependencies on modules used only at runtime": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Write module names literally": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Use `do:` for a one-expression body and `do ... end` for anything else": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  }
+ }
+}

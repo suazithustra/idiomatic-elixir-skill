@@ -27,11 +27,11 @@ defmodule Evals.SkillCheckTest do
 
   @clean_tree %{
     "idiomatic-elixir/SKILL.md" => "# Skill\n\n### Rule one\n\n```elixir\na = 1\n```\n",
-    "idiomatic-elixir/references/testing.md" => "# Tests\n\n## Assert with patterns\n",
+    "idiomatic-elixir/references/ex_unit.md" => "# Tests\n\n## Assert with patterns\n",
     "evals/README.md" => """
     | File | Phrase |
     | --- | --- |
-    | `testing.md` | `Assert with patterns` |
+    | `ex_unit.md` | `Assert with patterns` |
 
     | Rule | Cases | Without skill |
     | --- | --- | --- |
@@ -120,7 +120,7 @@ defmodule Evals.SkillCheckTest do
       ## Other ExUnit features to reach for
       """
 
-      assert SkillCheck.rule_headings(markdown, "references/testing.md") == [
+      assert SkillCheck.rule_headings(markdown, "references/ex_unit.md") == [
                "Assert with patterns"
              ]
     end

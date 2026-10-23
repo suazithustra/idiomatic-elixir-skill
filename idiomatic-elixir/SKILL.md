@@ -17,10 +17,12 @@ Readability rules carry the same weight as correctness rules.
   | `GenServer`, `Agent`, `Task`, `spawn`, `send`, `:ets`, a supervisor, or shared state | `references/processes.md` |
   | a Hex package, or a public module API other code depends on | `references/library-design.md` |
   | `defmacro`, `quote`, `__using__`, `use` of your own module, or `Module.concat` | `references/macros.md` |
-  | `ExUnit`, files under `test/` | `references/testing.md` |
+  | a test to write, change, run or review, whatever the task is otherwise about: `ExUnit`, `test/`, `mix test`, `assert` | `references/ex_unit.md` |
   | `Repo`, `Ecto`, schemas, migrations, Phoenix controllers, contexts, or LiveViews | `references/ecto-phoenix.md` |
 
-- **Reviewing code:** report a finding only where the code contains the pattern a rule describes. For each finding, name the rule, quote the line, and show the fix. If you also write an improved version, it must apply every finding you reported.
+- **When to load it:** read this file before the first line of code. A review afterwards reports the patterns the rules describe; a design no rule names, such as a hand-built logger handler where `capture_log/2` would do, goes unreported, while code written with the skill loaded does not take that shape.
+- **Formatting:** formatting is part of writing a file, not a pass over the project at the end. The step after you finish a file, before you write the next one or run the tests, is `mix format --check-formatted path/to/file.ex` on that file alone. When it fails, format the file and read the lines the formatter moved. A `do:` body moved onto its own line or a literal argument spread over several lines is a line to rewrite under the rules below (a block, a named argument), not to accept, and rewriting it now keeps the next file from repeating the shape; a wrap after `=` or before `|>` is the formatter's own and stays. A file you come back to is checked again when you leave it. When several agents write files, each formats its own.
+- **Reviewing code:** report a finding where the code contains the pattern a rule describes, and where the code builds by hand what a rule names a facility for, such as a lookup before an insert where the changeset rule names `unique_constraint/3`. For each finding, name the rule, quote the line, and show the fix. If you also write an improved version, it must apply every finding you reported.
 - **Existing projects:** follow the project's established conventions where they conflict with a readability rule here, and say so when you do.
 
 ## Pattern matching and data access
@@ -76,7 +78,7 @@ def drive(%User{age: age} = user) when age < 18, do: "#{user.name} cannot drive"
 
 ### Update structs with `%{struct | field: value}`
 
-The update syntax raises if the field does not exist. `Map.put/3` with a misspelled key silently produces a broken struct.
+The update syntax raises if the field does not exist. `Map.put/3` with a misspelled key silently produces a broken struct. In `defstruct`, list a field whose default is `nil` as a bare atom, `defstruct [:items, :discount]`, not `discount: nil`; a keyword entry is for a real default, such as `items: %{}`.
 
 ### Convert external strings to atoms with explicit clauses
 
@@ -331,14 +333,54 @@ Name magic numbers with module attributes: `@session_ttl :timer.hours(24)`.
 
 A public function should read as a short sequence of named steps, with the details in private functions below it. When a `case`, `if`, or `with` appears inside another one, move the inner one into a named private function. Put public functions before the private helpers they call.
 
+### Build a multi-line argument under a name before the call
+
+Unless a call's result is bound to a name, each of its arguments is a name or a short literal: a map, struct or keyword list that would span several lines is built first under a name that says what it is, one field per line, with a blank line between multi-line statements. That holds whether the result is passed on, matched against, nested in another call or discarded. The reader then sees the steps in order: build the parts, build the whole, make the call. A call whose result is bound to a name may take its options inline, as `formatter` does below; a call with its own options nested inside a literal becomes a name too.
+
+```elixir
+# Instead of
+:ok =
+  :logger.add_handler(@handler, :logger_std_h, %{
+    level: :all,
+    config: %{type: {:device, device}},
+    formatter:
+      Logger.Formatter.new(
+        format: "$level $metadata$message\n",
+        metadata: :all,
+        colors: [enabled: false]
+      )
+  })
+# write
+formatter =
+  Logger.Formatter.new(
+    format: "$level $metadata$message\n",
+    metadata: :all,
+    colors: [enabled: false]
+  )
+
+handler_config = %{
+  level: :all,
+  config: %{type: {:device, device}},
+  formatter: formatter
+}
+
+:ok = :logger.add_handler(@handler, :logger_std_h, handler_config)
+```
+
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
-Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function whose clauses are short pattern matches keeps them on `do:` even when one clause needs a block; set that clause apart with a blank line. When most of a function's clauses need blocks, write all of them as blocks. A one-expression body too long for the head's line wants a block or a helper; a head that `mix format` wraps because of a long guard is fine as wrapped.
+Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function may mix the forms: a short clause on `do:`, a clause that needs a block as a block, each block clause set apart with a blank line. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
 
 ```elixir
 # Instead of
 def decode(nil), do: {:error, :missing_input}
 def decode(value), do: value |> Decoder.decode() |> normalize_result()
+
+def message(%__MODULE__{reason: {:unknown_type, type}}),
+  do: "unknown event type #{inspect(type)}, expected one of the documented types"
+
+if amount < 0,
+  do: raise(ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}")
 # write
 def decode(nil), do: {:error, :missing_input}
 
@@ -346,6 +388,14 @@ def decode(value) do
   value
   |> Decoder.decode()
   |> normalize_result()
+end
+
+def message(%__MODULE__{reason: {:unknown_type, type}}) do
+  "unknown event type #{inspect(type)}, expected one of the documented types"
+end
+
+if amount < 0 do
+  raise ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}"
 end
 ```
 
@@ -359,11 +409,26 @@ end
 
 `Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`. When the body does more than one call, or would need `&3`, write `fn` with named arguments.
 
+### Open a module with `use`, `import`, `alias`, `require`, in that order
+
+Right after `@moduledoc`, group each kind together, in that order, so what the module pulls in sits in the same place in every file.
+
+```elixir
+use GenServer
+
+import Ecto.Query, only: [from: 2]
+
+alias MyApp.Repo
+alias MyApp.Orders.Order
+
+require Logger
+```
+
 ## Before you finish
 
 If you can run shell commands and Elixir is installed, do the steps below. Skip any step the user or the project's instructions tell you not to do; those instructions take precedence over this list.
 
-1. Run `mix format path/to/file.ex` on the files you wrote or changed. It also works outside a Mix project.
+1. Run `mix format path/to/file.ex` on any changed file you have not formatted since its last edit (see "Formatting" under "How to use this skill"). It also works outside a Mix project.
 2. Compile, and fix every warning in the code you wrote or changed, including unused variables and type warnings. Use `mix compile` in a Mix project. For a standalone file, run `elixir path/to/file.ex`, which compiles it in memory and leaves no `.beam` files behind.
 3. If the project has Credo, run `mix credo --strict` and fix what it reports in the code you wrote or changed.
-4. If the project has tests, run them.
+4. If the project has tests, run them. While you work on one module, `mix test test/my_app/orders_test.exs` runs only its tests, `mix test test/my_app/orders_test.exs:42` the one test at that line, and `mix test --failed` the tests that failed last time. Run the whole suite once more before you finish, since a change in one module can break a test in another.
