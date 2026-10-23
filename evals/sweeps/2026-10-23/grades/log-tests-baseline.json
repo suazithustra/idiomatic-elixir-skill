@@ -1,0 +1,266 @@
+{
+ "case": "log-tests",
+ "condition": "baseline",
+ "notes": [
+  "Sixth full sweep (2026-10-23, head d04061d, uncommitted false), baseline condition of log-tests: five runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2), all rc 0, each model_id matching its tier. Every transcript shows a Read of the input and a Write of the test file followed by elixir -r runs; opus-1 also read the ExUnit.CaptureLog docs with Code.fetch_docs before writing, and opus-1, haiku-2, sonnet-1 and sonnet-2 ran mutant checks of their own. No Skill tool call; reads is empty in all five, as the prompt's last line requires. Expected reads (ex_unit.md) is unmet in every run, as expected for baseline. No session ran mix format, yet all five files pass mix format --check-formatted, matching format_ok in result.json.",
+  "Rules changed since ba24972 (git diff ba24972 -- idiomatic-elixir/): SKILL.md rewrote \"In multi-clause functions, bind in the head only what patterns and guards use\" and added three paragraphs to \"Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys\"; ex_unit.md added one sentence to \"Capture logs with `capture_log/2`, not a handler\" (\"A crash report's content depends on the primary level alone: ...\"). That sentence concerns crash reports, which this case does not produce, so it decides no verdict; the capture_log rule is graded to the 2026-10-22-d standard on its unchanged sentences. \"Run tests concurrently unless they share global state\", \"Group tests by function and name them by behaviour\", \"Assert with patterns\" and \"Replace dependencies at boundaries, through behaviours\" are unchanged and graded to the 2026-10-22-d standard.",
+  "Per-sentence counts for the rewritten rules (both outside this case's list, so they only feed other_violations; the bullet-per-sentence lists the caller mentioned are in webhook-parser.md and library-client.md, not in log-tests.md). \"Read required keys ...\": first sentence (required keys with map[:key]) 1 of 5 (sonnet-1, lines 94-95 and 108-109, unchanged sentence); the new pattern-as-dot-access sentence (\"A pattern in a body that pulls one atom key or struct field out of a value the function already holds, with no literal and no guard, is dot access written long\") 0 of 5; the chain sentence 0 of 5 (every run reads event.meta.request_id as one chain); the Map.fetch sentence not exercised. \"In multi-clause functions ...\": 0 of 5 on every sentence. The only multi-clause functions are haiku-1's message/1 (lines 48-50) and haiku-2's message_text/1 (lines 118-120), whose heads match a tagged tuple and bind its elements; those are tuple elements of the selecting pattern, not fields the body could read with dot access, so the field sentence does not apply. No head pattern moved into a body, and no string-keyed parser.",
+  "\"Capture logs with `capture_log/2`, not a handler\": 4 of 5 violate (5 of 5 in 2026-10-22-d). opus-1 is the first baseline run in this case to keep the rule: after reading the CaptureLog docs it wraps every call in with_log/2 with :format and :metadata options (lines 33-38) and asserts anchored lines on the captured text. haiku-1 (lines 32-35), haiku-2 (line 33), sonnet-1 (lines 43-47, with Logger.configure at line 41) and sonnet-2 (line 35) add a :logger handler that sends events to the test process and assert on the event maps. Calls outside a capture: none in opus-1 (with_log) or haiku-2 (@moduletag capture_log: true); every charge/3 call in haiku-1, sonnet-1 and sonnet-2, whose runs print 8, 6 and 4 log lines.",
+  "To check the log assertions are not vacuous, each file was run against the five mutants of the earlier sweeps (success logs at warning, declined logs at info, declined drops amount_cents, request_id metadata removed, unavailable logs at warning instead of error). Every file fails at least one test on every mutant, opus-1's capture-based file included (2/3, 2/3, 2/3, 0/3, 2/3 passed).",
+  "\"Assert with patterns\": 4 of 5 violate with the shape of 2026-10-22-d, binding a log event and then comparing its fields with == (haiku-1 lines 92-96, haiku-2 lines 51-53, sonnet-1 lines 93-95, sonnet-2 lines 64-67). Judgment, as before: the bound value comes from the test's own drain helper, not from charge/3, and is graded under the rule's first example. opus-1 is clean: {result, log} = with_log(...) is the exempted destructure, and assert result == {:ok, \"ch_123\"} compares the whole value with the value under test on the left. Bound collections compared with == [] (haiku-1 line 72, haiku-1 line 103, sonnet-1 line 81) put the value under test on the left and are not violations.",
+  "\"Run tests concurrently unless they share global state\": 3 of 5 violate (4 of 5 in 2026-10-22-d). haiku-2 (fixed handler id, line 27) and sonnet-1 (Logger.configure, line 41) force async: false with their own global state, graded violated as before. haiku-1 uses a unique handler id per test (line 30) but no pid filter, so nothing outside the test forces its async: false; graded violated like 2026-10-22-d's unneeded async: false. opus-1 (no handler) and sonnet-2 (per-test handler, pid filter at line 44) are clean with async: true. The Opus tier moves from violated to clean.",
+  "\"Group tests by function and name them by behaviour\": 0 of 5 violate. opus-1 has no describe block, which the rule does not forbid, so it misses the case's describe check but is graded clean on its names. haiku-1, haiku-2 and sonnet-1 name blocks after conditions; sonnet-2 uses \"charge/3 when ...\". The tersest names, haiku-2 lines 40 and 58 \"returns the error\" and haiku-1 line 85 \"returns the decline\", sit under a describe naming the condition and are graded clean as 2026-10-22-d graded \"returns the gateway's error\". \"Replace dependencies at boundaries, through behaviours\" is clean in 5 of 5: opus-1, sonnet-1 and sonnet-2 use one module per outcome, haiku-1 one module answering by token, haiku-2 one module whose answer each test puts in the process dictionary (not runtime patching).",
+  "Rules outside the list: \"Build a multi-line argument under a name before the call\" in 4 of 5 (haiku-1, haiku-2, sonnet-1, sonnet-2), under the sentence \"That holds whether the result is passed on, matched against, nested in another call or discarded\", unchanged since ba24972; the pipeline rule in haiku-1 (lines 68-70) and haiku-2 (line 120); the required-keys rule in sonnet-1. Not reported, as before: comments above handler modules (haiku-2 lines 16-17, sonnet-1 lines 5-6) and helpers (haiku-2 lines 98 and 105), as 2026-10-22-d left such comments unreported, gateway modules without @moduledoc false in an .exs script, opus-1's formatter wrap after =~ (lines 62-63), and haiku-2's 1_000 ms assert_receive timeout (line 100).",
+  "Tests were run from copies in the scratch folder with elixir -r log-tests-input.ex charger_test.exs on Elixir 1.20.3 (OTP 29), 20 times each with random seeds. Every file passed every time with no compiler warnings: opus-1 3 tests, haiku-1 8, haiku-2 6, sonnet-1 6, sonnet-2 4. mix format --check-formatted passes for all five."
+ ],
+ "runs": {
+  "baseline-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "clean",
+     "evidence": "line 4: use ExUnit.Case, async: true; no handler, Logger.configure, Process.register or application env"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "clean",
+     "evidence": "no describe block (the rule does not forbid that; the case check is missed); tests named by value and effect: line 41: test \"a successful charge returns the charge id and logs nothing at warning or above\" do, line 50: test \"a declined card logs a warning carrying the request id and the amount\" do, line 57: test \"an unavailable gateway logs at error level\" do"
+    },
+    "Assert with patterns": {
+     "verdict": "clean",
+     "evidence": "line 42: {result, log} = charge_with_log(ApprovingGateway, \"req-ok\") (the exempted destructure that cannot fail), then line 44: assert result == {:ok, \"ch_123\"} (whole value with ==, the bound value under test on the left; same at lines 53 and 60); log text asserted with =~, lines 46-47, 54, 62-63; no bind-then-== on fields"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 10-29: ApprovingGateway, DecliningGateway, UnavailableGateway, each with @behaviour Payments.Gateway and @impl true, passed as gateway: gateway at line 37"
+    },
+    "Capture logs with `capture_log/2`, not a handler": {
+     "verdict": "clean",
+     "evidence": "line 33: @log_format [format: \"$level $metadata| $message\\n\", metadata: [:request_id, :amount_cents]] with lines 36-38: with_log(@log_format, fn -> / Charger.charge(4200, \"tok_visa\", gateway: gateway, request_id: request_id) / end); every charge/3 call goes through this helper, so the suite prints nothing; metadata asserted on the captured text, line 54: assert log =~ ~r/^warning request_id=req-declined amount_cents=4200 \\| card declined$/m; no handler"
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "met: logs captured with with_log/2 (line 36); no :logger handler, StringIO or backend",
+    "met: :format and :metadata options passed (line 33); request id and amount asserted on the captured text (lines 54, 62-63)",
+    "met: async: true (line 4); no Logger.configure, Process.register or application env",
+    "met: one Payments.Gateway module per outcome (lines 10-29)",
+    "met: success absence asserted on captured text, line 47: refute log =~ ~r/^(warning|error|critical|alert|emergency) /m, with a positive info assertion at line 46 so the refute is not vacuous; no Process.sleep",
+    "met: results compared whole with the bound result on the left of == (lines 44, 53, 60); no bare match that can fail",
+    "missed: no describe blocks; tests named by what the call returned and logged",
+    "met: every charge/3 call runs inside with_log; the suite prints no log line",
+    "met: only Charger.charge/3 tested",
+    "met: passes mix format --check-formatted; 3 passed, 0 failed (20 runs)",
+    "missed: expected reads (ex_unit.md not read; baseline)"
+   ],
+   "summary": "Captures every call through a with_log/2 helper with format and metadata options, asserts anchored log lines carrying level, request id and amount, refutes warning-or-above lines on success, compares the bound result whole on the left of ==, with one behaviour module per outcome under async: true and no describe blocks; breaks no graded rule (the first baseline run in this case to keep the capture_log rule), and read no skill files."
+  },
+  "baseline-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 23: use ExUnit.Case, async: false; nothing outside the test forces it: no Logger.configure, Process.register or application env, and the handler id is already unique per test (line 30: handler_id = :\"charger_test_#{System.unique_integer([:positive])}\"); only the test's own choice not to filter events by pid (line 19: def log(event, %{config: %{pid: pid}}), do: send(pid, {:log_event, event})) would make concurrent tests see each other's events"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "clean",
+     "evidence": "describe blocks named after the condition: line 60: describe \"successful charge\" do, line 84: describe \"declined card\" do, line 107: describe \"unavailable gateway\" do; tests named by value or effect, e.g. line 65: test \"logs nothing at warning level or above\" do, line 85: test \"returns the decline\" do (graded clean as 2026-10-22-d graded the same name)"
+    },
+    "Assert with patterns": {
+     "verdict": "violated",
+     "evidence": "lines 92-96: assert [event] = received_events() / assert event.level == :warning / assert message(event) == \"card declined\" / assert event.meta.request_id == \"req-42\" / assert event.meta.amount_cents == 500 (binds the event, then == on its fields; same at lines 78-80 and 115-119); charge/3 results asserted with patterns, line 86: assert {:error, :declined} = charge(\"tok_declined\")"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 4-12: Payments.ChargerTest.Gateway with @behaviour Payments.Gateway answering by token, passed as gateway: Payments.ChargerTest.Gateway at line 43"
+    },
+    "Capture logs with `capture_log/2`, not a handler": {
+     "verdict": "violated",
+     "evidence": "lines 32-35: :ok = / :logger.add_handler(handler_id, Payments.ChargerTest.Forwarder, %{ / config: %{pid: self()} / }) with line 19: def log(event, %{config: %{pid: pid}}), do: send(pid, {:log_event, event}); no capture_log or with_log call; metadata read from handler events, lines 95-96: assert event.meta.request_id == \"req-42\" / assert event.meta.amount_cents == 500; every charge/3 call runs outside a capture, and a run prints 8 log lines"
+    }
+   },
+   "other_violations": [
+    "Build a multi-line argument under a name before the call: lines 32-35: :ok = / :logger.add_handler(handler_id, Payments.ChargerTest.Forwarder, %{ / config: %{pid: self()} / }) (the handler config map spans several lines inside a call whose result is matched, the rule's own Instead-of shape); lines 42-45: Charger.charge(amount_cents, token, / gateway: Payments.ChargerTest.Gateway, / request_id: \"req-42\" / ) (options spread over several lines inside a call whose result is returned, not bound)",
+    "Write pipelines that start with a value and read top to bottom: lines 68-70: loud = / received_events() / |> Enum.filter(&(&1.level in @warning_or_above)) (starts with a call, and pipes a single step)"
+   ],
+   "checks": [
+    "missed: logs collected through a handler added with :logger.add_handler/3 (lines 32-35); no capture_log or with_log",
+    "missed: no :metadata or :format option; metadata read from handler event maps (lines 95-96, 118-119)",
+    "missed: async: false (line 23), though nothing global forces it",
+    "met: one Payments.Gateway module answering by token (lines 4-12)",
+    "missed: success absence asserted on handler events (lines 68-72), not on captured text; no Process.sleep",
+    "missed: charge/3 results asserted with patterns (lines 62, 86, 109), but log events are bound and then compared with == (lines 78-80, 92-96, 115-119)",
+    "met: describe blocks named after the condition the tests share; tests named by value or effect",
+    "missed: no charge/3 call runs inside a capture; the suite prints 8 log lines",
+    "met: only Charger.charge/3 tested",
+    "met: passes mix format --check-formatted; 8 passed, 0 failed (20 runs)",
+    "missed: expected reads (ex_unit.md not read; baseline)"
+   ],
+   "summary": "Collects log events through a uniquely named :logger handler with no pid filter under async: false and captures nothing, so every run prints its log lines; asserts metadata on the event maps by binding and then comparing fields, with one behaviour gateway answering by token and condition-named describe blocks; breaks the capture_log, async and assert-with-patterns rules plus the multi-line-argument and pipeline rules, and read no skill files."
+  },
+  "baseline-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 23: use ExUnit.Case, async: false, forced by the test's own global state: line 27: @handler_id :charger_test_capture (one fixed handler id for every test) and line 19: def log(event, %{test_pid: pid}), do: send(pid, {:log_event, event}) (no pid filter); graded as 2026-10-22-d graded async: false forced by the test's own Logger.configure"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "clean",
+     "evidence": "describe blocks named after the condition: line 39: describe \"declined card\" do, line 57: describe \"unavailable gateway\" do, line 75: describe \"successful charge\" do; tests named by value or effect, e.g. line 46: test \"logs a warning with the request id and amount in the metadata\" do; the tersest, line 40 and 58: test \"returns the error\" do, sits under a describe naming the condition and is graded clean as \"returns the gateway's error\" was in 2026-10-22-d"
+    },
+    "Assert with patterns": {
+     "verdict": "violated",
+     "evidence": "lines 51-53: event = assert_log_event(:warning, \"card declined\") / assert event.meta.request_id == @request_id / assert event.meta.amount_cents == @amount (binds the event, then == on its fields with values the test already holds; same at lines 69-71); charge/3 results asserted with patterns, line 43: assert {:error, :declined} = charge()"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 4-12: Payments.ChargerTest.StubGateway with @behaviour Payments.Gateway and @impl true, line 11: def charge(_amount_cents, _token), do: Process.get(:stub_result), passed as gateway: Payments.ChargerTest.StubGateway at line 93; the outcome is set per test in the process dictionary, not by patching modules"
+    },
+    "Capture logs with `capture_log/2`, not a handler": {
+     "verdict": "violated",
+     "evidence": "line 33: :ok = :logger.add_handler(@handler_id, Payments.ChargerTest.Capture, %{test_pid: self()}); no capture_log or with_log call, line 25: @moduletag capture_log: true only silences the console; line 17: # Unlike ExUnit.CaptureLog, the event keeps its metadata map, so tests can check it. (the capture_log :metadata option does this); metadata read from handler events, lines 52-53; every charge/3 call runs under the capture_log tag, so the suite prints nothing"
+    }
+   },
+   "other_violations": [
+    "Build a multi-line argument under a name before the call: lines 92-95: Payments.Charger.charge(@amount, \"tok_test\", / gateway: Payments.ChargerTest.StubGateway, / request_id: @request_id / ) (options spread over several lines inside a call whose result is returned, not bound)",
+    "Write pipelines that start with a value and read top to bottom: line 120: defp message_text({fmt, args}), do: :io_lib.format(fmt, args) |> IO.iodata_to_binary() (starts with a call, and pipes a single step)"
+   ],
+   "checks": [
+    "missed: logs collected through a handler added with :logger.add_handler/3 (line 33); only @moduletag capture_log: true (line 25) captures console output",
+    "missed: no :metadata or :format option; metadata read from handler event maps (lines 52-53, 70-71)",
+    "missed: async: false (line 23), forced by its own fixed handler id (line 27)",
+    "met: one Payments.Gateway module whose answer each test sets in the process dictionary (lines 4-12)",
+    "missed: success absence asserted by draining handler events (lines 106-116), not on captured text; no Process.sleep",
+    "missed: charge/3 results asserted with patterns (lines 43, 61, 79), but log events are bound and then compared with == (lines 51-53, 69-71)",
+    "met: describe blocks named after the condition the tests share; tests named by value or effect",
+    "met: every charge/3 call runs under the capture_log module tag; the suite prints no log line",
+    "met: only Charger.charge/3 tested",
+    "met: passes mix format --check-formatted; 6 passed, 0 failed (20 runs)",
+    "missed: expected reads (ex_unit.md not read; baseline)"
+   ],
+   "summary": "Collects log events through one fixed-id :logger handler under async: false, silences the console with @moduletag capture_log: true, asserts metadata on the event maps by binding and then comparing fields, and uses one behaviour gateway whose answer each test puts in the process dictionary, with condition-named describe blocks; breaks the capture_log, async and assert-with-patterns rules plus the multi-line-argument and pipeline rules, and read no skill files."
+  },
+  "baseline-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "violated",
+     "evidence": "line 15: use ExUnit.Case, async: false, forced by the test's own global state: line 41: Logger.configure(level: :debug) and a handler with no pid filter, lines 8-9: def log(event, %{config: %{test_pid: pid}}) do / send(pid, {:log, event}); graded as 2026-10-22-d graded its sonnet-1"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "clean",
+     "evidence": "describe blocks named after the condition: line 71: describe \"successful charge\" do, line 85: describe \"declined card\" do, line 99: describe \"unavailable gateway\" do; tests named by value or effect, e.g. line 86: test \"returns the declined error\" do, line 90: test \"logs a warning with request id and amount in metadata\" do"
+    },
+    "Assert with patterns": {
+     "verdict": "violated",
+     "evidence": "lines 93-95: assert [event] = Enum.filter(collect_logs(), &(&1.level == :warning)) / assert event.meta[:request_id] == \"req-declined\" / assert event.meta[:amount_cents] == 2_500 (binds the event, then == on its fields; same at lines 107-109); charge/3 results asserted with patterns, line 87: assert {:error, :declined} = charge(DecliningGateway, 2_500, \"req-declined\")"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 20-36: ApprovingGateway, DecliningGateway, DownGateway, each with @behaviour Payments.Gateway and @impl true, passed as gateway: gateway at line 58"
+    },
+    "Capture logs with `capture_log/2`, not a handler": {
+     "verdict": "violated",
+     "evidence": "lines 43-47: :ok = / :logger.add_handler(handler_id, LogForwarder, %{ / level: :all, / config: %{test_pid: self()} / }) with line 41: Logger.configure(level: :debug); no capture_log or with_log call; metadata read from handler events, lines 94-95; every charge/3 call runs outside a capture, and a run prints 6 log lines"
+    }
+   },
+   "other_violations": [
+    "Build a multi-line argument under a name before the call: lines 43-47: :ok = / :logger.add_handler(handler_id, LogForwarder, %{ / level: :all, / config: %{test_pid: self()} / }) (the handler config map spans several lines inside a call whose result is matched, the rule's own Instead-of shape)",
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys: lines 94-95: assert event.meta[:request_id] == \"req-declined\" / assert event.meta[:amount_cents] == 2_500 (keys the test requires, read with [:key]; same at lines 108-109)"
+   ],
+   "checks": [
+    "missed: logs collected through a handler added with :logger.add_handler/3 (lines 43-47); no capture_log or with_log",
+    "missed: no :metadata or :format option; metadata read from handler event maps (lines 94-95, 108-109)",
+    "missed: async: false (line 15) with Logger.configure (line 41)",
+    "met: one Payments.Gateway module per outcome (lines 20-36)",
+    "missed: success absence asserted on handler events (line 81), not on captured text; no Process.sleep",
+    "missed: charge/3 results asserted with patterns (lines 73, 87, 101), but log events are bound and then compared with == (lines 93-95, 107-109)",
+    "met: describe blocks named after the condition the tests share; tests named by value or effect",
+    "missed: no charge/3 call runs inside a capture; the suite prints 6 log lines",
+    "met: only Charger.charge/3 tested",
+    "met: passes mix format --check-formatted; 6 passed, 0 failed (20 runs)",
+    "missed: expected reads (ex_unit.md not read; baseline)"
+   ],
+   "summary": "Collects log events through a :logger handler with Logger.configure under async: false and captures nothing, so every run prints its log lines; asserts metadata with meta[:key] == on the bound events, with one behaviour module per outcome and condition-named describe blocks; breaks the capture_log, async and assert-with-patterns rules plus the multi-line-argument and map-access rules, and read no skill files."
+  },
+  "baseline-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Run tests concurrently unless they share global state": {
+     "verdict": "clean",
+     "evidence": "line 28: use ExUnit.Case, async: true, with a handler per test (line 34: id = :\"charger_test_#{System.unique_integer([:positive])}\") and a pid filter in the drain helper (line 44: {:log_event, %{meta: %{pid: pid}} = event} when pid == self() ->); no Logger.configure, Process.register or application env"
+    },
+    "Group tests by function and name them by behaviour": {
+     "verdict": "clean",
+     "evidence": "describe blocks named after the function and condition: line 56: describe \"charge/3 when the card is declined\" do, line 71: describe \"charge/3 when the gateway is unavailable\" do, line 82: describe \"charge/3 when the charge succeeds\" do; tests named by value and effect, e.g. line 57: test \"returns the error and logs a warning with request id and amount\" do"
+    },
+    "Assert with patterns": {
+     "verdict": "violated",
+     "evidence": "lines 64-67: assert [event] = Enum.filter(collect_events(), &severe?/1) / assert event.level == :warning / assert event.meta.request_id == \"req-declined\" / assert event.meta.amount_cents == 2500 (binds the event, then == on its fields; same at lines 76-78); line 94: assert [%{level: :info, meta: %{request_id: \"req-ok\"}}] = collect_events() is the pattern form"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+     "verdict": "clean",
+     "evidence": "lines 9-25: ApprovingGateway, DecliningGateway, DownGateway, each with @behaviour Payments.Gateway and @impl true, passed through the :gateway option (lines 60, 74, 85, 92)"
+    },
+    "Capture logs with `capture_log/2`, not a handler": {
+     "verdict": "violated",
+     "evidence": "line 35: :ok = :logger.add_handler(id, LogForwarder, %{config: %{test_pid: self()}}) with line 6: def log(event, %{config: %{test_pid: pid}}), do: send(pid, {:log_event, event}); no capture_log or with_log call; metadata read from handler events, lines 66-67; every charge/3 call runs outside a capture, and a run prints 4 log lines"
+    }
+   },
+   "other_violations": [
+    "Build a multi-line argument under a name before the call: lines 58-62: assert {:error, :declined} = / Charger.charge(2500, \"tok_1\", / gateway: DecliningGateway, / request_id: \"req-declined\" / ) (options spread over several lines inside a call whose result is matched, not bound)"
+   ],
+   "checks": [
+    "missed: logs collected through a handler added with :logger.add_handler/3 (line 35); no capture_log or with_log",
+    "missed: no :metadata or :format option; metadata read from handler event maps (lines 66-67, 78)",
+    "met: async: true (line 28); no Logger.configure, Process.register or application env",
+    "met: one Payments.Gateway module per outcome (lines 9-25)",
+    "missed: success absence asserted on handler events (line 88), not on captured text; no Process.sleep",
+    "missed: charge/3 results asserted with patterns (lines 58, 73, 84), but log events are bound and then compared with == (lines 64-67, 76-78)",
+    "met: describe blocks named after charge/3 and a condition; tests named by value and effect",
+    "missed: no charge/3 call runs inside a capture; the suite prints 4 log lines",
+    "met: only Charger.charge/3 tested",
+    "met: passes mix format --check-formatted; 4 passed, 0 failed (20 runs)",
+    "missed: expected reads (ex_unit.md not read; baseline)"
+   ],
+   "summary": "Collects log events through a per-test :logger handler with a pid filter in its drain helper under async: true and captures nothing, so every run prints its log lines; asserts metadata on the event maps by binding and then comparing fields, with one behaviour module per outcome and charge/3-plus-condition describe blocks; breaks the capture_log and assert-with-patterns rules plus the multi-line-argument rule, and read no skill files."
+  }
+ },
+ "per_rule": {
+  "Run tests concurrently unless they share global state": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Group tests by function and name them by behaviour": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Assert with patterns": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Replace dependencies at boundaries, through behaviours": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Capture logs with `capture_log/2`, not a handler": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  }
+ }
+}
