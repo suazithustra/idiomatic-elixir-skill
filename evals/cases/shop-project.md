@@ -34,7 +34,7 @@ In the project afterwards:
 - With 2 units of `"APPLE"` at 100 cents each: no code gives 699, `"SAVE10"` gives 180 + 499 = 679, `"FREESHIP"` gives 200.
 - The cart struct is updated with `%{cart | items: ...}`, not `Map.put/3`.
 - Boolean functions end in `?`, and variables are named after the domain (`cart`, `sku`, `code`), not `data`, `res`, or `x`.
-- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
+- A `with` has two or more `<-` steps, or one step whose body cannot fail and that has no `else`; a `case` whose error clause only passes the error through is written as that one-step `with`; a one-step `with` with an `else` is written as a `case`, and a second fallible call whose result the body works on is chained as a second step, not nested as a `case` (a tail call returning the same shape is not a second step).
 - A `defstruct` field whose default is `nil` is listed as a bare atom, not as `field: nil`.
 - `mix format path`, or its `--check-formatted` form, runs on each file before the session edits another file or runs the tests, so a file edited, left and edited again is formatted or checked each time it is left, not only in one run at the end.
 - Expected reads: `ex_unit.md` when the run adds or changes tests.

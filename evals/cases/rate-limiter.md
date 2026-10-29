@@ -22,8 +22,8 @@ Write all the code to <output>/ratelimit.ex. You may use the shell to check it c
 - The caller example goes through the limiter module's own functions, not `GenServer.call/3` or `:ets` directly.
 - Boolean results are branched on with `if`, not `case ... true -> ... false ->`.
 - No comments that restate the code.
-- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
-- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
+- A `with` has two or more `<-` steps, or one step whose body cannot fail and that has no `else`; a `case` whose error clause only passes the error through is written as that one-step `with`; a one-step `with` with an `else` is written as a `case`, and a second fallible call whose result the body works on is chained as a second step, not nested as a `case` (a tail call returning the same shape is not a second step).
+- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a `fn` argument that binds names has its body on the next line whatever its length.
 - The file passes `mix format --check-formatted`.
 - A call whose map or struct argument would span several lines, such as a child spec, takes that argument from a named value built above the call, one field per line, with a blank line between multi-line statements; a keyword list that is the call's last argument, such as the ETS table options, may stay inline, one option per line; a literal of more than six elements is one element per line.
 - Expected reads: `processes.md`.

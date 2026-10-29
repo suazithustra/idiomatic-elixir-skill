@@ -18,7 +18,7 @@ Write the tests to <output>/charger_test.exs. The file must start ExUnit itself,
 - The gateway is replaced through the `Payments.Gateway` behaviour (a test module per outcome, or one that answers by token), not by patching modules at runtime.
 - The success test asserts the absence of warning-level output on the captured text, such as `refute log =~ "[warning]"` or an empty `capture_log([level: :warning], ...)`, not with `Process.sleep/1`.
 - Assertions use patterns (`assert {:error, :declined} = ...`) with `assert` in front of every match, or `==` with the call under test on the left.
-- Tests are grouped in `describe` blocks named after `charge/3` or a condition the block's tests share, and named by what the call did or logged, not by `returns :ok`.
+- Tests are grouped in `describe` blocks named after `charge/3` or a condition the block's tests share (a condition block states a behaviour, not a topic), and named by what the call did or logged, not by `returns :ok`.
 - Every call to `charge/3` runs inside a capture, so the suite prints no log line.
 - Only public functions are tested.
 - The file passes `mix format --check-formatted` and the tests pass.

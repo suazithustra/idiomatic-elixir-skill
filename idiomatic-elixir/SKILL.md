@@ -38,6 +38,8 @@ Readability rules carry the same weight as correctness rules.
 {point.x, point.y, point[:z]}
 ```
 
+A keyword list has no dot access: read a key it must hold with `Keyword.fetch!/2`, as in `Keyword.fetch!(Mix.Project.config(), :deps)`, and keep `opts[:key]` for an option that has a default.
+
 A pattern is the way to read a value where the match also decides something: a function head or a `case` clause, where a failed match sends the value to the next clause, or the result of a call, where `{:ok, %Req.Response{} = response} = Req.get(req)` asserts the shape at the point it arrives. A pattern in a body that pulls one atom key or struct field out of a value the function already holds, with no literal and no guard, is dot access written long. Keep such a pattern when it binds two or more fields the body uses together, matches a literal, or carries a guard.
 
 ```elixir
@@ -177,7 +179,7 @@ Use `if` for a single boolean condition, not `case flag do true -> ...; false ->
 
 ### Chain fallible steps with `with`; normalize each step's error in a small private function
 
-A `with` has at least two `<-` steps; one step is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function that returns `{:ok, value}` or `{:error, reason}`, and let `with` pass the error through unchanged.
+A `with` chains two or more `<-` steps. One step is a `with` only when its body cannot fail and there is no `else`, so the `with` does nothing but pass the error through; any other one-step `with` is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function that returns `{:ok, value}` or `{:error, reason}`, and let `with` pass the error through unchanged.
 
 ```elixir
 # Instead of
@@ -209,21 +211,33 @@ defp decode64(encoded) do
 end
 ```
 
-Count the `<-` clauses before writing `with`. With one there is nothing to chain, and a `with` makes the reader look for the other steps, so use `case`, which shows both outcomes in one place. This holds in a public function whose only fallible call is the first step and whose body builds the result: the `with` saves the error clause and costs the reader a search for steps that are not there. When the body of a one-step `with` calls another function that can fail, that call is the second step: chain it with a second `<-` instead of nesting a `case` or adding an `else`.
+Count the `<-` clauses before writing `with`. With one, the `with` earns its place only as a pass-through: `with :ok <- apply_update(doc, update), do: {:ok, doc}` says that the error comes back unchanged. A `case` whose error clause is `{:error, _reason} = error -> error` is the same pass-through spelled out over four lines; write it as the `with`. The moment the one step needs more, the shape changes. An `else` that maps the one error is a `case`, which shows both outcomes in one place. A body that calls another function that can fail and works on its result makes that call the second step, chained with a second `<-` instead of a nested `case`. A body that is one call whose `{:ok, value}` or `{:error, reason}` goes out as the function's own result, the recursive `parse_rows(rest, [order | orders])` of a hand-written loop, is a tail call, not a second step, and the one-step `with` stays.
 
 ```elixir
 # Instead of
-def build(rows) do
-  with {:ok, orders} <- parse_orders(rows) do
-    {:ok, summarize(orders)}
-  end
-end
-# write
 def build(rows) do
   case parse_orders(rows) do
     {:ok, orders} -> {:ok, summarize(orders)}
     {:error, _reason} = error -> error
   end
+end
+# write
+def build(rows) do
+  with {:ok, orders} <- parse_orders(rows) do
+    {:ok, summarize(orders)}
+  end
+end
+
+# Instead of
+with {:ok, contents} <- File.read(path) do
+  {:ok, contents}
+else
+  {:error, _reason} -> {:error, :badfile}
+end
+# write
+case File.read(path) do
+  {:ok, contents} -> {:ok, contents}
+  {:error, _reason} -> {:error, :badfile}
 end
 
 # Instead of
@@ -290,6 +304,8 @@ Use `Enum.each/2` only for side effects. When you need results, use `Enum.map/2`
 | `Enum.group_by(items, &k/1) \|> Map.new(fn {k, v} -> {k, length(v)} end)` | `Enum.frequencies_by(items, &k/1)` |
 | `Enum.sort(items) \|> Enum.reverse()` | `Enum.sort(items, :desc)` |
 | `Enum.find(items, &f/1) != nil` | `Enum.any?(items, &f/1)` |
+| `List.keyfind(pairs, key, 0) == nil` | `not List.keymember?(pairs, key, 0)` |
+| `for path <- paths, File.read!(path) =~ ~r/Yex/, do: path` | `Enum.filter(paths, &(File.read!(&1) =~ ~r/Yex/))` |
 | `if Map.has_key?(map, k), do: Map.get(map, k)` | `case Map.fetch(map, k) do` |
 | `Map.put(map, k, f.(Map.get(map, k)))` | `Map.update!(map, k, f)` when `k` must exist; `Map.update(map, k, initial, f)` when it may be missing |
 
@@ -353,6 +369,8 @@ Options must not change what a function returns. If one mode returns an integer 
 ### Read configuration at runtime, not into module attributes
 
 A module attribute is evaluated at compile time. `@base_url Application.get_env(:my_app, :base_url)` reads the value during compilation, triggers a compiler warning, and ignores `config/runtime.exs`. Read configuration inside the function that needs it. When the value must be known at compile time, use `Application.compile_env/3`, which the compiler tracks.
+
+The same holds for work. A module attribute holds a literal or a value built from literals, `@window_ms :timer.minutes(1)` or `@fixtures Path.expand("fixtures", __DIR__)`. One that reads the file system, the project or the environment, `@sources Path.wildcard("lib/**/*.ex")` or `@deps Mix.Project.config()[:deps]`, fixes its answer when the file compiles and hides a call behind a constant's name; write a function and call it where the value is used.
 
 ## Naming
 
@@ -454,7 +472,9 @@ def decode(value) do
 end
 
 defp draws do
-  Enum.map(1..5, fn _draw -> :rand.uniform() end)
+  Enum.map(1..5, fn _draw ->
+    :rand.uniform()
+  end)
 end
 
 def message(%__MODULE__{reason: {:unknown_type, type}}) do
@@ -475,7 +495,7 @@ names =
 
 ### Break a `->` clause whose pattern and body together pass 70 characters
 
-A clause of `case`, `cond`, `with ... else` or `receive` stays on one line while its pattern, the `->` and its body together fit in 70 characters, not counting indentation. Past that, the body goes on the line after the `->`: the reader then sees what the clause matches on one line and what it does on the next, instead of finding the `->` by eye inside a line that `mix format` leaves alone, since the formatter wraps only at 98 columns. Once one clause breaks, `mix format` moves every clause's body down and separates the clauses with a blank line; keep that layout, and do not pull the short clauses back onto one line. A one-line `fn` passed as an argument is outside this rule; a long one becomes a named function.
+A clause of `case`, `cond`, `with ... else` or `receive` stays on one line while its pattern, the `->` and its body together fit in 70 characters, not counting indentation. Past that, the body goes on the line after the `->`: the reader then sees what the clause matches on one line and what it does on the next, instead of finding the `->` by eye inside a line that `mix format` leaves alone, since the formatter wraps only at 98 columns. Once one clause breaks, `mix format` moves every clause's body down and separates the clauses with a blank line; keep that layout, and do not pull the short clauses back onto one line. A `fn` passed as an argument follows the capture rule instead: when it binds names, its body goes on the line after the `->` whatever its length.
 
 ```elixir
 # Instead of
@@ -520,6 +540,17 @@ defp names(modules), do: Enum.join(Enum.sort(modules), ", ")
 ### Use captures for one-call lambdas and `fn` for anything longer
 
 `Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`, with `&1` and `&2` in that order and each used once. When the body does more than one call, would need `&3`, or passes `&2` before `&1` or the same placeholder twice, write `fn` with named arguments: the reader of `&table_issue(&2, &1, meta, &1)` has to work out which argument is the word and which the context, and `fn word, ctx -> table_issue(ctx, word, meta, word) end` tells them.
+
+A `fn` that binds names takes the room its names earn: the body goes on the line after the `->`, and `end` closes it on a line of its own, the layout `mix format` keeps once it is written. A one-line `fn {name, kind} -> {name, root_view(doc, name, kind)} end` is a capture that could not be written, squeezed onto the head's line, and the reader parses the pattern and the body in one pass. A `fn -> now end` that binds nothing may stay on one line.
+
+```elixir
+# Instead of
+Map.new(roots, fn {name, kind} -> {name, root_view(doc, name, kind)} end)
+# write
+Map.new(roots, fn {name, kind} ->
+  {name, root_view(doc, name, kind)}
+end)
+```
 
 ### Open a module with `use`, `import`, `alias`, `require`, in that order
 

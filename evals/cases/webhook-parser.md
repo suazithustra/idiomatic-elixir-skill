@@ -24,10 +24,10 @@ Write the code to <output>/webhook.ex. You may use the shell to check it compile
 - No field that no pattern or guard uses is bound, as the same field, in every head of a function with three or more clauses, nor in any head of a multi-clause function whose pattern spreads over several lines; fields the body alone needs are read from the matched value; a head that spreads while binding only what its guard reads is fine, and so is a function whose clauses each bind a different body-only field.
 - Structs have `@enforce_keys` and `@type t`.
 - Steps are chained with `with` over small private functions that return `{:ok, value}` or `{:error, reason}`. There is no large `else` block that maps errors back to steps.
-- A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
+- A `with` has two or more `<-` steps, or one step whose body cannot fail and that has no `else`; a `case` whose error clause only passes the error through is written as that one-step `with`; a one-step `with` with an `else` is written as a `case`, and a second fallible call whose result the body works on is chained as a second step, not nested as a `case` (a tail call returning the same shape is not a second step).
 - A function that checks a value and returns `{:error, reason}` is not named `fetch_*`; `fetch` names a lookup that returns `{:ok, value}` or `:error`. A variable may carry the name of the payload key it holds, such as `data` for `"data"`.
 - No comments that restate a clause. Documentation is in `@moduledoc` and `@doc`.
-- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
+- A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a `fn` argument that binds names has its body on the next line whatever its length.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 
