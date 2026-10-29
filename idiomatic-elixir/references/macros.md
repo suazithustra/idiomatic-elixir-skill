@@ -89,9 +89,13 @@ The compiler tracks dependencies only on module names it can see in the code. `M
 
 ```elixir
 # Instead of
-for part <- [:Foo, :Bar], do: Module.concat(OtherModule, part).example()
+for part <- [:Foo, :Bar] do
+  Module.concat(OtherModule, part).example()
+end
 # write
-for mod <- [OtherModule.Foo, OtherModule.Bar], do: mod.example()
+for mod <- [OtherModule.Foo, OtherModule.Bar] do
+  mod.example()
+end
 ```
 
 If the names really must be generated, build the full name inside a macro and unquote it, so the expanded code contains the literal module name and `mix xref` can see it:

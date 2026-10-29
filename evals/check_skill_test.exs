@@ -13,8 +13,12 @@ defmodule Evals.SkillCheckTest do
     %{file: file, heading: heading, ordinal: 1, code: code}
   end
 
+  # Unique integers restart with each VM, so a tree a previous run left behind would be read
+  # together with this one's files.
   defp write_tree(files) do
     root = Path.join(System.tmp_dir!(), "skill-check-#{System.unique_integer([:positive])}")
+    File.rm_rf!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
 
     for {path, content} <- files do
       full = Path.join(root, path)

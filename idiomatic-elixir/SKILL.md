@@ -86,11 +86,13 @@ value = Enum.at(parts, 1)
 [key, value] = String.split(pair, "=", parts: 2)
 ```
 
+The same goes for `elem/2` on a tuple whose shape is known: `fn {id, _pid, _type, _modules} -> id end` says what `Supervisor.which_children/1` returns, `&elem(&1, 0)` does not.
+
 When the input set is open by design (event types from an external system, messages from other processes), end with a clause that binds and names what it catches: `defp parse_event(type, _payload), do: {:error, {:unsupported_event, type}}`. Make sure that clause can only receive what its error names. If one set of clauses both selects the event type and matches its fields, a known type with a missing field falls through to "unsupported event". Select the type in one function and validate the fields in another.
 
 ### In multi-clause functions, bind in the head only what patterns and guards use
 
-A head binds what selects its clause: a value matched against a literal, a value a guard reads, or a key whose presence selects, because another clause catches the input that lacks it. A struct always has its fields, so a struct field selects only through a literal, a nested pattern that must match, or a guard. A field no pattern or guard in the clause uses, bound in every clause of a function with three or more clauses, or bound in a head whose pattern `mix format` spreads over several lines, makes the reader scan every head to find what selects. Take the value whole with `= order` and read `order.total` in the body. A head that `mix format` wraps only to move a long guard onto its own line is fine as wrapped; a single-clause function may destructure in its head; and the `= order` alias beside a pattern is not a bound field.
+A head binds what selects its clause: a value matched against a literal, a value a guard reads, or a key whose presence selects, because another clause catches the input that lacks it. A struct always has its fields, so a struct field selects only through a literal, a nested pattern that must match, or a guard. A field no pattern or guard uses makes the reader scan every head to find what selects when the same field is bound in every clause of a function with three or more clauses, or when it is bound in a head whose pattern `mix format` spreads over several lines; a function whose clauses each bind a different body-only field is not this shape. Take the value whole with `= order` and read `order.total` in the body. A head that `mix format` wraps only to move a long guard onto its own line is fine as wrapped; a single-clause function may destructure in its head; and the `= order` alias beside a pattern is not a bound field.
 
 ```elixir
 # Instead of
@@ -393,7 +395,7 @@ A public function should read as a short sequence of named steps, with the detai
 
 ### Build a multi-line argument under a name before the call
 
-Unless a call's result is bound to a name, each of its arguments is a name or a short literal: a map, struct or keyword list that would span several lines is built first under a name that says what it is, one field per line, with a blank line between multi-line statements. That holds whether the result is passed on, matched against, nested in another call or discarded. The reader then sees the steps in order: build the parts, build the whole, make the call. A call whose result is bound to a name may take its options inline, as `formatter` does below; a call with its own options nested inside a literal becomes a name too.
+Unless a call's result is bound to a name, each of its arguments is a name, a short literal, or a trailing keyword list: a map or struct that would span several lines is built first under a name that says what it is, one field per line, with a blank line between multi-line statements. That holds whether the result is passed on, matched against, nested in another call or discarded. The reader then sees the steps in order: build the parts, build the whole, make the call. A keyword list that is the call's last argument stays inline, one option per line, the way `config :my_app, key: value` and `Application.put_env/3` are written everywhere; a keyword list in any other position, or one holding a multi-line map, gets a name. A call whose result is bound to a name may take its options inline, as `formatter` does below; a call with its own options nested inside a literal becomes a name too. An assertion is a call like any other: when `mix format` spreads the expected map of `assert_issue(run("fixture.ex"), %{line_no: 4, trigger: "..."})` over several lines, bind it first as `expected = %{...}` and assert on the name. A list, map or keyword literal of more than six elements goes one element per line wherever it stands, a module attribute included; `mix format` keeps that layout when a line break follows the opening bracket. A shorter literal that fits its line stays on one line.
 
 ```elixir
 # Instead of
@@ -427,18 +429,21 @@ handler_config = %{
 
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
-Use `do:` for a body of one expression that reads as part of the head: an accessor, a predicate, or a short pattern-matching clause. A body with several steps, a `case` or `with`, or a comment gets `do ... end`. A function may mix the forms: a short clause on `do:`, a clause that needs a block as a block, each block clause set apart with a blank line. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. The same holds for `if`: `if ..., do: ..., else: ...` fits when each branch is one short expression on the `if`'s line, and a branch `mix format` moves onto its own line gets `do ... end`.
+Use `do:` for a body of one expression with no body of its own inside it: a literal, a tuple, a field read, a comparison, or a call, nested or not. A body with several steps, a `case`, `with`, `if` or `receive`, a comment, or a `fn` gets `do ... end`, however short it is: `defp draws, do: Enum.map(1..5, fn _draw -> :rand.uniform() end)` fits on the line and is still a block, because the `fn` is a second body and two bodies do not share a line. A capture that carries a call with arguments of its own, `&match?({:unquote, _, _}, &1)` or `&Map.get(&1, key)`, is a second body too; `&part/1` and `& &1.id` are not. A function may mix the forms: a short clause on `do:`, a clause that needs a block as a block, each block clause set apart with a blank line. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. `if ..., do: ..., else: ...` stays on one line when one branch is a name or a literal, the fallback, and the other does the work, as in `if String.valid?(term), do: redact(term, config), else: term`; when both branches call something, write `do ... end` with a branch per line, even though the one-line form fits, and a branch `mix format` moves onto its own line gets `do ... end` as well. A `for` always takes `do ... end`: its generators and filters already fill the head.
 
 ```elixir
 # Instead of
 def decode(nil), do: {:error, :missing_input}
 def decode(value), do: value |> Decoder.decode() |> normalize_result()
 
+defp draws, do: Enum.map(1..5, fn _draw -> :rand.uniform() end)
+
 def message(%__MODULE__{reason: {:unknown_type, type}}),
   do: "unknown event type #{inspect(type)}, expected one of the documented types"
 
-if amount < 0,
-  do: raise(ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}")
+if enabled?(), do: {:ok, with_url(config)}, else: refuse_start(type, config)
+
+names = for ":" <> name <- parts, do: name
 # write
 def decode(nil), do: {:error, :missing_input}
 
@@ -448,13 +453,24 @@ def decode(value) do
   |> normalize_result()
 end
 
+defp draws do
+  Enum.map(1..5, fn _draw -> :rand.uniform() end)
+end
+
 def message(%__MODULE__{reason: {:unknown_type, type}}) do
   "unknown event type #{inspect(type)}, expected one of the documented types"
 end
 
-if amount < 0 do
-  raise ArgumentError, "a refund amount must be positive, got: #{inspect(amount)}"
+if enabled?() do
+  {:ok, with_url(config)}
+else
+  refuse_start(type, config)
 end
+
+names =
+  for ":" <> name <- parts do
+    name
+  end
 ```
 
 ### Break a `->` clause whose pattern and body together pass 70 characters
@@ -483,13 +499,27 @@ end
 
 ### Write pipelines that start with a value and read top to bottom
 
-- Start a pipeline with a variable or literal, then one transformation per line.
+- Start a pipeline with the value being transformed, a variable or a literal, then one transformation per line. A pipeline never sits on one line, however short: two steps on one line, `sql |> String.split(~r/\W+/, trim: true) |> Enum.uniq()`, hide where one step ends and the next begins, so they go on three lines after `words =`, or become a nested call when there are only two. An argument that only selects a kind or a mode does not start a pipeline: `Exception.format(:error, error, stacktrace)`, not `:error |> Exception.format(error, stacktrace)`.
 - Do not pipe a single step: write `String.trim(name)`, not `name |> String.trim()`.
 - Do not pipe into an anonymous function call (`|> (fn x -> ... end).()`). Break the pipeline and name the intermediate value, or use `then/2`.
 
+```elixir
+# Instead of
+words = sql |> String.split(~r/\W+/, trim: true) |> Enum.uniq()
+
+defp names(modules), do: modules |> Enum.sort() |> Enum.join(", ")
+# write
+words =
+  sql
+  |> String.split(~r/\W+/, trim: true)
+  |> Enum.uniq()
+
+defp names(modules), do: Enum.join(Enum.sort(modules), ", ")
+```
+
 ### Use captures for one-call lambdas and `fn` for anything longer
 
-`Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`. When the body does more than one call, or would need `&3`, write `fn` with named arguments.
+`Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`, with `&1` and `&2` in that order and each used once. When the body does more than one call, would need `&3`, or passes `&2` before `&1` or the same placeholder twice, write `fn` with named arguments: the reader of `&table_issue(&2, &1, meta, &1)` has to work out which argument is the word and which the context, and `fn word, ctx -> table_issue(ctx, word, meta, word) end` tells them.
 
 ### Open a module with `use`, `import`, `alias`, `require`, in that order
 

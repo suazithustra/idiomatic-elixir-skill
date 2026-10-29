@@ -27,8 +27,9 @@ Write the package's main module(s) to <output>/tiny_router.ex, followed by the M
 - Handler modules are kept as the literal names the user wrote; nothing builds module names with `Module.concat/2` or string interpolation.
 - Handlers stay runtime dependencies: `get` keeps the alias as written or expands it with `Macro.expand_literals/2` and a function in the environment, so `mix xref trace` on a router lists `MyApp.PageHandler` as a runtime dependency, not a compile-time one. `Macro.expand/2` makes it compile-time.
 - Every public function has a `@spec`, including `@doc false` ones and ones defined inside `quote`; a function under `@impl` needs none. All modules are under `TinyRouter`.
-- `do:` appears only on a body of one expression; a body with several steps or a `case` uses `do ... end`; a function that mixes `do:` and block clauses sets each block clause apart with a blank line; no `do:` body, on a function or an `if`, is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
+- `do:` appears only on a body of one expression with no `fn`, block construct or capture holding a call with its own arguments inside it; a body with several steps, a `case` or a `fn` uses `do ... end`; a one-line `if ..., do: ..., else: ...` has a name or a literal as one of its branches; every `for` is `do ... end`; a function that mixes `do:` and block clauses sets each block clause apart with a blank line; no `do:` body, on a function or an `if`, is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
 - A bad declaration fails at compile time with `ArgumentError` or `CompileError`, not at the first request.
+- A pipeline of two or more steps is never on one line: each `|>` starts a new line under the value, and a two-step pipeline may be a nested call instead; no pipeline starts with an argument that only selects a kind or a mode.
 - The file passes `mix format --check-formatted` and compiles.
 - Expected reads: `macros.md` and `library-design.md`.
 

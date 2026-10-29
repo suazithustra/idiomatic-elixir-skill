@@ -1,6 +1,6 @@
 # Idiomatic Elixir
 
-A lightweight agent skill for Elixir developers that attempts to fill in known gaps in code quality.
+A lightweight agent skill for Elixir developers that attempts to fill known gaps in code quality.
 
 This skill gives the agent a set of rules for discovered cases and is tested against an evaluation suite to cull redundancies as models improve. Rules for specialized areas are referenced in separate files to economize token consumption. The skill follows the [Agent Skills specification](https://agentskills.io/specification), so it works with any agent that supports skills.
 
@@ -14,17 +14,19 @@ This skill gives the agent a set of rules for discovered cases and is tested aga
 - modeling data at the boundaries of a system
 - configuration
 - naming conventions
-- readability: comments and documentation, function size, pipelines
+- readability: comments and documentation, function size, how to lay out long arguments, `do:` bodies and `->` clauses, pipelines, captures, the order of `use`, `import`, `alias` and `require`
 - final steps when a shell is available: format, compile, Credo, tests
+
+It also tells the agent when to read the skill (before the first line of code), to format each file as it finishes it and to rewrite what the formatter wrapped, and how to report findings in a review.
 
 Topic-specific rules live in `references/`, which the agent reads only when a task involves that topic:
 
 | File | Topic |
 | --- | --- |
 | `processes.md` | GenServer, Agent, Task, ETS (Erlang Term Storage), supervision |
-| `library-design.md` | Hex packages and public APIs: options, configuration, error types |
+| `library-design.md` | Hex packages and public APIs: configuration, error types, specs and docs, secrets in logs |
 | `macros.md` | macros, `use`, and compile-time code |
-| `ex_unit.md` | ExUnit |
+| `ex_unit.md` | ExUnit: concurrency, test names, pattern assertions, waiting for messages, behaviours as test seams, logs |
 | `ecto-phoenix.md` | Ecto schemas, queries, migrations, Phoenix controllers and contexts |
 
 The rules target current Elixir and were checked against Elixir 1.20. A few rules name the Elixir or Ecto version that introduced a function they rely on.
@@ -87,20 +89,6 @@ An agent loads the skill when a task involves Elixir code, whether you ask it to
 
 When reviewing, the skill asks the agent to name the rule behind each finding and apply them when making improvements.
 
-## Repository layout
-
-```text
-idiomatic-elixir/      the skill
-  SKILL.md             rules for all Elixir code
-  references/          topic-specific rules
-  LICENSE.txt          Apache License 2.0
-  NOTICE               copyright and credits for adapted material
-evals/                 checks on the skill and its test prompts
-  cases/               one prompt per case, with its inputs
-  sweeps/              dated run records: outputs, transcripts, gradings
-LICENSE                Apache License 2.0
-```
-
 ## Using the skill alongside Phoenix's generated AGENTS.md
 
 `mix phx.new` (Phoenix 1.8.16) writes an `AGENTS.md` into every new project. Most of it is Phoenix-specific guidance this skill does not cover: layouts, HEEx (HTML-aware Embedded Elixir) templates, streams, hooks and forms. Some of it repeats rules here (atoms from input, `is_` prefixes, `start_supervised!/1`, waiting for messages instead of sleeping, preloading associations, map access on structs) without the reasons. A few of its statements are wrong or overstated. These were checked on 2026-10-21 against Elixir 1.20.3, Phoenix LiveView 1.2.13, Ecto 3.13.5 and phoenix_ecto 4.7.0, and this skill follows the checked behaviour:
@@ -129,10 +117,29 @@ This skill works best without the generated file. The two overlap on the general
 
 Contributions are welcome, especially rules drawn from real Elixir output that was not idiomatic. Readability rules are as welcome as correctness rules.
 
+### Repository layout
+
+```text
+idiomatic-elixir/      the skill
+  SKILL.md             rules for all Elixir code
+  references/          topic-specific rules
+  LICENSE.txt          Apache License 2.0
+  NOTICE               copyright and credits for adapted material
+evals/                 checks on the skill and its test prompts
+  README.md            how to run and record a case, which case exercises which rule, cull candidates
+  check_skill.exs      parses, formats and compiles the skill's examples and checks the rule index
+  check_skill_test.exs tests for the checker
+  cases/               one prompt per case, with what to check and its record of runs; input files and
+                       the shop-project/ Mix project sit beside the prompts that use them
+  sweeps/              dated run records: outputs, transcripts, gradings
+  tools/               scripts that run a sweep or a check batch, grade it and fold the grades in
+LICENSE                Apache License 2.0
+```
+
 ### Adding or changing a rule
 
 1. Check that the rule isn't already there under another name. Search `SKILL.md` and `references/` for the functions and patterns it involves.
-2. Put rules that apply to all Elixir code in `SKILL.md`. Put rules that apply to one topic in the matching reference file.
+2. Put rules that apply to all Elixir code in `SKILL.md`, which the agent loads for every Elixir task. Put rules that apply to one topic in the matching reference file, which it reads only when the task calls for it. There is no line budget: a rule that stops a mistake agents make earns its place, and the sweeps under `evals/` decide whether a rule stays.
 3. Write the rule in the same shape as the existing ones: a heading that says what to write, a wrong-then-right example where it helps, and as many sentences as it takes to name the shape to write, the shape it replaces, what goes wrong with the replaced shape, and the test an agent can apply. A sentence that does none of those is cut; brevity itself is not a goal. The sweeps under `evals/` show that a rule takes when it names the exact shape agents were writing and shows it.
 
    ````markdown
@@ -149,12 +156,11 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
    ````
 
 4. Run `elixir evals/check_skill.exs`. It parses, formats, and compiles the code examples and checks the rule index in `evals/README.md`. It cannot see a wrong claim or an example that compiles but misbehaves, so also run every example by hand and check every claim about Elixir behavior on a current Elixir version before you submit.
-5. Keep `SKILL.md` under about 500 lines, as the specification recommends. If it grows past that, move topic-specific rules into reference files.
-6. Keep the frontmatter to the fields defined in the specification. Some tools reject a skill with extra fields.
+5. Keep the frontmatter to the fields defined in the specification. Some tools reject a skill with extra fields.
 
 ### Testing a change
 
-`evals/cases/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a macro-based router, ExUnit tests for a GenServer, a Phoenix context with Ecto, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
+`evals/cases/` contains test prompts covering webhook parsing, a rate limiter, a report over CSV data, a library client, a macro-based router, ExUnit tests for a GenServer, tests of a module that logs, a Phoenix context with Ecto, a code review with planted problems, and a change to a small Mix project with Credo and tests. Each case lists what to check in the output. `evals/README.md` explains how to run them with and without the skill.
 
 Run the cases related to your change before and after it, and describe what you saw in the pull request.
 

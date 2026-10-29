@@ -38,8 +38,13 @@ defmodule MyApp.Bucket do
     Agent.start_link(fn -> %{} end, opts)
   end
 
-  def get(bucket, key), do: Agent.get(bucket, &Map.get(&1, key))
-  def put(bucket, key, value), do: Agent.update(bucket, &Map.put(&1, key, value))
+  def get(bucket, key) do
+    Agent.get(bucket, &Map.get(&1, key))
+  end
+
+  def put(bucket, key, value) do
+    Agent.update(bucket, &Map.put(&1, key, value))
+  end
 end
 ```
 

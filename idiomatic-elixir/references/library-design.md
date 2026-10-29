@@ -48,7 +48,7 @@ Use protocols when behaviour varies by data type, and behaviours (`@callback`) w
 
 ```elixir
 # Instead of (accepts integers, URIs, and anything else with String.Chars)
-def dasherize(name), do: name |> to_string() |> String.replace("_", "-")
+def dasherize(name), do: String.replace(to_string(name), "_", "-")
 # write
 def dasherize(name) when is_atom(name), do: dasherize(Atom.to_string(name))
 def dasherize(name) when is_binary(name), do: String.replace(name, "_", "-")

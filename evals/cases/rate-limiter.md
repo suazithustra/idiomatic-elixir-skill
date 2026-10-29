@@ -25,7 +25,7 @@ Write all the code to <output>/ratelimit.ex. You may use the shell to check it c
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
 - A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
 - The file passes `mix format --check-formatted`.
-- A call whose argument would span several lines, such as the ETS table options or a child spec, takes that argument from a named value built above the call, one field per line, with a blank line between multi-line statements.
+- A call whose map or struct argument would span several lines, such as a child spec, takes that argument from a named value built above the call, one field per line, with a blank line between multi-line statements; a keyword list that is the call's last argument, such as the ETS table options, may stay inline, one option per line; a literal of more than six elements is one element per line.
 - Expected reads: `processes.md`.
 
 ## Seen so far

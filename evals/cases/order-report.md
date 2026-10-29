@@ -17,12 +17,13 @@ Write the code to <output>/orders.ex. You may use the shell to check it compiles
 - Specific `Enum` and `Map` functions are used where one fits (`Enum.frequencies_by/2`, `Enum.group_by/2`, `Map.new/2`, `Enum.sort_by/3`) instead of a hand-written `reduce`.
 - If status strings are converted to atoms, it is done with explicit clauses.
 - Lists are built with `Enum.map/2`, a comprehension, or prepend-and-reverse, not `acc ++ [order]` in a loop. Empty lists are checked with `== []` or a pattern, not `length(list) == 0`.
-- One-call lambdas are captures (`&String.trim/1`, `& &1.amount`, `&Decimal.add(&1.amount, &2)`), not `fn x -> f(x) end`; a body that does more than one call, or needs `&3`, is an `fn` with named arguments.
+- One-call lambdas are captures (`&String.trim/1`, `& &1.amount`, `&Decimal.add(&1.amount, &2)`), not `fn x -> f(x) end`; a body that does more than one call, needs `&3`, or uses `&2` before `&1` or a placeholder twice, is an `fn` with named arguments.
 - No GenServer, Agent, or Task is introduced for what is a pure computation over the list.
 - Boolean functions end in `?` (no `is_` names outside guards), and variables are named after the domain (`order`, `customer_id`, `totals`), not `data`, `res`, or `x`.
 - A `with` has at least two `<-` steps; a single fallible call is handled with `case`, and a second fallible call in the body is chained as a second step, not nested as a `case`.
-- `do:` appears only on a body of one expression; a body with several steps or a `case` uses `do ... end`; a function that mixes `do:` and block clauses sets each block clause apart with a blank line; no `do:` body, on a function or an `if`, is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
+- `do:` appears only on a body of one expression with no `fn`, block construct or capture holding a call with its own arguments inside it; a body with several steps, a `case` or a `fn` uses `do ... end`; a one-line `if ..., do: ..., else: ...` has a name or a literal as one of its branches; every `for` is `do ... end`; a function that mixes `do:` and block clauses sets each block clause apart with a blank line; no `do:` body, on a function or an `if`, is wrapped onto a line of its own, except under a head that `mix format` broke after a long guard.
 - A `case`, `cond`, `with ... else` or `receive` clause stays on one line only while its pattern, `->` and body fit in 70 characters after the indentation; a longer clause has its body on the next line, and once one clause of a `case` breaks, every clause does, with blank lines between them; a one-line `fn` argument is outside this.
+- A pipeline of two or more steps is never on one line: each `|>` starts a new line under the value, and a two-step pipeline may be a nested call instead; no pipeline starts with an argument that only selects a kind or a mode.
 - The file passes `mix format --check-formatted`.
 - Expected reads: none (SKILL.md only).
 
