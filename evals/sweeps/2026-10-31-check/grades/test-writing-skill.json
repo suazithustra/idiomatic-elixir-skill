@@ -1,0 +1,381 @@
+{
+  "case": "test-writing",
+  "condition": "skill",
+  "notes": [
+    "Check batch 2026-10-31, skill condition: four runs (haiku-1, haiku-2, sonnet-1, sonnet-2), no opus, so opus is unavailable in per_rule. All four have rc 0 and a model_id matching their tier; every assistant message in each transcript carries the tier's model. Every result.json records head 551e3ab with uncommitted true and skill_hash 7945a7937b10ed3f7eb986faece5ef03f0883a6d5db35d2edcbd56504e5cadbf, which equals evals/tools/common.py folder_hash of the working tree's idiomatic-elixir/, so the runs read the dirty text graded here. Transcripts show Read calls on SKILL.md and references/ex_unit.md in all four and on references/processes.md in haiku-1, sonnet-1 and sonnet-2, not haiku-2, matching reads in result.json; no Skill tool call. Expected reads (ex_unit.md and processes.md) is met in 3 of 4. Every run's test-writing-input.ex is identical to evals/cases/test-writing-input.ex.",
+    "Changes since d04061d (git diff d04061d -- idiomatic-elixir/, committed plus the uncommitted Readability rewrite): of the eleven rules this case's index rows name, four changed or are new. \"One expression per line, and tabular clauses\" is new, with no earlier verdict. \"Use `do:` for a one-expression body and `do ... end` for anything else\" is rewritten (nested calls and tuples are one expression, a multi-clause function need not be a table to keep `do:`, a one-line `if` has at most one computing branch, a `receive` on `do:` is a block, a `for` is always a block). \"Write pipelines that start with a value and read top to bottom\" has a rewritten first bullet and an example. In ex_unit.md, \"Group tests by function and name them by behaviour\" adds the sentence \"A block named after a condition, or after a requirement where the project asks for that, still states a behaviour a failing test can contradict\". The other seven (Run tests concurrently, Assert with patterns, Wait for messages, Start processes, Replace dependencies, Use setup, Open a module) are unchanged and graded to the 2026-10-23 standard, with the 2026-10-29-check grading of the same shapes where 2026-10-23 had none.",
+    "\"One expression per line, and tabular clauses\" (new), constructs that exercised it, all clean. Deciding sentence for each: \"A line reads in one pass when it holds a selection and the one expression that selection produces.\" (1) Heads on `do:`: haiku-1 line 175 defp settle(server), do: :sys.get_state(server) and sonnet-1 line 10 def registry, do: @registry, a head and one expression each. (2) `->` clauses: haiku-1 line 156 and haiku-2 line 152, :stop -> :ok, a pattern and one expression, the only clause of its receive, so no table question arises. (3) Heads with several expressions: every test, setup, setup_all and helper (for example haiku-1 lines 161-165 defp exit_normally(pid) do with three steps, sonnet-2 lines 127-138 the exit setup) puts the sequence on the lines below the head, per \"Those go on the lines below the head\". (4) Nested constructs: the fn holding a receive (haiku-1 lines 153-159, haiku-2 lines 149-155) sits under its head inside a block; the one-line fns that bind nothing, sonnet-1 lines 176 and 186 start_supervised!({Agent, fn -> :ok end}) and sonnet-2 line 128 subscriber = spawn(fn -> Process.sleep(:infinity) end), are on body lines below a test or setup head, not on a head's line, and the capture rule's \"A `fn -> now end` that binds nothing may stay on one line\" is the construct-specific condition the new rule defers to (\"the rules below apply it construct by construct\"). No run has a multi-clause function, a multi-clause case or receive, or any other set of parallel clauses, so the table paragraph is not exercised. haiku-1 lines 137-139 (test \"removes a subscriber killed from outside and keeps notifying the rest\", %{ / server: server / } do) is a head mix format spread because the name is long; it holds one selection and its body is below, so it is not counted under this rule.",
+    "\"Use `do:` for a one-expression body and `do ... end` for anything else\" (changed), constructs that exercised it, all clean. haiku-1 line 175 defp settle(server), do: :sys.get_state(server) and sonnet-1 line 10 def registry, do: @registry: decided by \"A `do:` body is one expression on the head's line: a literal, a tuple, a field read, a comparison, or a call, nested or not.\" (the comment at haiku-1 lines 173-174 sits above the head, not in the body). The bodies holding a fn (haiku-1 lines 153-159 defp spawn_subscriber do, haiku-2 lines 149-155 the same) are blocks, per \"or a `fn`, gets `do ... end`, however short it is\". Both receives (haiku-1 lines 155-157, haiku-2 lines 151-153, receive do / :stop -> :ok / end) are blocks, so the sentence naming receive among the constructs that need do ... end is followed; the 2026-10-29-check violation shape, receive do: (:stop -> :ok), does not recur. sonnet-2 has no do: at all; every body is do ... end (clean, as 2026-10-29-check graded such files). No run has a one-line if/else, a for, a capture carrying a call with its own arguments (no capture at all), a multi-clause function, or a function that mixes the two forms, so the sum/2, if and for sentences have nothing to apply to.",
+    "\"Write pipelines that start with a value and read top to bottom\" (changed): the deciding sentences would be \"A pipeline never sits on one line, however short\" and the kind-or-mode sentence, but no file contains a |> operator, so the rule is not exercised in 4 of 4, as in 2026-10-29-check.",
+    "\"Group tests by function and name them by behaviour\" (changed in its describe half). The new sentence that decides the describe blocks is \"A block named after a condition ... still states a behaviour a failing test can contradict\", read with the case's own example (\"when a subscriber exits\", not \"exits\"). Condition blocks: haiku-1 113, haiku-2 106 and sonnet-2 126 \"when a subscribed process exits\"; sonnet-1 148 \"when a subscribed process has exited\" (with setup [:subscribe_and_exit]) and 173 \"when an email subscriber and a process subscribe to one topic and the process exits\". Each names the situation the rule's own ExUnit example names, not a bare topic: clean. Function-plus-condition blocks (haiku-1 \"publish/3 to a pid\", \"publish/3 to an email address\"; sonnet-1 \"publish/3 to a process subscriber\", \"publish/3 to an email subscriber\", \"publish/3 to pid and email subscribers of one topic\", \"publish/3 on a topic without subscribers\") name one function; sonnet-2 adds \"start_link/1\". No block joins two functions. Test names (unchanged half): haiku-1 13, all clean. haiku-2 14, all clean; 100 \"returns :ok and keeps serving when the topic has no subscribers\" names an effect beside :ok, clean as 2026-10-29-check haiku-2 \"adds the subscriber to the topic and returns :ok\". sonnet-1 16, all clean; 139 \"sends nothing\" and 167 \"keeps the server running\" borderline clean, as \"does nothing for a topic without subscribers\" in every earlier sweep; 156 \"keeps the other subscribers of those topics\" overstates its body (the test subscribes new subscribers after the exit rather than keeping earlier ones), which is an accuracy problem, not the forbidden shape, so not counted. sonnet-2 15, 3 violated: 44 \"returns :ok for a pid\" (body only line 45), 48 \"returns :ok for an email address\" (body only line 49), the same shape as 2026-10-29-check sonnet-1 lines 37 and 41, and 120 \"succeeds for a topic without subscribers\", which is the rule's own example of a name that only says the call did not fail (\"succeeds with an empty cart\"). Rule result: 1 of 4 violates (sonnet-2).",
+    "\"Start processes with `start_supervised!/1`\": sonnet-2 is the only run testing a start failure; line 39 assert {:error, {{%KeyError{key: :mailer}, _stacktrace}, _child}} = start_supervised(spec) calls start_supervised/1 and matches the reason, clean as every earlier sweep graded this match. No run calls start_link. Subscribers: sonnet-1 starts them with start_supervised!({Agent, fn -> :ok end}) and stops them with Agent.stop/1 (the test supervisor then restarts the permanent Agent under a new pid until the test ends; not a shape the rule names); the other three use bare spawn/1, clean as before.",
+    "\"Wait for messages, not for time\": every :DOWN pattern matches the caused reason: haiku-1 lines 164 :normal and 170 :killed; haiku-2 line 160 :normal; sonnet-1 line 197 :normal after Agent.stop/1; sonnet-2 line 135 :killed. Every refute_received follows a synchronous call (haiku-1 settle/1 = :sys.get_state/1 before refute_receive at lines 84 and 92; haiku-2 line 80; sonnet-1 lines 93 and 142; sonnet-2 line 114); sonnet-1 lines 103 and 122 use refute_receive with a 50 ms timeout, clean as before. No Process.sleep wait (sonnet-2 line 128 spawn(fn -> Process.sleep(:infinity) end) is a subscriber body, not counted, as before); sonnet-1 line 168 assert Process.alive?(server) is a one-shot assertion, not polling.",
+    "The other graded rules are clean in 4 of 4. All four use async: true with a setup_all Registry keyed by Module.concat(module, test) and a behaviour-implementing test mailer that finds the test pid through Process.info(self(), :registered_name); every server is start_supervised! under that name and setup returns a map matched in test heads; no Process.register, application env, :persistent_term, :meck or redefinition of Notify.Mailer. Every == has the call on the left; no elem/2, no bind-then-==; sonnet-1 lines 72-73 bind expected = [...] and compare the call to it whole, and sonnet-2 line 141 assert subscriber not in Subscriptions.subscribers(server, \"news\") is a membership check, both clean as before. sonnet-1 line 196 :ok = Agent.stop(pid) is a bare match inside the private helper stop_and_wait/1, not in a test body, so the sentence \"In a test body, every match that can fail takes `assert` in front\" does not reach it; not counted. Directive order: use then alias in all four.",
+    "Outside this case's list: haiku-1 lines 55-58 assert Subscriptions.subscribers(server, \"news\") == [ / \"second@example.com\", / \"first@example.com\" / ] is counted under \"Build a multi-line argument under a name before the call\": mix format spreads the expected list over four lines (confirmed by formatting the one-line form in the scratch folder), and the rule says each argument is \"a name, a short literal, or a trailing keyword list\" and that \"An assertion is a call like any other\", with the fix binding expected first, which sonnet-1 lines 72-73 does; the rule's examples name a map, so counting a list is a judgment. sonnet-2 lines 69-70 assert Subscriptions.subscribers(server, \"news\") == / [\"bo@example.com\", self(), \"ana@example.com\"] is a formatter wrap after ==, with the list on one line, not counted. No capture, no -> clause over 70 characters, no comment that restates code (the comments at haiku-1 9 and 173-174, haiku-2 9 and 78-79, sonnet-1 12 and 92 give reasons).",
+    "Tests were run from copies in the scratch folder with elixir -r test-writing-input.ex subscriptions_test.exs on Elixir 1.20.3 (OTP 29), 20 times each: every run passed every time with no warnings or log output (haiku-1 13 tests, haiku-2 14, sonnet-1 16, sonnet-2 15). All four pass mix format --check-formatted, confirming format_ok in result.json. Against 2026-10-29-check (skill): haiku goes from violated to clean on Wait for messages (no sleep poll) and on Start processes (no open start-failure reason); sonnet again has :ok-only test names (sonnet-2 lines 44, 48 and the \"succeeds\" name at 120 now, sonnet-1 lines 37 and 41 then) and goes from violated to clean on the `do:` rule (no receive do: now)."
+  ],
+  "runs": {
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ex_unit.md",
+        "processes.md"
+      ],
+      "format_ok": true,
+      "tests": "13 passed, 0 failed",
+      "verdicts": {
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 175: defp settle(server), do: :sys.get_state(server) is one call on the head's line; lines 153-159: defp spawn_subscriber do / spawn(fn -> / receive do / :stop -> :ok / end / end) puts the fn and the receive in blocks; no one-line if/else, no for, no capture, no function mixing the forms"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 175: defp settle(server), do: :sys.get_state(server), a head and one expression; line 156: :stop -> :ok, a pattern and one expression; every multi-step body (tests, setup, lines 161-165 defp exit_normally(pid) do) is below its head; no parallel clauses"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "not exercised",
+          "evidence": "no |> in the file"
+        },
+        "Open a module with `use`, `import`, `alias`, `require`, in that order": {
+          "verdict": "clean",
+          "evidence": "line 20: use ExUnit.Case, async: true; lines 22-23: alias Notify.Subscriptions / alias Notify.SubscriptionsTest.Mailer; no @moduledoc in the test module; Notify.SubscriptionsTest.Mailer (lines 3-17) has no directives"
+        },
+        "Run tests concurrently unless they share global state": {
+          "verdict": "clean",
+          "evidence": "line 20: use ExUnit.Case, async: true; lines 33-34: name = Module.concat(context.module, context.test) / {:ok, _owner} = Registry.register(@registry, name, nil), looked up at lines 12-13 by the server's registered name; no Process.register or Application.put_env"
+        },
+        "Group tests by function and name them by behaviour": {
+          "verdict": "clean",
+          "evidence": "describe blocks: line 38 \"subscribe/3\", 50 \"subscribers/2\", 71 \"publish/3 to a pid\", 96 \"publish/3 to an email address\", 113 \"when a subscribed process exits\"; none joins two functions; all 13 names state a value or effect (line 72: test \"sends {:notification, topic, payload} to the subscribed pid\"; line 114: test \"removes it from every topic it subscribed to\")"
+        },
+        "Assert with patterns": {
+          "verdict": "clean",
+          "evidence": "line 40: assert Subscriptions.subscribe(server, \"news\", self()) == :ok and line 41: assert Subscriptions.subscribers(server, \"news\") == [self()], call on the left throughout (also 46, 55, 62, 67, 122-123, 134, 147); line 75: assert_receive {:notification, \"news\", %{id: 1}}; no bare refutable match in a test body, no elem/2, no match followed by =="
+        },
+        "Wait for messages, not for time": {
+          "verdict": "clean",
+          "evidence": "lines 162-164: ref = Process.monitor(pid) / send(pid, :stop) / assert_receive {:DOWN, ^ref, :process, ^pid, :normal}; lines 168-170 the same with :killed; line 83: settle(server) (:sys.get_state/1) before line 84: refute_receive; no Process.sleep, no Process.alive?"
+        },
+        "Start processes with `start_supervised!/1`": {
+          "verdict": "clean",
+          "evidence": "line 35: %{server: start_supervised!({Subscriptions, mailer: Mailer, name: name})} with line 33: name = Module.concat(context.module, context.test); line 28: start_supervised!({Registry, keys: :unique, name: @registry}); subscribers are bare spawn/1 processes (line 154, clean as before); no start_link; no start-failure test"
+        },
+        "Replace dependencies at boundaries, through behaviours": {
+          "verdict": "clean",
+          "evidence": "lines 3-5: defmodule Notify.SubscriptionsTest.Mailer do / @moduledoc false / @behaviour Notify.Mailer, passed as mailer: Mailer at line 35"
+        },
+        "Use setup for shared data": {
+          "verdict": "clean",
+          "evidence": "lines 32-36: setup context do ... %{server: start_supervised!(...)}; line 39: test \"adds a pid to the subscribers of the topic\", %{server: server} do"
+        }
+      },
+      "other_violations": [
+        "Build a multi-line argument under a name before the call: lines 55-58: assert Subscriptions.subscribers(server, \"news\") == [ / \"second@example.com\", / \"first@example.com\" / ] (the expected list is spread over four lines inside the assertion instead of being bound first as expected = [...])"
+      ],
+      "checks": [
+        "met: async: true (line 20); the mailer double reaches the test through a Registry keyed by Module.concat(context.module, context.test) (lines 33-34); no Process.register, no application env",
+        "met: every server starts with start_supervised! and a test-specific name (lines 33, 35); no start-failure test; no start_link from a test",
+        "met: mailer replaced by a module implementing Notify.Mailer",
+        "met: assert_receive / refute_receive; no Process.sleep",
+        "met: exit tests monitor the subscriber and wait for :DOWN with :normal or :killed (lines 164, 170), then call :sys.get_state/1, before asserting; no Process.alive? polling",
+        "met: assertions use patterns or == on whole values; no elem/2; no match then ==",
+        "met: describe blocks named after subscribe/3, subscribers/2, publish/3 with a condition, and the condition \"when a subscribed process exits\"; no two-function block; every test name states a value or effect",
+        "met: setup returns a map matched in test heads",
+        "met: only public functions tested",
+        "met: each head or -> pattern shares its line with one expression (lines 156, 175); multi-step bodies and the fn/receive are on the lines below",
+        "met: the one do: (line 175) is one call; bodies with a fn or receive are do ... end; no for, no one-line if/else",
+        "met: no pipeline in the file",
+        "met: passes mix format --check-formatted; 13 passed, 0 failed (20 of 20 runs)",
+        "met: every assert with == has the call on the left",
+        "met: use (line 20) then two aliases (lines 22-23) at the top of the module",
+        "met: expected reads (ex_unit.md and processes.md both read)"
+      ],
+      "summary": "Uses async: true with a Registry-based behaviour mailer, start_supervised!/1 with per-test names, :DOWN waits matching :normal and :killed followed by a :sys.get_state sync, call-on-the-left == assertions and setup maps; broke no graded rule (outside the list, one expected list spread over lines 55-58 under Build a multi-line argument); read SKILL.md, ex_unit.md and processes.md."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "ex_unit.md"
+      ],
+      "format_ok": true,
+      "tests": "14 passed, 0 failed",
+      "verdicts": {
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "no do: in the file; every body is do ... end, including the one holding a fn and a receive (lines 149-155: defp spawn_subscriber do / spawn(fn -> / receive do / :stop -> :ok / end / end)); no for, no one-line if/else, no capture"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 152: :stop -> :ok, a pattern and one expression; every multi-step body (tests, setup lines 27-32, lines 157-161 defp stop_subscriber(pid) do) is below its head; no parallel clauses"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "not exercised",
+          "evidence": "no |> in the file"
+        },
+        "Open a module with `use`, `import`, `alias`, `require`, in that order": {
+          "verdict": "clean",
+          "evidence": "line 18: use ExUnit.Case, async: true; line 20: alias Notify.Subscriptions; no @moduledoc in the test module; Notify.TestMailer (lines 3-15) has no directives"
+        },
+        "Run tests concurrently unless they share global state": {
+          "verdict": "clean",
+          "evidence": "line 18: use ExUnit.Case, async: true; lines 28-29: name = Module.concat(module, test) / {:ok, _owner} = Registry.register(Notify.TestMailer.Registry, name, nil), looked up at lines 10-11; no Process.register or Application.put_env"
+        },
+        "Group tests by function and name them by behaviour": {
+          "verdict": "clean",
+          "evidence": "describe blocks: line 34 \"subscribe/3\", 53 \"subscribers/2\", 66 \"publish/3\", 106 \"when a subscribed process exits\"; none joins two functions; all 14 names state a value or effect (line 35: test \"adds the pid to the subscribers of the topic\"; line 100: test \"returns :ok and keeps serving when the topic has no subscribers\" names an effect beside :ok)"
+        },
+        "Assert with patterns": {
+          "verdict": "clean",
+          "evidence": "line 36: assert Subscriptions.subscribe(server, \"news\", self()) == :ok and line 37: assert Subscriptions.subscribers(server, \"news\") == [self()], call on the left throughout (also 44, 49, 55, 62, 80, 102, 113, 134); line 71: assert_receive {:notification, \"news\", %{id: 1}}; no bare refutable match in a test body, no elem/2, no match followed by =="
+        },
+        "Wait for messages, not for time": {
+          "verdict": "clean",
+          "evidence": "lines 158-160: ref = Process.monitor(pid) / send(pid, :stop) / assert_receive {:DOWN, ^ref, :process, ^pid, :normal}; line 80: assert Subscriptions.subscribers(server, \"news\") == [] as a sync call before line 81: refute_received; no Process.sleep, no Process.alive?"
+        },
+        "Start processes with `start_supervised!/1`": {
+          "verdict": "clean",
+          "evidence": "line 30: server = start_supervised!({Subscriptions, mailer: Notify.TestMailer, name: name}) with line 28: name = Module.concat(module, test); line 23: start_supervised!({Registry, keys: :unique, name: Notify.TestMailer.Registry}); subscribers are bare spawn/1 processes (line 150, clean as before); no start_link; no start-failure test"
+        },
+        "Replace dependencies at boundaries, through behaviours": {
+          "verdict": "clean",
+          "evidence": "lines 3-5: defmodule Notify.TestMailer do / @moduledoc false / @behaviour Notify.Mailer, passed as mailer: Notify.TestMailer at line 30"
+        },
+        "Use setup for shared data": {
+          "verdict": "clean",
+          "evidence": "lines 27-32: setup %{module: module, test: test} do ... %{server: server}; line 35: test \"adds the pid to the subscribers of the topic\", %{server: server} do"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: async: true (line 18); the mailer double reaches the test through a Registry keyed by Module.concat(module, test) (lines 28-29); no Process.register, no application env",
+        "met: every server starts with start_supervised! and a test-specific name (line 30); no start-failure test; no start_link from a test",
+        "met: mailer replaced by a module implementing Notify.Mailer",
+        "met: assert_receive / refute_received; no Process.sleep",
+        "met: exit tests monitor the subscriber and wait for :DOWN with :normal (line 160) before asserting; no Process.alive? polling",
+        "met: assertions use patterns or == on whole values; no elem/2; no match then ==",
+        "met: describe blocks named after subscribe/3, subscribers/2, publish/3 and the condition \"when a subscribed process exits\"; no two-function block; every test name states a value or effect",
+        "met: setup returns a map matched in test heads",
+        "met: only public functions tested",
+        "met: each -> pattern shares its line with one expression (line 152); multi-step bodies and the fn/receive are on the lines below",
+        "met: no do: in the file; bodies with a fn or receive are do ... end; no for, no one-line if/else",
+        "met: no pipeline in the file",
+        "met: passes mix format --check-formatted; 14 passed, 0 failed (20 of 20 runs)",
+        "met: every assert with == has the call on the left",
+        "met: use (line 18) then alias (line 20) at the top of the module",
+        "missed: expected reads (ex_unit.md read, processes.md not read)"
+      ],
+      "summary": "Uses async: true with a Registry-based behaviour mailer, start_supervised!/1 with per-test names, a :DOWN helper matching :normal, sync calls before refute_received, call-on-the-left == assertions and setup maps; broke no graded rule; read SKILL.md and ex_unit.md, not processes.md."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ex_unit.md",
+        "processes.md"
+      ],
+      "format_ok": true,
+      "tests": "16 passed, 0 failed",
+      "verdicts": {
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 10: def registry, do: @registry is one expression on the head's line; every other body is do ... end (lines 185-192: defp subscribe_and_exit(%{server: server}) do; lines 194-198: defp stop_and_wait(pid) do); no receive, for, one-line if/else or capture; no function mixing the forms"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 10: def registry, do: @registry, a head and one expression; lines 176 and 186: subscriber = start_supervised!({Agent, fn -> :ok end}) are body lines below their heads holding a fn that binds nothing; every multi-step body is below its head; no -> clauses outside that fn, no parallel clauses"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "not exercised",
+          "evidence": "no |> in the file"
+        },
+        "Open a module with `use`, `import`, `alias`, `require`, in that order": {
+          "verdict": "clean",
+          "evidence": "line 23: use ExUnit.Case, async: true; lines 25-26: alias Notify.Subscriptions / alias Notify.SubscriptionsTest.TestMailer; no @moduledoc in the test module; TestMailer (lines 3-20) has no directives"
+        },
+        "Run tests concurrently unless they share global state": {
+          "verdict": "clean",
+          "evidence": "line 23: use ExUnit.Case, async: true; lines 34-35: name = Module.concat(module, test) / {:ok, _owner} = Registry.register(TestMailer.registry(), name, nil), looked up at lines 15-16; no Process.register or Application.put_env"
+        },
+        "Group tests by function and name them by behaviour": {
+          "verdict": "clean",
+          "evidence": "describe blocks: line 40 \"subscribe/3\", 62 \"subscribers/2\", 77 \"publish/3 to a process subscriber\", 107 \"publish/3 to an email subscriber\", 126 \"publish/3 to pid and email subscribers of one topic\", 138 \"publish/3 on a topic without subscribers\", 148 \"when a subscribed process has exited\" with setup [:subscribe_and_exit], 173 \"when an email subscriber and a process subscribe to one topic and the process exits\"; none joins two functions; all 16 names state a value or effect (line 41: test \"adds a pid to the topic\"; line 139: test \"sends nothing\" and line 167: test \"keeps the server running\" borderline clean as before)"
+        },
+        "Assert with patterns": {
+          "verdict": "clean",
+          "evidence": "line 42: assert Subscriptions.subscribe(server, \"news\", self()) == :ok and line 44: assert Subscriptions.subscribers(server, \"news\") == [self()], call on the left throughout; lines 72-73: expected = [\"last@example.com\", self(), \"first@example.com\"] / assert Subscriptions.subscribers(server, \"news\") == expected compares the whole value; line 86: assert_receive {:notification, \"news\", %{id: 1}}; no bare refutable match in a test body, no elem/2, no match followed by =="
+        },
+        "Wait for messages, not for time": {
+          "verdict": "clean",
+          "evidence": "lines 195-197: ref = Process.monitor(pid) / :ok = Agent.stop(pid) / assert_receive {:DOWN, ^ref, :process, ^pid, :normal}; line 93: assert Subscriptions.subscribers(server, \"news\") == [self()] as a sync call before line 94: refute_received; lines 103 and 122: refute_receive with a 50 ms timeout; no Process.sleep, no polling (line 168: assert Process.alive?(server) is one assertion)"
+        },
+        "Start processes with `start_supervised!/1`": {
+          "verdict": "clean",
+          "evidence": "line 36: server = start_supervised!({Subscriptions, mailer: TestMailer, name: name}) with line 34: name = Module.concat(module, test); line 29: start_supervised!({Registry, keys: :unique, name: TestMailer.registry()}); lines 176 and 186: subscriber = start_supervised!({Agent, fn -> :ok end}); no start_link; no start-failure test"
+        },
+        "Replace dependencies at boundaries, through behaviours": {
+          "verdict": "clean",
+          "evidence": "lines 3-6: defmodule Notify.SubscriptionsTest.TestMailer do / @moduledoc false / (blank) / @behaviour Notify.Mailer, passed as mailer: TestMailer at line 36"
+        },
+        "Use setup for shared data": {
+          "verdict": "clean",
+          "evidence": "lines 33-38: setup %{module: module, test: test} do ... %{server: server}; line 41: test \"adds a pid to the topic\", %{server: server} do; lines 78-81 and 108-111: describe-level setup %{server: server} do ... :ok; line 149: setup [:subscribe_and_exit]"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: async: true (line 23); the mailer double reaches the test through a Registry keyed by Module.concat(module, test) (lines 34-35); no Process.register, no application env",
+        "met: every server starts with start_supervised! and a test-specific name (line 36); subscriber Agents also start under start_supervised!; no start-failure test; no start_link from a test",
+        "met: mailer replaced by a module implementing Notify.Mailer",
+        "met: assert_receive / refute_received / refute_receive; no Process.sleep",
+        "met: the exit setup and test monitor the subscriber and wait for :DOWN with :normal (line 197) before asserting; no Process.alive? polling",
+        "met: assertions use patterns or == on whole values; no elem/2; no match then ==",
+        "met: describe blocks named after subscribe/3, subscribers/2, publish/3 with a condition, and two exit conditions; no two-function block; every test name states a value or effect",
+        "met: setup returns a map matched in test heads",
+        "met: only public functions tested",
+        "met: each head shares its line with one expression (line 10); multi-step bodies are on the lines below; the one-line fns bind nothing",
+        "met: the one do: (line 10) is a single expression; every other body is do ... end; no for, no one-line if/else",
+        "met: no pipeline in the file",
+        "met: passes mix format --check-formatted; 16 passed, 0 failed (20 of 20 runs)",
+        "met: every assert with == has the call on the left",
+        "met: use (line 23) then two aliases (lines 25-26) at the top of the module",
+        "met: expected reads (ex_unit.md and processes.md both read)"
+      ],
+      "summary": "Uses async: true with a Registry-based behaviour mailer, start_supervised!/1 for servers and Agent subscribers, :DOWN waits matching :normal in a named condition setup, an expected list bound before its assertion and call-on-the-left == assertions; broke no graded rule; read SKILL.md, ex_unit.md and processes.md."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md",
+        "ex_unit.md",
+        "processes.md"
+      ],
+      "format_ok": true,
+      "tests": "15 passed, 0 failed",
+      "verdicts": {
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "no do: in the file; every body is do ... end, including the setup holding a fn (lines 127-138: setup %{server: server} do ... subscriber = spawn(fn -> Process.sleep(:infinity) end) ...); no receive, for, one-line if/else or capture"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "every multi-step body (setup lines 28-32, the exit setup lines 127-138, each test) is below its head; line 128: subscriber = spawn(fn -> Process.sleep(:infinity) end) is a body line holding a fn that binds nothing; no -> clauses outside that fn, no parallel clauses"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "not exercised",
+          "evidence": "no |> in the file"
+        },
+        "Open a module with `use`, `import`, `alias`, `require`, in that order": {
+          "verdict": "clean",
+          "evidence": "line 18: use ExUnit.Case, async: true; lines 20-21: alias Notify.Subscriptions / alias Notify.Subscriptions.TestMailer; no @moduledoc in the test module; Notify.Subscriptions.TestMailer (lines 3-15) has no directives"
+        },
+        "Run tests concurrently unless they share global state": {
+          "verdict": "clean",
+          "evidence": "line 18: use ExUnit.Case, async: true; lines 29-30: name = Module.concat(module, test) / {:ok, _owner} = Registry.register(TestMailer.Registry, name, nil), looked up at lines 10-11; no Process.register or Application.put_env"
+        },
+        "Group tests by function and name them by behaviour": {
+          "verdict": "violated",
+          "evidence": "line 44: test \"returns :ok for a pid\", %{server: server} do (body only line 45: assert Subscriptions.subscribe(server, \"news\", self()) == :ok); line 48: test \"returns :ok for an email address\", %{server: server} do (body only line 49); line 120: test \"succeeds for a topic without subscribers\", %{server: server} do; describe blocks start_link/1 (34), subscribe/3 (43), subscribers/2 (59), publish/3 (82), \"when a subscribed process exits\" (126), none joining two functions"
+        },
+        "Assert with patterns": {
+          "verdict": "clean",
+          "evidence": "line 45: assert Subscriptions.subscribe(server, \"news\", self()) == :ok and line 55: assert Subscriptions.subscribers(server, \"news\") == [self()], call on the left throughout (also 61, 69-70, 77-78, 114, 122, 142, 146); line 39: assert {:error, {{%KeyError{key: :mailer}, _stacktrace}, _child}} = start_supervised(spec); line 141: assert subscriber not in Subscriptions.subscribers(server, \"news\") is a membership check; no bare refutable match in a test body, no elem/2, no match followed by =="
+        },
+        "Wait for messages, not for time": {
+          "verdict": "clean",
+          "evidence": "lines 133-135: ref = Process.monitor(subscriber) / Process.exit(subscriber, :kill) / assert_receive {:DOWN, ^ref, :process, ^subscriber, :killed} in the condition setup; line 114: assert Subscriptions.subscribers(server, \"news\") == [] as a sync call before lines 116-117: refute_received; no Process.sleep wait (line 128 is a subscriber body), no Process.alive?"
+        },
+        "Start processes with `start_supervised!/1`": {
+          "verdict": "clean",
+          "evidence": "line 31: %{server: start_supervised!({Subscriptions, mailer: TestMailer, name: name})} with line 29: name = Module.concat(module, test); line 39: assert {:error, {{%KeyError{key: :mailer}, _stacktrace}, _child}} = start_supervised(spec) matches the reason; subscriber is a bare spawn/1 process (line 128, clean as before); no start_link"
+        },
+        "Replace dependencies at boundaries, through behaviours": {
+          "verdict": "clean",
+          "evidence": "lines 3-6: defmodule Notify.Subscriptions.TestMailer do / @moduledoc false / (blank) / @behaviour Notify.Mailer, passed as mailer: TestMailer at line 31"
+        },
+        "Use setup for shared data": {
+          "verdict": "clean",
+          "evidence": "lines 28-32: setup %{module: module, test: test} do ... %{server: start_supervised!(...)}; lines 127-138: setup %{server: server} do ... %{subscriber: subscriber}; line 140: test \"removes it from every topic\", %{server: server, subscriber: subscriber} do; line 35: test \"fails without a :mailer option\", context do reads context.module and context.test, the shape the Start processes rule shows"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: async: true (line 18); the mailer double reaches the test through a Registry keyed by Module.concat(module, test) (lines 29-30); no Process.register, no application env",
+        "met: every server starts with start_supervised! and a test-specific name (line 31); the start-failure test calls start_supervised/1 and matches {{%KeyError{key: :mailer}, _stacktrace}, _child} (line 39); no start_link from a test",
+        "met: mailer replaced by a module implementing Notify.Mailer",
+        "met: assert_receive / refute_received; no Process.sleep wait",
+        "met: the exit setup monitors the subscriber and waits for :DOWN with :killed (line 135) before the tests assert; no Process.alive? polling",
+        "met: assertions use patterns or == on whole values; no elem/2; no match then ==",
+        "missed: describe blocks are named after one function or the condition \"when a subscribed process exits\", but line 44: test \"returns :ok for a pid\", line 48: test \"returns :ok for an email address\" and line 120: test \"succeeds for a topic without subscribers\" only say the call did not fail",
+        "met: setup returns a map matched in test heads",
+        "met: only public functions tested",
+        "met: multi-step bodies are on the lines below their heads; the one-line fn (line 128) binds nothing",
+        "met: no do: in the file; every body is do ... end; no for, no one-line if/else",
+        "met: no pipeline in the file",
+        "met: passes mix format --check-formatted; 15 passed, 0 failed (20 of 20 runs)",
+        "met: every assert with == has the call on the left",
+        "met: use (line 18) then two aliases (lines 20-21) at the top of the module",
+        "met: expected reads (ex_unit.md and processes.md both read)"
+      ],
+      "summary": "Uses async: true with a Registry-based behaviour mailer, start_supervised!/1 with per-test names, a start failure matched on its KeyError reason, a :DOWN wait matching :killed in a condition setup and call-on-the-left == assertions, but names two tests \"returns :ok for ...\" and one \"succeeds for a topic without subscribers\" (Group tests by function and name them by behaviour); read SKILL.md, ex_unit.md and processes.md."
+    }
+  },
+  "per_rule": {
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "One expression per line, and tabular clauses": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+      "opus": "unavailable",
+      "haiku": "not exercised",
+      "sonnet": "not exercised"
+    },
+    "Open a module with `use`, `import`, `alias`, `require`, in that order": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Run tests concurrently unless they share global state": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Group tests by function and name them by behaviour": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "violated"
+    },
+    "Assert with patterns": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Wait for messages, not for time": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Start processes with `start_supervised!/1`": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Replace dependencies at boundaries, through behaviours": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Use setup for shared data": {
+      "opus": "unavailable",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}

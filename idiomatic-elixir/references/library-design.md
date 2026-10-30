@@ -34,8 +34,11 @@ Make the `reason` in `{:error, reason}` an exception struct defined with `defexc
 ```elixir
 def fetch_user!(id) do
   case fetch_user(id) do
-    {:ok, user} -> user
-    {:error, error} -> raise error
+    {:ok, user} ->
+      user
+
+    {:error, error} ->
+      raise error
   end
 end
 ```

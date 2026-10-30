@@ -46,6 +46,7 @@ Must not report (correct code a rule could be misapplied to):
 
 Also check:
 
+- An expression made of distinct conceptual steps is decomposed with a named intermediate, a pipeline or a helper, not only wrapped across lines; a plain nested call stays nested, and no binding merely renames a value used once.
 - Each finding names the rule it applies and quotes the line.
 - The improved code still returns normally for `import_user(params)` with no options (no `and` or `not` on a `nil` option).
 - Expected reads: `processes.md` (the `spawn`) and `ecto-phoenix.md` (the insert).

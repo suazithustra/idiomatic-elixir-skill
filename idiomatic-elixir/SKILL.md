@@ -72,13 +72,19 @@ A `_ ->` clause after `{:ok, value}` turns every other return value, including o
 ```elixir
 # Instead of
 case File.read(path) do
-  {:ok, contents} -> parse(contents)
-  _ -> {:error, :unreadable}
+  {:ok, contents} ->
+    parse(contents)
+
+  _ ->
+    {:error, :unreadable}
 end
 # write
 case File.read(path) do
-  {:ok, contents} -> parse(contents)
-  {:error, reason} -> {:error, {:unreadable, reason}}
+  {:ok, contents} ->
+    parse(contents)
+
+  {:error, reason} ->
+    {:error, {:unreadable, reason}}
 end
 
 # Instead of
@@ -187,8 +193,11 @@ with {:ok, encoded} <- File.read(path),
      {:ok, decoded} <- Base.decode64(encoded) do
   {:ok, String.trim(decoded)}
 else
-  {:error, _} -> {:error, :badfile}
-  :error -> {:error, :badencoding}
+  {:error, _} ->
+    {:error, :badfile}
+
+  :error ->
+    {:error, :badencoding}
 end
 # write
 with {:ok, encoded} <- read_file(path),
@@ -198,27 +207,36 @@ end
 
 defp read_file(path) do
   case File.read(path) do
-    {:ok, contents} -> {:ok, contents}
-    {:error, _reason} -> {:error, :badfile}
+    {:ok, contents} ->
+      {:ok, contents}
+
+    {:error, _reason} ->
+      {:error, :badfile}
   end
 end
 
 defp decode64(encoded) do
   case Base.decode64(encoded) do
-    {:ok, decoded} -> {:ok, decoded}
-    :error -> {:error, :badencoding}
+    {:ok, decoded} ->
+      {:ok, decoded}
+
+    :error ->
+      {:error, :badencoding}
   end
 end
 ```
 
-Count the `<-` clauses before writing `with`. With one, the `with` earns its place only as a pass-through: `with :ok <- apply_update(doc, update), do: {:ok, doc}` says that the error comes back unchanged. A `case` whose error clause is `{:error, _reason} = error -> error` is the same pass-through spelled out over four lines; write it as the `with`. The moment the one step needs more, the shape changes. An `else` that maps the one error is a `case`, which shows both outcomes in one place. A body that calls another function that can fail and works on its result makes that call the second step, chained with a second `<-` instead of a nested `case`. A body that is one call whose `{:ok, value}` or `{:error, reason}` goes out as the function's own result, the recursive `parse_rows(rest, [order | orders])` of a hand-written loop, is a tail call, not a second step, and the one-step `with` stays.
+Count the `<-` clauses before writing `with`. With one, the `with` earns its place only as a pass-through: `with :ok <- apply_update(doc, update), do: {:ok, doc}` says that the error comes back unchanged. A `case` whose error clause is `{:error, _reason} = error -> error` is the same pass-through spelled out over four lines; write it as the `with`. The moment the one step needs more, the shape changes. An `else` that maps the one error is a `case`, which shows both outcomes in one place. A body that calls another function that can fail and works on its result makes that call the second step, chained with a second `<-` instead of a nested `case`. A body that is one call whose `{:ok, value}` or `{:error, reason}` goes out as the function's own result, the recursive `parse_rows(rest, [order | orders])` of a hand-written loop, is a tail call, not a second step, and the one-step `with` stays. Whatever the step count, a body that is one plain expression may ride on `do:`, and a body of several expressions is a block.
 
 ```elixir
 # Instead of
 def build(rows) do
   case parse_orders(rows) do
-    {:ok, orders} -> {:ok, summarize(orders)}
-    {:error, _reason} = error -> error
+    {:ok, orders} ->
+      {:ok, summarize(orders)}
+
+    {:error, _reason} = error ->
+      error
   end
 end
 # write
@@ -232,20 +250,29 @@ end
 with {:ok, contents} <- File.read(path) do
   {:ok, contents}
 else
-  {:error, _reason} -> {:error, :badfile}
+  {:error, _reason} ->
+    {:error, :badfile}
 end
 # write
 case File.read(path) do
-  {:ok, contents} -> {:ok, contents}
-  {:error, _reason} -> {:error, :badfile}
+  {:ok, contents} ->
+    {:ok, contents}
+
+  {:error, _reason} ->
+    {:error, :badfile}
 end
 
 # Instead of
 with {:ok, text} <- string_field(row, "amount") do
   case Decimal.parse(text) do
-    {amount, ""} -> {:ok, Decimal.round(amount, 2)}
-    {_amount, _rest} -> {:error, {:invalid_field, "amount"}}
-    :error -> {:error, {:invalid_field, "amount"}}
+    {amount, ""} ->
+      {:ok, Decimal.round(amount, 2)}
+
+    {_amount, _rest} ->
+      {:error, {:invalid_field, "amount"}}
+
+    :error ->
+      {:error, {:invalid_field, "amount"}}
   end
 end
 # write
@@ -384,6 +411,39 @@ The same holds for work. A module attribute holds a literal or a value built fro
 
 ## Readability
 
+### One expression per line, and tabular clauses
+
+A line reads in one pass when it holds a selection and the one expression that selection produces. The selection is a function head, a `->` pattern, a guard or a condition; the expression is the value or call it selects. `defp notify(pid, event), do: send(pid, {:event, Map.fetch!(event, :id)})` is such a line: two calls, but one expression, the inner call an argument of the outer. What asks for a second line is not a second call but a second expression: a body of several sequential expressions, where a later one depends on a result an earlier one established, or a nested construct with a structure of its own, a `fn`, `case`, `with`, `if`, `receive` or `for`. Those go on the lines below the head, so the reader sees what is selected on one line and the steps under it. A `fn` reads the same way: `fn {customer_id, count} -> {-count, customer_id} end` holds a pattern and one expression and stays on one line, and a body of several expressions or a nested construct goes on the lines after the `->`. Count expressions, not calls or brackets: `{:ok, Enum.map(users, & &1.name)}` and `%{result: calculate(input), status: :complete}` are one expression each; `result = calculate(input)` followed by `validate(result)` is two.
+
+Parallel clauses may stay compact where one line on its own would not, when they form a table: each row is one alternative of the same decision or mapping, the rows share one selection-to-result shape, each row does the same general kind of thing, and at most one final row catches what did not match and reports it, in whatever shape the report needs. `parse_status/1` below is a table. Rows keep their order; order decides matching in Elixir, so a table is never reordered to read better. Clauses are not a table when they do different kinds of work, as when one row returns a finished value and the next continues the computation; `value_end/3` under the `->` rule shows that shape and the layout that tells the two jobs apart.
+
+This is a reading heuristic, not a measure: line length, visual density and the surrounding code all count, and the rules below apply it construct by construct, where each construct's own syntax adds conditions of its own.
+
+```elixir
+defp parse_status("active"), do: :active
+defp parse_status("suspended"), do: :suspended
+defp parse_status("disabled"), do: :disabled
+defp parse_status(other), do: {:error, {:unknown_status, other}}
+```
+
+### Name a step instead of wrapping an expression
+
+A line break is not decomposition. When `mix format` spreads an expression over several lines, the expression is as hard to read as before; what helps is finding the distinct conceptual steps inside it and giving one a name, when the name says something. The `map_reduce` below wraps into three lines and still asks the reader to see two operations, cutting a statement out of the SQL and stripping its comments, inside one tuple; `statement = binary_part(sql, start, stop - start)` names the first and leaves `{strip_comments(statement), stop + 1}` to say the second.
+
+A binding earns its place when it names a recognizable thing or a stage of the computation, holds a value used more than once, gives a complicated calculation or condition a name from the domain, or makes the expression around it substantially clearer. It does not when it only renames a value used once (`name = user.name` before `send_notification(name)`), when the nested call is plain (`send(pid, {:event, Map.fetch!(event, :id)})` stays as it is), or when the language already names the steps: a pattern names a field (`%{id: id} = event`), a pipeline shows one value passing through successive transformations, and `with` names each step's result. A sequence of transformations of one value reads best as a pipeline; a nested call whose relationship is plain stays nested, and is not turned into a pipeline to remove the nesting when the functions carry other arguments the pipeline would obscure. A computation that deserves a name of its own becomes a private function, under the rule above, not a run of temporaries. A condition that combines several distinct checks is split into names that say what each check means in the domain, not wrapped as one boolean; a simple condition stays whole, and a guard stays a guard, since an ordinary function cannot be called in one. Length alone decides nothing: a long single expression may be clear, and a short sequence may deserve a name.
+
+```elixir
+# Instead of
+Enum.map_reduce(ends, 0, fn stop, start ->
+  {strip_comments(binary_part(sql, start, stop - start)), stop + 1}
+end)
+# write
+Enum.map_reduce(ends, 0, fn stop, start ->
+  statement = binary_part(sql, start, stop - start)
+  {strip_comments(statement), stop + 1}
+end)
+```
+
 ### Comments explain why; documentation goes in `@moduledoc` and `@doc`
 
 Delete comments that restate the code: `# Get the current time`, `# Check if user is over the limit`, or `# Unknown event type` above a clause whose pattern already says so. Keep comments that explain a reason the code cannot show.
@@ -447,7 +507,7 @@ handler_config = %{
 
 ### Use `do:` for a one-expression body and `do ... end` for anything else
 
-Use `do:` for a body of one expression with no body of its own inside it: a literal, a tuple, a field read, a comparison, or a call, nested or not. A body with several steps, a `case`, `with`, `if` or `receive`, a comment, or a `fn` gets `do ... end`, however short it is: `defp draws, do: Enum.map(1..5, fn _draw -> :rand.uniform() end)` fits on the line and is still a block, because the `fn` is a second body and two bodies do not share a line. A capture that carries a call with arguments of its own, `&match?({:unquote, _, _}, &1)` or `&Map.get(&1, key)`, is a second body too; `&part/1` and `& &1.id` are not. A function may mix the forms: a short clause on `do:`, a clause that needs a block as a block, each block clause set apart with a blank line. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. `if ..., do: ..., else: ...` stays on one line when one branch is a name or a literal, the fallback, and the other does the work, as in `if String.valid?(term), do: redact(term, config), else: term`; when both branches call something, write `do ... end` with a branch per line, even though the one-line form fits, and a branch `mix format` moves onto its own line gets `do ... end` as well. A `for` always takes `do ... end`: its generators and filters already fill the head.
+A `do:` body is one expression on the head's line: a literal, a tuple, a field read, a comparison, or a call, nested or not. `defp names(modules), do: Enum.join(Enum.sort(modules), ", ")` is one expression, and so is a tuple that holds a call. A body of several sequential expressions, or one that holds a construct with a structure of its own, a `case`, `with`, `if`, `receive` or `for`, a comment, or a `fn`, gets `do ... end`, however short it is: `defp draws, do: Enum.map(1..5, fn _draw -> :rand.uniform() end)` fits on the line and is still a block, because the `fn` has a head and a body of its own. A capture that carries a call with arguments of its own, `&match?({:unquote, _, _}, &1)` or `&Map.get(&1, key)`, is a function body too; `&part/1` and `& &1.id` are not. A multi-clause function need not be a table to keep `do:` clauses: `def sum([]), do: 0` above `def sum([value | rest]), do: value + sum(rest)` is two clauses that each read on their own. A function may mix the forms, a short clause on `do:` and a clause that needs a block as a block, each block clause set apart with a blank line; when the clauses are one parallel group, give them one form. A `do:` body belongs on the head's line: when `mix format` moves it onto a line of its own, the body is too long for `do:`, so write a block or move part of the body into a helper. The one wrap to keep is a head that `mix format` breaks after a long guard, with `do:` on the next line. `if ..., do: ..., else: ...` stays on one line while its condition and both branches are plain, as in `if String.valid?(term), do: redact(term, config), else: term`. The branches are alternatives, not steps, and the reason to separate them is to tell them apart: when both carry a computation of their own, write `do ... end` with a branch per line even though the one-line form fits, and a branch `mix format` moves onto its own line gets `do ... end` as well. A `for` always takes `do ... end`: its generators and filters already fill the head.
 
 ```elixir
 # Instead of
@@ -459,7 +519,7 @@ defp draws, do: Enum.map(1..5, fn _draw -> :rand.uniform() end)
 def message(%__MODULE__{reason: {:unknown_type, type}}),
   do: "unknown event type #{inspect(type)}, expected one of the documented types"
 
-if enabled?(), do: {:ok, with_url(config)}, else: refuse_start(type, config)
+if enabled?(), do: configure_service(config), else: refuse_start(type, config)
 
 names = for ":" <> name <- parts, do: name
 # write
@@ -472,9 +532,7 @@ def decode(value) do
 end
 
 defp draws do
-  Enum.map(1..5, fn _draw ->
-    :rand.uniform()
-  end)
+  Enum.map(1..5, fn _draw -> :rand.uniform() end)
 end
 
 def message(%__MODULE__{reason: {:unknown_type, type}}) do
@@ -482,7 +540,7 @@ def message(%__MODULE__{reason: {:unknown_type, type}}) do
 end
 
 if enabled?() do
-  {:ok, with_url(config)}
+  configure_service(config)
 else
   refuse_start(type, config)
 end
@@ -493,9 +551,9 @@ names =
   end
 ```
 
-### Break a `->` clause whose pattern and body together pass 70 characters
+### Inline `->` clauses that read at a glance; otherwise put each body on its own line
 
-A clause of `case`, `cond`, `with ... else` or `receive` stays on one line while its pattern, the `->` and its body together fit in 70 characters, not counting indentation. Past that, the body goes on the line after the `->`: the reader then sees what the clause matches on one line and what it does on the next, instead of finding the `->` by eye inside a line that `mix format` leaves alone, since the formatter wraps only at 98 columns. Once one clause breaks, `mix format` moves every clause's body down and separates the clauses with a blank line; keep that layout, and do not pull the short clauses back onto one line. A `fn` passed as an argument follows the capture rule instead: when it binds names, its body goes on the line after the `->` whatever its length.
+A clause of `case`, `cond`, `receive`, `with ... else` or a multi-clause `fn` stays on one line when the clauses form a table, or when each body is one expression simple enough to take in together with its pattern: `{:ok, width} -> width` above `{:error, _} -> 80`. The body goes on the line after the `->` when it holds several sequential expressions or a nested construct, when it needs more than a glance beside its pattern, or when the clauses do different kinds of work, one returning a finished value while another continues the computation, as in `value_end/3` below; and a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines even when it fits in 98. `mix format` breaks a block as a whole: when one clause breaks, every clause of that `case` does, with a blank line between clauses, so keep that layout and do not pull a short clause back onto one line. `cond` already carries an expression on the left of each `->`, so its bodies go on the next line unless every one is a short literal or name. A single-clause `fn` passed as an argument reads the same way: one expression stays on its line, more goes below.
 
 ```elixir
 # Instead of
@@ -515,11 +573,17 @@ defp value_end(string, offset, depth) do
       step(byte, string, offset, depth)
   end
 end
+
+# A table keeps one row per line
+case :ets.lookup(table, key) do
+  [{^key, count}] -> count
+  [] -> 0
+end
 ```
 
 ### Write pipelines that start with a value and read top to bottom
 
-- Start a pipeline with the value being transformed, a variable or a literal, then one transformation per line. A pipeline never sits on one line, however short: two steps on one line, `sql |> String.split(~r/\W+/, trim: true) |> Enum.uniq()`, hide where one step ends and the next begins, so they go on three lines after `words =`, or become a nested call when there are only two. An argument that only selects a kind or a mode does not start a pipeline: `Exception.format(:error, error, stacktrace)`, not `:error |> Exception.format(error, stacktrace)`.
+- Start a pipeline with the value being transformed, a variable or a literal, then one transformation per line. A pipeline never sits on one line, however short: two steps on one line, `sql |> String.split(~r/\W+/, trim: true) |> Enum.uniq()`, hide where one step ends and the next begins, so they go on three lines after `words =`, or become a nested call when there are only two. A pipeline is for one value passing through successive transformations; a nested call whose relationship is plain, `Enum.join(Enum.sort(modules), ", ")`, is one expression and stays as it is, and is not unrolled into a pipeline to remove the nesting. An argument that only selects a kind or a mode does not start a pipeline: `Exception.format(:error, error, stacktrace)`, not `:error |> Exception.format(error, stacktrace)`.
 - Do not pipe a single step: write `String.trim(name)`, not `name |> String.trim()`.
 - Do not pipe into an anonymous function call (`|> (fn x -> ... end).()`). Break the pipeline and name the intermediate value, or use `then/2`.
 
@@ -541,16 +605,7 @@ defp names(modules), do: Enum.join(Enum.sort(modules), ", ")
 
 `Enum.map(names, &String.trim/1)` and `Enum.map(users, & &1.id)` are clearer than the `fn` equivalents, and so is a capture that uses `&1` and `&2` for one operator or one call, such as `&(&1 + &2)` or `&Decimal.add(&1.amount, &2)`, with `&1` and `&2` in that order and each used once. When the body does more than one call, would need `&3`, or passes `&2` before `&1` or the same placeholder twice, write `fn` with named arguments: the reader of `&table_issue(&2, &1, meta, &1)` has to work out which argument is the word and which the context, and `fn word, ctx -> table_issue(ctx, word, meta, word) end` tells them.
 
-A `fn` that binds names takes the room its names earn: the body goes on the line after the `->`, and `end` closes it on a line of its own, the layout `mix format` keeps once it is written. A one-line `fn {name, kind} -> {name, root_view(doc, name, kind)} end` is a capture that could not be written, squeezed onto the head's line, and the reader parses the pattern and the body in one pass. A `fn -> now end` that binds nothing may stay on one line.
-
-```elixir
-# Instead of
-Map.new(roots, fn {name, kind} -> {name, root_view(doc, name, kind)} end)
-# write
-Map.new(roots, fn {name, kind} ->
-  {name, root_view(doc, name, kind)}
-end)
-```
+A `fn` body is laid out like any other body: one expression stays on the head's line, `fn {name, kind} -> {name, root_view(doc, name, kind)} end`; a body of several expressions, or one holding a `case`, `if`, `with` or another `fn`, goes on the lines after the `->` with `end` on its own line, the layout `mix format` keeps once it is written.
 
 ### Open a module with `use`, `import`, `alias`, `require`, in that order
 
