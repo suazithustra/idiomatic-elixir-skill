@@ -1,0 +1,459 @@
+{
+ "case": "rate-limiter",
+ "condition": "baseline",
+ "notes": [
+  "Run state: all five baseline runs have rc 0, head 0814e8d and uncommitted false; each model_id matches its tier, and the only other model name in the Haiku and Sonnet transcripts is one claude-opus-5-5, the tool-definition model option noted in earlier batches. Each prompt ends with \"Do not invoke any skills.\"; no transcript has a Skill tool_use or the text idiomatic-elixir/SKILL.md, and reads is empty in all five, so Expected reads (processes.md) is missed in all five, as expected for baseline runs. No session ran mix format.",
+  "Changed rules on this case's list, graded against the current text. git diff d04061d -- idiomatic-elixir/ changes three of the eleven listed rules: \"Build a multi-line argument under a name before the call\", \"Chain fallible steps with `with`; normalize each step's error in a small private function\", and the `->` rule, which is new to this case's row, so the 2026-10-23 baseline grade has no verdict for it to compare. Branch, Naming and Comments are unchanged in text, and the processes.md rules are unchanged (only the Bucket example in Keep each process behind one module became do-blocks); those eight are graded to the standard of sweeps/2026-10-23/grades/rate-limiter-baseline.json and rate-limiter-skill.json.",
+  "Build a multi-line argument under a name before the call: 0 of 5. Opus-1 is decided by \"A shorter literal that fits its line stays on one line.\" (line 193: three ETS options inline; line 208: the select_delete match spec on one line). The other four are decided by the opening sentence, \"Unless a call's result is bound to a name, each of its arguments is a name, a short literal, or a trailing keyword list\": no call takes a map, struct or keyword argument that spans lines, and the only wrapped arguments are raise messages (haiku-2 lines 152-153 and 160-161, sonnet-2 lines 167-168), strings, as earlier sweeps did not count. The more-than-six-elements sentence is not triggered (no literal has more than six elements), and the trailing-keyword-list sentence is not reached. Every moduledoc child list is built under children.",
+  "Chain fallible steps with `with`: 0 of 5. Opus-1 lines 216-219 chain two steps with no else; its body validate(config) is decided by \"A body that is one call whose `{:ok, value}` or `{:error, reason}` goes out as the function's own result ... is a tail call, not a second step\". Haiku-1's load_config/1 case (lines 131-134) relabels the one error, which \"An `else` that maps the one error is a `case`\" keeps as a case, so it is clean, as a single fallible call handled with case was in 2026-10-29-check. The pass-through-case sentence (\"A `case` whose error clause is `{:error, _reason} = error -> error` ... write it as the `with`\") catches nothing: the init/1 cases of opus-1 (lines 188-199) and haiku-1 (lines 74-81) turn the error into {:stop, ...}. Haiku-2, sonnet-1 and sonnet-2 read their files with raising boot-time calls (File.read!/JSON.decode!, Code.eval_file/1) and have no with and no tuple-returning step, so they are not exercised, as in 2026-10-23.",
+  "Inline `->` clauses that read at a glance; otherwise put each body on its own line: 2 of 5 (haiku-1, sonnet-1). Sonnet-1 lines 109-110 ({:value, ts} when ts <= now - @window_ms -> queue |> :queue.drop() |> prune(now), 80 characters after the indentation, above _ -> queue) are decided by \"and a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines even when it fits in 98\" and by \"when the clauses do different kinds of work, one returning a finished value while another continues the computation, as in `value_end/3`\", the same shape as the rule's example; sonnet-1 line 166, in the compiled example worker, is 89 characters and decided by the 70-character sentence. Haiku-1 lines 132-133 ({:ok, terms} -> parse_terms(terms) above {:error, reason} -> {:error, {:config_read_failed, path, reason}}, 34 and 65 characters) are a judgment call held violated under the different-kinds-of-work sentence: the :ok clause does the next step itself while the error clause returns a finished value, the distinction 2026-10-31-check order-report drew when it held a reduce_while pair clean because neither body did the continuing work itself; the skill's own \"Match every expected shape\" example of the same {:ok, contents} -> parse(contents) pair is now written broken. Reading both bodies as one glanceable expression (\"or when each body is one expression simple enough to take in together with its pattern\") makes haiku-1 clean, the count 1 of 5 and the haiku tier clean.",
+  "`->` rule, clean constructs: opus-1's init/1 case (188-199) and cond (158-169) are broken as a whole with blank lines (\"when one clause breaks, every clause of that `case` does\"; cond bodies on the next line, as \"its bodies go on the next line unless every one is a short literal or name\" asks); sonnet-1 lines 83-84 ({:value, oldest} -> max(oldest + @window_ms - now, 1), 53, and :empty -> @window_ms) by the one-glanceable-expression sentence; haiku-2's multi-clause fn (147-154) broken with a blank line. Single-clause fn arguments are decided by \"A single-clause `fn` passed as an argument reads the same way: one expression stays on its line, more goes below.\": haiku-1 lines 111-112, haiku-2 lines 107-108, sonnet-1 lines 97-98 and 122, sonnet-2 line 159, each one expression; the close call is haiku-2 line 107, whose pattern, `->` and body run to 71 characters ({key, timestamps} -> {key, Enum.take_while(timestamps, &(&1 > cutoff))}), held clean as one expression at \"about 70\". Following 2026-10-23-check-2 and later, clauses inside @moduledoc examples and comment blocks are not counted: opus-1 85-86, haiku-1 189-190, haiku-2 35-36, sonnet-1 33-34 (69) and sonnet-2 69-71, where a one-line :ok clause sits above a broken error clause, a layout mix format would not leave in code.",
+  "Use ETS, the one judgment on an unchanged rule: opus-1 has callers look up the user's row and write it back with :ets.insert_new/2 (line 175) or :ets.select_replace/2 matching the whole old row (line 179), retrying when another process changed it first (lines 162-168), a compare-and-swap. It is held clean because it is not the forbidden \"A `lookup` followed by an `insert` computed from the looked-up value\": the write succeeds only if the row is unchanged, and a 20-user x 500-task burst admitted exactly 2 per user at a limit of 2. :ets.select_replace/2 is not among the operations the rule lists, so a reading of that list as exhaustive would make opus-1 violated. The other four keep every count in one GenServer's state behind GenServer.call, so Pick the abstraction and Use ETS are violated in haiku-1, haiku-2, sonnet-1 and sonnet-2, as in 2026-10-23; haiku-2, sonnet-1 and sonnet-2 say so in their moduledocs.",
+  "Standard carried over: an if on one boolean condition is clean, and a cond with two conditions plus true (opus-1 158-169) is not the one-condition cond the Branch rule names; unless violates Branch (haiku-2 line 142, sonnet-1 line 122); single-letter n and q violate Naming, as in 2026-10-21 and 2026-10-22; a public start_link/1 with no @doc violates Comments (sonnet-1 line 45, as 2026-10-23 sonnet-2); comments above defp that state an ordering or a reason are clean (haiku-1 89, haiku-2 86, sonnet-1 106, sonnet-2 171 and 178), and section banners are not counted; a missing :name option violates Write GenServers that stay responsive (haiku-2 line 55); reading the limits file in init/1 is a missed case check but decides no verdict (all five, opus-1 with a comment at lines 184-185 giving the reason); callers and child lists in @moduledoc or comments count as the run's caller and supervision examples. No run calls Jason. Not counted: opus-1's store/3 returns a boolean without a ?, but it is a write that reports success, not a predicate.",
+  "Changed sentences outside this case's list, listed under other_violations. Pipeline (\"A pipeline never sits on one line, however short\"): 3 of 5, opus-1 line 156, haiku-1 line 90, sonnet-1 lines 76, 109 and 119. `do:` rule (\"A `for` always takes `do ... end`\"): 2 of 5, opus-1 line 224 and sonnet-2 lines 145-149. Unchanged rules outside the list: sonnet-1 nests a case in an if (lines 78-85), counted under Keep functions short as in 2026-10-22; haiku-2 returns a three-element error tuple; sonnet-2 line 136 is 99 characters and mix format splits it.",
+  "Verification, in scratch copies under grade-scratch-sweep-2026-10-31/rate-limiter-baseline (Elixir 1.20.3, OTP 29). mix format --check-formatted passes for opus-1, haiku-1, haiku-2 and sonnet-1 and fails for sonnet-2 (line 136, 99 characters; line 168 is a 108-character string mix format cannot split). All five limiters compile with elixirc --warnings-as-errors, sonnet-1 with its Plug example module (lines 132-156) cut off since Plug is not installed. In every run a 50-task concurrent burst admitted exactly 2 for a user at the default limit of 2 and 5 for user 42 configured at 5. A second instance under name: :other admitted 2 of 50 in all but haiku-2, whose second start_link returns {:error, {:already_started, _}}. An injected 61-second-old entry was removed by one :sweep message and the live entries kept, in all five. Opus-1, haiku-2 and sonnet-1 convert IDs with to_string/1, so 1 and \"1\" share a count; haiku-1 and sonnet-2 key by the raw ID, so \"1\" got its own 2 after 1 was exhausted.",
+  "Violations among the listed rules: opus-1 none; haiku-1 four (Naming, the `->` rule as a judgment call, Pick the abstraction, Use ETS); haiku-2 five (Branch, Naming, Pick the abstraction, Write GenServers that stay responsive, Use ETS); sonnet-1 six (Branch, Naming, Comments, the `->` rule, Pick the abstraction, Use ETS); sonnet-2 three (Naming, Pick the abstraction, Use ETS)."
+ ],
+ "runs": {
+  "baseline-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [],
+   "format_ok": true,
+   "compiles": true,
+   "verdicts": {
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 158-162: cond do / length(live) >= limit -> ... / store(table, stored, {key, [now | live]}) -> (two conditions plus true, not a one-condition cond); line 226: if invalid == [], do: {:ok, {default, users}}, else: {:error, {:invalid_limits, invalid}} (one boolean condition)"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "clean",
+     "evidence": "lines 216-219: with {:ok, json} <- File.read(path), / {:ok, config} <- JSON.decode(json) do / validate(config) -- two steps, no else, the body a tail call; lines 188-199: init/1 case read_limits(path) maps the error to {:stop, {:invalid_rate_limits, path, reason}}, not a pass-through"
+    },
+    "Naming": {
+     "verdict": "clean",
+     "evidence": "MyApp.RateLimiter; valid_limit?/1 ends in ?; domain names (live, stored, stamps, cutoff, limit, invalid); no single-letter or generic names"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "lines 152-154, 165-166, 184-185, 190-191 and 202-204 explain reasons the code cannot show; line 177: # Compare-and-swap: replaces the row only if it still equals `old`. explains a match spec; @doc above start_link (117-125) and check/2 (132-139), @spec directly above each def"
+    },
+    "Build a multi-line argument under a name before the call": {
+     "verdict": "clean",
+     "evidence": "line 193: :ets.new(name, [:named_table, :public, write_concurrency: :auto]) and line 208: :ets.select_delete(table, [{{:_, [:\"$1\" | :_]}, [{:\"=<\", :\"$1\", cutoff}], [true]}]) -- short literals on one line; line 129: GenServer.start_link(__MODULE__, {name, Keyword.fetch!(opts, :path)}, name: name) one line; moduledoc child list built under children (lines 35-39)"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+     "verdict": "clean",
+     "evidence": "lines 188-199: init/1 case broken, {:ok, limits} -> and {:error, reason} -> each with the body below and a blank line between; lines 158-169: cond bodies each on the next line with blank lines; no one-line clause in code; moduledoc lines 85-86 not counted"
+    },
+    "Pick the abstraction that matches the job": {
+     "verdict": "clean",
+     "evidence": "line 193: :ets.new(name, [:named_table, :public, write_concurrency: :auto]) -- per-user rows in an ETS table owned by the GenServer, written from the caller; limits in :persistent_term (line 192)"
+    },
+    "Keep each process behind one module": {
+     "verdict": "clean",
+     "evidence": "the GenServer receives only its own :sweep message; the plug (moduledoc line 54) and Oban worker (line 84) call MyApp.RateLimiter.check/1"
+    },
+    "Write GenServers that stay responsive": {
+     "verdict": "clean",
+     "evidence": "line 128: {name, opts} = Keyword.pop(opts, :name, __MODULE__); no handle_call; handle_info(:sweep) (206-211) does one select_delete and reschedules with Process.send_after (213)"
+    },
+    "Use ETS for data many processes read": {
+     "verdict": "clean",
+     "evidence": "line 175: defp store(table, [], row), do: :ets.insert_new(table, row); line 179: :ets.select_replace(table, [{old, [], [{:const, row}]}]) == 1 -- compare-and-swap from the caller's process, retried at line 168 when the row changed; judgment noted"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "moduledoc line 36: {MyApp.RateLimiter, path: Application.app_dir(:my_app, \"priv/rate_limits.json\")}, in the children list; the ETS table is owned by that supervised GenServer"
+    }
+   },
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 156: live = stored |> stamps() |> Enum.take_while(&(now - &1 < @window_ms)) -- a pipeline on one line",
+    "Use `do:` for a one-expression body and `do ... end` for anything else: line 224: invalid = for {user, limit} <- entries, not valid_limit?(limit), do: user -- a for on do:"
+   ],
+   "checks": [
+    "met: per-user rows live in an ETS table owned by the GenServer, started from the moduledoc's children list (line 36)",
+    "met: callers write only with insert_new/2 or a compare-and-swap select_replace/2 that retries (lines 162-179); a 20-user x 500-task burst admitted exactly 2 per user",
+    "met: a sweep every minute deletes rows whose newest stamp has expired (lines 206-211)",
+    "met: MyApp.RateLimiter",
+    "met: start_link/1 accepts :name (line 128); a second instance under name: :other admitted 2 of 50",
+    "missed: the limits file is read in init/1 (line 188), with a comment (lines 184-185) giving the reason",
+    "met: no handle_call/3",
+    "met: no cast; checks run in the caller and return a result",
+    "not applicable: no per-user processes",
+    "met: the plug (moduledoc line 54) and the Oban worker (line 84) call MyApp.RateLimiter.check/1",
+    "met: booleans branched with if (line 226) and cond (line 158), no case on true/false",
+    "met: no comments that restate the code",
+    "met: the one with has two steps and no else (lines 216-219); no pass-through case",
+    "met: every case and cond in code is broken with blank lines between clauses",
+    "met: mix format --check-formatted passes",
+    "met: no call takes a multi-line argument",
+    "missed: Expected reads (processes.md); reads is empty, as a baseline run was told not to invoke skills",
+    "note: elixir ratelimit.ex compiles (the examples are in @moduledoc); a 50-task burst admitted 2 at a limit of 2 and 5 at a limit of 5; an injected 61-second-old row was removed by one :sweep"
+   ],
+   "summary": "Built MyApp.RateLimiter as a GenServer that accepts :name, reads a JSON limits file in init/1 into :persistent_term, and lets callers update per-user timestamp rows in its own public ETS table with insert_new/2 and a compare-and-swap select_replace/2, with a one-minute sweep and plug, controller and Oban callers in the moduledoc; broke none of the graded rules, and outside the list wrote a one-line pipeline and a for on do:; read no skill files."
+  },
+  "baseline-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "compiles": true,
+   "verdicts": {
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 93: if length(timestamps) < limit do (one boolean condition)"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "clean",
+     "evidence": "no with; lines 131-134: case :file.consult(path) do / {:ok, terms} -> parse_terms(terms) / {:error, reason} -> {:error, {:config_read_failed, path, reason}} -- one fallible call whose error is relabelled, a case; init/1 case (74-81) maps the error to {:stop, reason}"
+    },
+    "Naming": {
+     "verdict": "violated",
+     "evidence": "line 139: {:default, n}, {:ok, _default, limits} when is_integer(n) and n > 0 ->; line 142: {user_id, n}, {:ok, default, limits} when is_integer(n) and n > 0 -> -- single-letter n"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "line 89: # Timestamps are stored newest first. states an ordering the code cannot show (as 2026-10-29-check haiku-1 line 149); lines 96 and 105-106 give reasons; @doc above start_link (48-53) and hit/2 (59-64); banners at lines 151-153 and 177-179 not counted"
+    },
+    "Build a multi-line argument under a name before the call": {
+     "verdict": "clean",
+     "evidence": "no call takes a multi-line map, struct or keyword argument; line 138: Enum.reduce_while(terms, {:ok, @fallback_limit, %{}}, fn -- short literals; moduledoc child list built under children (lines 24-27)"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+     "verdict": "violated",
+     "evidence": "lines 132-133: {:ok, terms} -> parse_terms(terms) / {:error, reason} -> {:error, {:config_read_failed, path, reason}} -- one clause continues the computation, the other returns a finished value, kept on one line each (judgment noted). Clean: init/1 case (74-81) and the multi-clause fn (138-147) broken with blank lines; fn arguments at lines 111-112 hold one expression each"
+    },
+    "Pick the abstraction that matches the job": {
+     "verdict": "violated",
+     "evidence": "line 67: GenServer.call(server, {:hit, user_id}) -- every count lives in one GenServer's state (handle_call/3, lines 85-101)"
+    },
+    "Keep each process behind one module": {
+     "verdict": "clean",
+     "evidence": "callers go through MyApp.RateLimit.hit/1 (comment lines 163 and 188); the GenServer receives only its own :sweep message"
+    },
+    "Write GenServers that stay responsive": {
+     "verdict": "clean",
+     "evidence": "line 55: name = Keyword.get(opts, :name, __MODULE__); handle_call/3 (85-101) does no file read; a minute sweep scheduled with Process.send_after (125) drops idle users (104-117)"
+    },
+    "Use ETS for data many processes read": {
+     "verdict": "violated",
+     "evidence": "line 67: GenServer.call(server, {:hit, user_id}) -- per-user counts read and updated by many callers sit behind one process instead of an ETS table"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "moduledoc lines 24-27: children = [ / {MyApp.RateLimit, / config_path: Application.app_dir(:my_app, \"priv/rate_limits.terms\")} / ]"
+    }
+   },
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 90: timestamps = state.hits |> Map.get(user_id, []) |> prune(now) -- a pipeline on one line"
+   ],
+   "checks": [
+    "met: counts live in one supervised GenServer, started from the moduledoc's children list (lines 24-27)",
+    "not applicable: callers never touch ETS",
+    "met: a sweep every minute drops users whose timestamps have all expired (lines 104-117)",
+    "met: MyApp.RateLimit is under the application namespace",
+    "met: start_link/1 accepts :name (line 55); a second instance under name: :other admitted 2 of 50",
+    "missed: the limits file is read in init/1 (line 74, :file.consult/1 at line 131)",
+    "met: handle_call/3 does no file read or other slow work",
+    "met: hit/2 uses GenServer.call (line 67)",
+    "not applicable: no per-user processes",
+    "met: the controller (comment line 163) and the Oban worker (line 188) call RateLimit.hit/1",
+    "met: boolean branched with if (line 93)",
+    "met: no comments that restate the code",
+    "met: no with; the one fallible call is a case that relabels its error",
+    "missed: load_config/1 keeps an :ok clause that continues and an error clause that returns a finished value on one line each (lines 132-133)",
+    "met: mix format --check-formatted passes",
+    "met: no call takes a multi-line argument",
+    "missed: Expected reads (processes.md); reads is empty, as a baseline run was told not to invoke skills",
+    "note: elixir ratelimit.ex compiles with no warnings; a 50-task burst admitted 2 at a limit of 2 and 5 at a limit of 5; IDs are keys as given, so \"1\" got its own 2 after 1 was exhausted; an injected 61-second-old entry was removed by one :sweep"
+   ],
+   "summary": "Wrote one MyApp.RateLimit GenServer that accepts :name, reads an Erlang-term limits file with :file.consult/1 in init/1, counts every request in handle_call and sweeps idle users each minute, with controller and Oban callers in comments; broke Naming (single-letter n), the `->` rule (an :ok clause that continues beside a finished error clause on one line, a judgment call), and Pick the abstraction and Use ETS (all counts behind one GenServer call), and outside the list wrote a one-line pipeline; read no skill files."
+  },
+  "baseline-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "compiles": true,
+   "verdicts": {
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "violated",
+     "evidence": "line 142: unless is_map(users) do"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "not exercised",
+     "evidence": "no with and no tuple-returning step; RateLimit.Config.load!/1 (lines 132-137) raises at boot through File.read!() and JSON.decode!()"
+    },
+    "Naming": {
+     "verdict": "violated",
+     "evidence": "line 1: defmodule RateLimit do; line 125: defmodule RateLimit.Config do -- no application namespace"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "line 86: # Timestamps are stored newest first, so the expired ones are at the end. and line 95 give an ordering and a reason; @doc above start_link (51-53), check/1 (58-64) and load!/1 (128-131); section labels (## Client API, ## Helpers) and banner lines 165-167 not counted"
+    },
+    "Build a multi-line argument under a name before the call": {
+     "verdict": "clean",
+     "evidence": "no call takes a multi-line map, struct or keyword argument; lines 152-153 and 160-161: raise ArgumentError, / \"...\" wraps a string; moduledoc child list built under children (lines 25-28)"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+     "verdict": "clean",
+     "evidence": "lines 147-154: the multi-clause fn in Map.new/2 has each body on its own line with a blank line between; lines 107-108: single-clause fn arguments with one expression each (line 107 at 71 characters, a close call); moduledoc lines 35-36 not counted"
+    },
+    "Pick the abstraction that matches the job": {
+     "verdict": "violated",
+     "evidence": "line 67: GenServer.call(__MODULE__, {:check, user_id}); line 40: Calls are serialized through a single process, so this works on one node"
+    },
+    "Keep each process behind one module": {
+     "verdict": "clean",
+     "evidence": "callers go through RateLimit.check/1 (moduledoc line 34, comment lines 175 and 199)"
+    },
+    "Write GenServers that stay responsive": {
+     "verdict": "violated",
+     "evidence": "line 55: GenServer.start_link(__MODULE__, opts, name: __MODULE__) -- start_link/1 accepts no :name option, and check/1 always calls __MODULE__ (line 67)"
+    },
+    "Use ETS for data many processes read": {
+     "verdict": "violated",
+     "evidence": "line 67: GenServer.call(__MODULE__, {:check, user_id}) -- every count behind one process"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "moduledoc lines 25-28: children = [ / {RateLimit, config_path: Application.app_dir(:my_app, \"priv/rate_limits.json\")}, / ... / ]"
+    }
+   },
+   "other_violations": [
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs: line 97: {:reply, {:error, :rate_limited, retry_after}, put_hits(state, key, recent)} -- a three-element error tuple, not {:error, reason}"
+   ],
+   "checks": [
+    "met: counts live in one supervised GenServer, started from the moduledoc's children list (lines 25-28)",
+    "not applicable: callers never touch ETS",
+    "met: a sweep every minute drops users with no live timestamps (lines 102-112)",
+    "missed: RateLimit and RateLimit.Config are top-level modules",
+    "missed: start_link/1 registers name: __MODULE__ and accepts no :name (line 55); a second start_link returned {:error, {:already_started, _}}",
+    "missed: the limits file is read in init/1 (line 75)",
+    "met: handle_call/3 does no file read or other slow work",
+    "met: check/1 uses GenServer.call (line 67)",
+    "not applicable: no per-user processes",
+    "met: the controller (comment line 175) and Oban worker (line 199) call RateLimit.check/1",
+    "met: boolean branched with if (line 92); unless at line 142 is graded under Branch",
+    "met: no comments that restate the code",
+    "met: no with",
+    "met: every multi-clause construct in code is broken with blank lines; fn arguments hold one expression",
+    "met: mix format --check-formatted passes",
+    "met: no call takes a multi-line argument",
+    "missed: Expected reads (processes.md); reads is empty, as a baseline run was told not to invoke skills",
+    "note: elixir ratelimit.ex compiles with no warnings; a 50-task burst admitted 2 at a limit of 2 and 5 at a limit of 5; the moduledoc (line 39) says every call counts whether or not it is allowed, but line 97 stores only the kept timestamps, so refused calls are not counted"
+   ],
+   "summary": "Wrote a single top-level RateLimit GenServer with no :name option that reads a JSON limits file in init/1, counts every request in handle_call and sweeps idle users each minute, with controller and Oban callers in comments; broke Branch (unless), Naming (no application namespace), Write GenServers that stay responsive (no :name), and Pick the abstraction and Use ETS (all counts behind one GenServer call), and outside the list returns a three-element error tuple; read no skill files."
+  },
+  "baseline-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "compiles": false,
+   "verdicts": {
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "violated",
+     "evidence": "line 122: unless valid_limit?(default) and Enum.all?(users, fn {_, n} -> valid_limit?(n) end) do"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "not exercised",
+     "evidence": "no with and no tuple-returning step; load_config!/1 (lines 118-127) raises at boot through File.read!() and JSON.decode!()"
+    },
+    "Naming": {
+     "verdict": "violated",
+     "evidence": "line 97: |> Map.new(fn {user_id, q} -> {user_id, prune(q, now)} end); line 129: defp valid_limit?(n), do: is_integer(n) and n >= 0 -- single-letter q and n"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 45: def start_link(opts) do -- a public function with no @doc (line 43 is a ## Client API label); line 106: # Drops timestamps that have left the rolling window. is held clean, as the same comment was in 2026-10-23"
+    },
+    "Build a multi-line argument under a name before the call": {
+     "verdict": "clean",
+     "evidence": "no call takes a multi-line map, struct or keyword argument; line 87: {:reply, {:error, {:rate_limited, retry_after}}, put_in(state.hits[user_id], hits)} one line; moduledoc child list built under children (lines 21-25)"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+     "verdict": "violated",
+     "evidence": "lines 109-110: {:value, ts} when ts <= now - @window_ms -> queue |> :queue.drop() |> prune(now) / _ -> queue -- 80 characters after the indentation, and one clause continues while the other returns; line 166: {:error, {:rate_limited, retry_after_ms}} -> {:snooze, max(div(retry_after_ms, 1000), 1)} -- 89 characters. Clean: lines 83-84 one glanceable expression each; lines 145-154 broken; fn arguments at 97-98 and 122 one expression each"
+    },
+    "Pick the abstraction that matches the job": {
+     "verdict": "violated",
+     "evidence": "line 60: GenServer.call(server, {:check, to_string(user_id)}); line 13: The limiter is a single GenServer, so checks are serialized and the"
+    },
+    "Keep each process behind one module": {
+     "verdict": "clean",
+     "evidence": "the plug (line 145) and the worker (line 164) call MyApp.RateLimiter.check/1"
+    },
+    "Write GenServers that stay responsive": {
+     "verdict": "clean",
+     "evidence": "line 47: name = Keyword.get(opts, :name, __MODULE__); handle_call/3 (73-89) does no file read; the sweep (92-102) is scheduled with Process.send_after (116)"
+    },
+    "Use ETS for data many processes read": {
+     "verdict": "violated",
+     "evidence": "line 60: GenServer.call(server, {:check, to_string(user_id)}) -- every count behind one process"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "moduledoc lines 21-25: children = [ / MyApp.Repo, / {MyApp.RateLimiter, config_path: Application.app_dir(:my_app, \"priv/rate_limits.json\")}, / MyAppWeb.Endpoint / ]"
+    }
+   },
+   "other_violations": [
+    "Write pipelines that start with a value and read top to bottom: line 76: hits = state.hits |> Map.get(user_id, :queue.new()) |> prune(now); line 109: queue |> :queue.drop() |> prune(now); line 119: %{\"default\" => default} = config = path |> File.read!() |> JSON.decode!() -- pipelines on one line",
+    "Keep functions short and at one level of detail: lines 81-82: retry_after = / case :queue.peek(hits) do -- a case nested in the if at line 78"
+   ],
+   "checks": [
+    "met: counts live in one supervised GenServer, started from the moduledoc's children list (lines 21-25)",
+    "not applicable: callers never touch ETS",
+    "met: a sweep every minute drops users with empty queues (lines 92-102)",
+    "met: MyApp.RateLimiter",
+    "met: start_link/1 accepts :name (line 47); a second instance under name: :other admitted 2 of 50",
+    "missed: the limits file is read in init/1 (line 67)",
+    "met: handle_call/3 does no file read or other slow work",
+    "met: check/2 uses GenServer.call (line 60)",
+    "not applicable: no per-user processes",
+    "met: the plug (line 145) and the worker (line 164) call MyApp.RateLimiter.check/1",
+    "met: no case on true/false; unless at line 122 is graded under Branch",
+    "met: no comments that restate the code",
+    "met: no with",
+    "missed: prune/2 keeps an 80-character clause beside a returning one on one line each (lines 109-110), and the worker's error clause is 89 characters on one line (line 166)",
+    "met: mix format --check-formatted passes",
+    "met: no call takes a multi-line argument",
+    "missed: Expected reads (processes.md); reads is empty, as a baseline run was told not to invoke skills",
+    "note: elixir ratelimit.ex fails only because the example plug imports Plug.Conn (line 140); the limiter and the example worker compile alone with --warnings-as-errors; a 50-task burst admitted 2 at a limit of 2 and 5 at a limit of 5; the worker returned {:snooze, 59} for an exhausted user"
+   ],
+   "summary": "Wrote one MyApp.RateLimiter GenServer that accepts :name, reads a JSON limits file in init/1, keeps per-user timestamp queues counted in handle_call and sweeps idle users, with a compiled plug and worker as callers; broke Branch (unless), Naming (single-letter q and n), Comments (start_link/1 has no @doc), the `->` rule (one-line clauses of 80 and 89 characters), and Pick the abstraction and Use ETS (all counts behind one GenServer call), and outside the list wrote three one-line pipelines and nested a case in an if; elixir ratelimit.ex fails only because the plug needs Plug; read no skill files."
+  },
+  "baseline-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": false,
+   "compiles": true,
+   "verdicts": {
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 130: if length(recent) < limit do and line 159: if Enum.all?(users, fn {_id, n} -> is_integer(n) and n >= 0 end) do -- one boolean condition each"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+     "verdict": "not exercised",
+     "evidence": "no with and no {:ok, _} | {:error, _} step; init/1 evaluates the file with Code.eval_file/1 (line 117) and validate/1 returns {:ok, config} or raises (lines 157-169)"
+    },
+    "Naming": {
+     "verdict": "violated",
+     "evidence": "line 159: if Enum.all?(users, fn {_id, n} -> is_integer(n) and n >= 0 end) do -- single-letter n"
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "line 134: # `recent` is newest-first, so the last entry is the one that expires first. and lines 171 and 178 give an ordering and a reason; @doc and @spec above start_link (85-94) and check/2 (100-109); section labels not counted"
+    },
+    "Build a multi-line argument under a name before the call": {
+     "verdict": "clean",
+     "evidence": "no call takes a multi-line map, struct or keyword argument; lines 167-168: raise ArgumentError, / \"...\" wraps a string; moduledoc child list built under children (lines 30-34)"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+     "verdict": "clean",
+     "evidence": "line 159: Enum.all?(users, fn {_id, n} -> is_integer(n) and n >= 0 end), a single-clause fn argument with one expression on its line; no case, cond, receive or with ... else in code; moduledoc lines 47-57 and 68-72 not counted"
+    },
+    "Pick the abstraction that matches the job": {
+     "verdict": "violated",
+     "evidence": "line 110: GenServer.call(server, {:check, user_id}); line 19: All checks go through one process, so counting is exact and callers on any"
+    },
+    "Keep each process behind one module": {
+     "verdict": "clean",
+     "evidence": "the controller (moduledoc line 47) and the Oban worker (line 68) call MyApp.RateLimiter.check/1"
+    },
+    "Write GenServers that stay responsive": {
+     "verdict": "clean",
+     "evidence": "line 96: name = Keyword.get(opts, :name, __MODULE__); handle_call/3 (125-138) does no file read; the sweep (141-153) is scheduled with Process.send_after (179)"
+    },
+    "Use ETS for data many processes read": {
+     "verdict": "violated",
+     "evidence": "line 110: GenServer.call(server, {:check, user_id}) -- every count behind one process"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "moduledoc lines 30-34: children = [ / MyApp.Repo, / {MyApp.RateLimiter, config_path: Application.app_dir(:my_app, \"priv/rate_limits.exs\")}, / MyAppWeb.Endpoint / ]"
+    }
+   },
+   "other_violations": [
+    "Use `do:` for a one-expression body and `do ... end` for anything else: lines 145-149: for {user_id, stamps} <- state.hits, / recent = prune(stamps, now), / recent != [], / into: %{}, / do: {user_id, recent} -- a for on do:",
+    "Before you finish: line 136: {:reply, {:error, {:rate_limited, max(retry_after, 1)}}, put_in(state.hits[user_id], recent)} -- 99 characters; mix format splits it, and the session never ran mix format"
+   ],
+   "checks": [
+    "met: counts live in one supervised GenServer, started from the moduledoc's children list (lines 30-34)",
+    "not applicable: callers never touch ETS",
+    "met: a sweep every minute drops users with no recent timestamps (lines 141-153)",
+    "met: MyApp.RateLimiter",
+    "met: start_link/1 accepts :name (line 96); a second instance under name: :other admitted 2 of 50",
+    "missed: the limits file is evaluated in init/1 (line 117, Code.eval_file/1, which runs whatever code the file holds)",
+    "met: handle_call/3 does no file read or other slow work",
+    "met: check/2 uses GenServer.call (line 110)",
+    "not applicable: no per-user processes",
+    "met: the controller (moduledoc line 47) and the Oban worker (line 68) call MyApp.RateLimiter.check/1",
+    "met: booleans branched with if (lines 130, 159)",
+    "met: no comments that restate the code",
+    "met: no with",
+    "met: no case, cond, receive or with ... else in code; the fn argument holds one expression",
+    "missed: mix format --check-formatted fails (line 136, 99 characters)",
+    "met: no call takes a multi-line argument",
+    "missed: Expected reads (processes.md); reads is empty, as a baseline run was told not to invoke skills",
+    "note: elixir ratelimit.ex compiles with no warnings; a 50-task burst admitted 2 at a limit of 2 and 5 at a limit of 5; IDs are keys as given, so \"1\" got its own 2 after 1 was exhausted; an injected 61-second-old entry was removed by one :sweep"
+   ],
+   "summary": "Wrote one MyApp.RateLimiter GenServer that accepts :name, evaluates an Elixir limits script with Code.eval_file/1 in init/1, counts every request in handle_call and sweeps idle users, with controller and Oban callers in the moduledoc; broke Naming (single-letter n) and Pick the abstraction and Use ETS (all counts behind one GenServer call), and outside the list wrote a for on do: and left a 99-character line unformatted; read no skill files."
+  }
+ },
+ "per_rule": {
+  "Branch with function clauses and guards before reaching for `if` or `cond`": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "not exercised"
+  },
+  "Naming": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "violated"
+  },
+  "Build a multi-line argument under a name before the call": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Pick the abstraction that matches the job": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Keep each process behind one module": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Write GenServers that stay responsive": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Use ETS for data many processes read": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Supervise every long-lived process": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  }
+ }
+}

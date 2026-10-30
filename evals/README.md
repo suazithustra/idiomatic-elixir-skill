@@ -109,19 +109,27 @@ The table rule lasted one batch. A reading of the elixir-lang repositories (elix
 
 Two batches then measured the consolidation. Under `sweeps/2026-10-31-check/` (order-report, macro-dsl and test-writing, with the skill, 12 runs) both new rules were clean in every run, the `do:` rule in every run, and the `with` rule in every run with the tail-call shape appearing twice; the only movement was the `fn` layout sentence, which went from 1 of 4 in each earlier batch to 5 of 12, every one a `fn` whose body is one expression (`Enum.sort_by(fn {customer_id, count} -> {-count, customer_id} end)`, `Enum.map(routes, fn {path, handler} -> {path, handler} end)`). The opening rule's own test, a selection and the one expression it produces, describes that line, and the `fn` exception lived in the captures rule. A sentence naming the `fn` as the one head the opening rule does not cover was added and measured under `sweeps/2026-10-31-check-2/` (order-report and macro-dsl, 8 runs): 4 of 8, both order-report Sonnet runs on the same `sort_by` line. The `fn` layout sentence was then withdrawn: a `fn` body follows the opening rule, one expression on the head's line and a sequence or a nested construct below, which is what the sentence it replaced had said in other words, and the `->` rule, the `do:` rule's `draws` example and the check bullets follow. The same batch showed the `for` sentence losing to the opening rule in the same way, 2 of 4 macro-dsl runs writing a one-line `for ..., do:`, a shape no earlier batch had; the sentence stands for now and the next sweep decides it. Elsewhere in the two batches: the one-line `__before_compile__` pipeline in macro-dsl, now graded in the pipeline rule's row, held at 2 of 4 Haiku runs in both; test-writing's Sonnet `returns :ok` names 1 of 4; three of four macro-dsl runs in the second batch left the example router's `get` calls unformatted after seeing the check fail, with one writing a `.formatter.exs` and passing.
 
+The seventh sweep (`sweeps/2026-10-31/`, at 0814e8d, ten cases, 100 runs; 95 runs were shown 209 skills and 5 were shown 83, none of them the skill under test) measured the rewording since the sixth. Over 63 rules, three more than before (the two new Readability rules and the `->` rule), runs that broke a rule with the skill numbered 36 against 184 without it, where the sixth sweep had 18 against 167 over 60 rules. The rise is Haiku's, and a side-by-side test recorded below found the skill text is not its cause. On the 91 case-and-rule pairs graded in both sweeps, violated verdicts with the skill went Opus 1 to 1, Sonnet 6 to 8 and Haiku 11 to 25, after five sweeps in which Haiku stayed between 7 and 11. Without the skill the same pairs went Opus 21 to 19, Sonnet 74 to 62 and Haiku 72 to 84, so part of the Haiku rise may be variation, but that rise is a sixth and the one with the skill more than doubles. `SKILL.md` grew from 4,635 to 6,648 words between the two sweeps, which is why that test was run. Code-review's haiku-2 (2 to 7) and macro-dsl's haiku-2 (0 to 4) account for 9 of the net 14: the first reported 15 of 21 planted problems and read a struct field with `Map.get/2` in its own fix, the second wrote the route attribute inside `get`'s quote, used `Macro.expand/2`, put the admonition after the example and wrote a one-line `for`.
+
+The reworded rules. The `with` rule improved from 2 to 0 of 20 with the skill (2 of 20 without): the newly allowed one-step pass-through `with` appears in eleven with-skill runs over order-report, shop-project and webhook-parser, and none was graded violated. The `->` rule, in its first sweep: 1 of 15 with the skill (a webhook-parser Haiku run keeping `nil -> {:ok, nil}` beside a validating clause) against 8 of 15 without, broken by every tier. "One expression per line, and tabular clauses": 0 of 15 with, 2 of 15 without (both Sonnet test-writing runs putting a `receive` on the line of a `fn`). "Name a step instead of wrapping an expression": 0 of 10 with, 1 of 10 without. The pipeline rule, now over four cases: 2 of 20 with the skill (an order-report Haiku one-liner inside a map, and a code-review Sonnet review that did not report the input's single-step pipe) against 11 of 20 without; macro-dsl alone is 0 of 5 with and 4 of 5 without. The `do:` rule: 1 of 15 with (the one-line `for`) against 5 of 15 without. The named-argument rule: 1 of 10 with, a rate-limiter Sonnet run spreading a four-option list that fits on one line, which the grader flagged as a judgment because the "Use ETS" example in `processes.md` spreads a five-option list whose one-line form is exactly 98 characters; against 4 of 10 without. The head rule's clutter sentence fired on a library-client Haiku run without the skill binding `body` in all three heads (0 of 10 with); the `Keyword.fetch!/2` sentence was exercised in library-client and held at 0 of 5; the `describe` sentence caught a topic name, `describe "the default server"`, in an Opus run without the skill (with the skill the rule was 1 of 10, a Haiku block joining two functions); the captures rule, with the `fn` layout sentence withdrawn, was 0 of 5 in both conditions and enters the cull list.
+
+Four rules regressed by the definition below, each from 0 to at least 2 with the skill: "Avoid compile-time dependencies" 3 of 5 (two Haiku `Macro.expand/2`, one Sonnet alias passed unexpanded into a module-body call), "Keep `quote` blocks small" 2 of 5 (both Haiku), Naming 2 of 20 (`fetch_string/2` and `fetch_field/2` returning `{:error, _}`, both Haiku) and the return-tuple rule 2 of 20 (both code-review Haiku reviews missing the raise outside the `try`). None of the four changed text. Two rules that were not clean before also rose, which that definition does not count: "Match every expected shape" 1 to 4 of 10 (three code-review reviews not reporting the identical error reasons, and a webhook-parser Sonnet payment catch-all), whose only new sentence is the one on `elem/2`, and "Comments explain why" 4 to 6 of 15. The sentences these runs broke did not change, so no rewording of these rules follows. Open from the graders: the `processes.md` ETS example against the "fits its line" sentence at the 98-column edge; the `for` sentence, which the opening rule's one-expression test pulls against (1 of 15 here); and the macro-dsl example router's bare `get` calls. With the skill, two Haiku runs ran `mix format` and kept the parentheses it added, an Opus run checked inside a project with a `.formatter.exs` and deleted it, and two Sonnet runs saw the check fail and left the calls bare; all five runs without the skill left them bare.
+
+The Haiku rise was then tested, with the design written down before any run (`sweeps/2026-10-31-haiku-test/design.md`). The skill at d04061d and the seventh sweep's text with the three small edits the next commit records (folder hash eb40ef76) ran side by side on Claude Code 2.1.314, Haiku only, with six code-review runs and twelve macro-dsl runs for each text (`sweeps/2026-10-31-haiku-old/`, `-haiku-new/`, `-haiku-old-2/`, `-haiku-new-2/`), and the deliverables were graded blind under random ids on the rules the sixth sweep graded, leaving out the `do:` row because its text changed. The text would count as the cause if the newer one scored at least one violation per run higher. It did not: code-review 1.83 for the old text against 2.00 for the new, with 18.5 and 18.8 planted problems reported, and macro-dsl 1.58 against 1.92, both inside what chance gives (permutation p 0.50 and 0.21). A cost of about a quarter of a violation per run is not ruled out, and the largest single gap is the `use` documentation rule, 3 against 6 of 12 runs. No run on either text scored above 3. Haiku read all of `SKILL.md` in both sweeps, so length is not cutting rules off. The sweeps' own Haiku files, regraded blind alongside these, scored about what their graders gave them, 5 against 4 for the sixth sweep's four files and 15 against 16 for the seventh's, and the seventh's 7 stayed 7, so the spike was in the runs and not the grading. The rise is best read as run-to-run variation: one unusually poor review on top of a sixth sweep that was unusually clean. With the skill, Haiku broke the compile-time rule in 26 of 36 earlier graded runs and in 23 of 24 here, and the sixth sweep's two clean runs were the exception. Every run of this test used one Claude Code version, so the change from 2.1.309 cannot be excluded, though nothing points to it. Redacting the grading standard removed the sentence on direct attribute writes for two graders; those six `quote` verdicts are corrected in `scores.json` from a mechanical count, and the raw grades are kept beside it.
+
 ## Which case exercises which rule
 
 A rule with no case can regress unnoticed. The rule cell is the rule's exact heading, which `check_skill.exs` matches against the skill; rows follow `SKILL.md`, then the reference files in alphabetical order. The cases cell names the cases that check the rule, or starts with "not provocable:" and says why no neutral prompt can. The "Without skill" cell is filled from the sweep: for each tier, violated, clean, not exercised, or unavailable.
 
 | Rule | Cases | Without skill |
 | --- | --- | --- |
-| Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys | code-review, webhook-parser, library-client | Opus violated, Haiku clean, Sonnet violated |
+| Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys | code-review, webhook-parser, library-client | Opus violated, Haiku violated, Sonnet violated |
 | Match every expected shape and let unexpected ones crash | code-review, webhook-parser | Opus clean, Haiku violated, Sonnet violated |
-| In multi-clause functions, bind in the head only what patterns and guards use | webhook-parser, library-client | Opus clean, Haiku clean, Sonnet clean |
-| Update structs with `%{struct \| field: value}` | shop-project | Opus violated, Haiku violated, Sonnet violated |
+| In multi-clause functions, bind in the head only what patterns and guards use | webhook-parser, library-client | Opus clean, Haiku violated, Sonnet clean |
+| Update structs with `%{struct \| field: value}` | shop-project | Opus clean, Haiku violated, Sonnet violated |
 | Convert external strings to atoms with explicit clauses | webhook-parser, order-report, shop-project, code-review | Opus clean, Haiku violated, Sonnet clean |
-| Branch with function clauses and guards before reaching for `if` or `cond` | rate-limiter, code-review | Opus clean, Haiku clean, Sonnet violated |
-| Chain fallible steps with `with`; normalize each step's error in a small private function | webhook-parser, shop-project, rate-limiter, order-report | Opus violated, Haiku violated, Sonnet violated |
+| Branch with function clauses and guards before reaching for `if` or `cond` | rate-limiter, code-review | Opus clean, Haiku violated, Sonnet violated |
+| Chain fallible steps with `with`; normalize each step's error in a small private function | webhook-parser, shop-project, rate-limiter, order-report | Opus clean, Haiku violated, Sonnet violated |
 | Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs | webhook-parser, library-client, shop-project, code-review | Opus clean, Haiku violated, Sonnet clean |
 | Use `and`, `or`, `not` when the operands are booleans | code-review | Opus violated, Haiku violated, Sonnet violated |
 | Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it | code-review | Opus clean, Haiku clean, Sonnet clean |
@@ -129,37 +137,37 @@ A rule with no case can regress unnoticed. The rule cell is the rule's exact hea
 | Treat lists as linked lists | order-report | Opus clean, Haiku clean, Sonnet clean |
 | Compare dates, times, and decimals with their module functions | order-report | Opus clean, Haiku clean, Sonnet clean |
 | Store and compute money as integer minor units or `Decimal`, never floats | order-report, shop-project | Opus clean, Haiku clean, Sonnet clean |
-| Parse external data into structs where it enters the system | webhook-parser | Opus clean, Haiku clean, Sonnet violated |
-| Use one atom-valued field or option instead of overlapping booleans | code-review | Opus clean, Haiku violated, Sonnet violated |
+| Parse external data into structs where it enters the system | webhook-parser | Opus clean, Haiku violated, Sonnet violated |
+| Use one atom-valued field or option instead of overlapping booleans | code-review | Opus violated, Haiku violated, Sonnet violated |
 | Group related parameters | library-client | Opus clean, Haiku violated, Sonnet violated |
 | Give each function one return shape | library-client, code-review | Opus clean, Haiku violated, Sonnet clean |
 | Read configuration at runtime, not into module attributes | library-client | Opus clean, Haiku clean, Sonnet clean |
 | Naming | rate-limiter, webhook-parser, order-report, shop-project | Opus violated, Haiku violated, Sonnet violated |
 | Comments explain why; documentation goes in `@moduledoc` and `@doc` | code-review, webhook-parser, rate-limiter | Opus violated, Haiku violated, Sonnet violated |
-| Keep functions short and at one level of detail | code-review | Opus clean, Haiku clean, Sonnet violated |
+| Keep functions short and at one level of detail | code-review | Opus clean, Haiku violated, Sonnet clean |
 | Build a multi-line argument under a name before the call | rate-limiter, ecto-phoenix | Opus violated, Haiku violated, Sonnet violated |
-| Use `do:` for a one-expression body and `do ... end` for anything else | order-report, macro-dsl, test-writing | Opus violated, Haiku violated, Sonnet violated |
-| Inline `->` clauses that read at a glance; otherwise put each body on its own line | order-report, rate-limiter, webhook-parser | not yet graded |
-| One expression per line, and tabular clauses | order-report, macro-dsl, test-writing | not yet graded |
-| Name a step instead of wrapping an expression | order-report, code-review | not yet graded |
+| Use `do:` for a one-expression body and `do ... end` for anything else | order-report, macro-dsl, test-writing | Opus clean, Haiku violated, Sonnet violated |
+| Inline `->` clauses that read at a glance; otherwise put each body on its own line | order-report, rate-limiter, webhook-parser | Opus violated, Haiku violated, Sonnet violated |
+| One expression per line, and tabular clauses | order-report, macro-dsl, test-writing | Opus clean, Haiku clean, Sonnet violated |
+| Name a step instead of wrapping an expression | order-report, code-review | Opus clean, Haiku violated, Sonnet clean |
 | Write pipelines that start with a value and read top to bottom | code-review, order-report, test-writing, macro-dsl | Opus violated, Haiku violated, Sonnet violated |
-| Use captures for one-call lambdas and `fn` for anything longer | order-report | Opus clean, Haiku clean, Sonnet violated |
+| Use captures for one-call lambdas and `fn` for anything longer | order-report | Opus clean, Haiku clean, Sonnet clean |
 | Open a module with `use`, `import`, `alias`, `require`, in that order | ecto-phoenix, test-writing | Opus clean, Haiku clean, Sonnet clean |
 | Before you finish | shop-project | Opus clean, Haiku violated, Sonnet violated |
-| Validate input with changesets | ecto-phoenix, code-review; the accessor sentence is not provocable: no prompt needs to know whether a field changed | Opus violated, Haiku violated, Sonnet violated |
+| Validate input with changesets | ecto-phoenix, code-review; the accessor sentence is not provocable: no prompt needs to know whether a field changed | Opus clean, Haiku violated, Sonnet clean |
 | Let Phoenix turn missing records into 404 responses | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
 | Group writes that must succeed together | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
 | Load associations up front | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
 | Keep migrations to schema changes | ecto-phoenix | Opus violated, Haiku violated, Sonnet violated |
 | Keep database access in contexts | ecto-phoenix | Opus clean, Haiku clean, Sonnet clean |
-| Take configuration as arguments, not from the application environment | library-client | Opus clean, Haiku violated, Sonnet violated |
+| Take configuration as arguments, not from the application environment | library-client | Opus clean, Haiku violated, Sonnet clean |
 | Use exception structs as error reasons | library-client | Opus clean, Haiku violated, Sonnet clean |
-| Make polymorphism explicit | library-client | Opus clean, Haiku violated, Sonnet violated |
-| Add specs, and hide technical functions from the docs | library-client, macro-dsl | Opus clean, Haiku violated, Sonnet violated |
-| Keep secrets out of logs and inspect output | library-client | Opus clean, Haiku not exercised, Sonnet violated |
+| Make polymorphism explicit | library-client | Opus violated, Haiku violated, Sonnet violated |
+| Add specs, and hide technical functions from the docs | library-client, macro-dsl | Opus violated, Haiku violated, Sonnet violated |
+| Keep secrets out of logs and inspect output | library-client | Opus clean, Haiku not exercised, Sonnet clean |
 | Keep structs under 32 fields | not provocable: no prompt builds a struct with that many fields | not provocable |
 | Write a function unless the job needs a macro | macro-dsl | Opus clean, Haiku clean, Sonnet clean |
-| Keep `quote` blocks small | macro-dsl | Opus violated, Haiku violated, Sonnet violated |
+| Keep `quote` blocks small | macro-dsl | Opus clean, Haiku violated, Sonnet violated |
 | Unquote each argument once | macro-dsl | Opus clean, Haiku clean, Sonnet clean |
 | Offer `import` or `alias` instead of `use` when they are enough | macro-dsl; the import-instead-of-use sentence is not provocable: the prompt prescribes `use TinyRouter` | Opus violated, Haiku violated, Sonnet violated |
 | Avoid compile-time dependencies on modules used only at runtime | macro-dsl | Opus clean, Haiku violated, Sonnet violated |
@@ -167,12 +175,12 @@ A rule with no case can regress unnoticed. The rule cell is the rule's exact hea
 | Decide whether you need a process | order-report | Opus clean, Haiku clean, Sonnet clean |
 | Pick the abstraction that matches the job | rate-limiter; the timeout sentence is not provocable: no prompt maps concurrently | Opus clean, Haiku violated, Sonnet violated |
 | Keep each process behind one module | rate-limiter | Opus clean, Haiku clean, Sonnet clean |
-| Write GenServers that stay responsive | rate-limiter | Opus clean, Haiku clean, Sonnet clean |
+| Write GenServers that stay responsive | rate-limiter | Opus clean, Haiku violated, Sonnet clean |
 | Use ETS for data many processes read | rate-limiter | Opus clean, Haiku violated, Sonnet violated |
 | Supervise every long-lived process | rate-limiter, code-review | Opus clean, Haiku violated, Sonnet clean |
 | Send processes only the data they need | code-review | Opus violated, Haiku violated, Sonnet violated |
 | Run tests concurrently unless they share global state | test-writing, log-tests | Opus violated, Haiku violated, Sonnet violated |
-| Group tests by function and name them by behaviour | test-writing, log-tests | Opus clean, Haiku violated, Sonnet violated |
+| Group tests by function and name them by behaviour | test-writing, log-tests | Opus violated, Haiku violated, Sonnet violated |
 | Assert with patterns | test-writing, log-tests | Opus violated, Haiku violated, Sonnet violated |
 | Wait for messages, not for time | test-writing | Opus violated, Haiku violated, Sonnet violated |
 | Start processes with `start_supervised!/1` | test-writing | Opus violated, Haiku violated, Sonnet violated |
@@ -189,7 +197,9 @@ Confirmed (a candidate in both sweeps):
 - Compare dates, times, and decimals with their module functions: Opus 1 run, Sonnet 2 in order-report; Haiku clean
 - Convert external strings to atoms with explicit clauses: Opus 1 run, Sonnet 2 in code-review, order-report, shop-project, webhook-parser; Haiku violated
 - Decide whether you need a process: Opus 1 run, Sonnet 2 in order-report; Haiku clean
+- Give each function one return shape: Opus 1 run, Sonnet 2 in code-review, library-client; Haiku violated
 - Group writes that must succeed together: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
+- In multi-clause functions, bind in the head only what patterns and guards use: Opus 1 run, Sonnet 2 in library-client, webhook-parser; Haiku violated
 - Keep database access in contexts: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
 - Keep each process behind one module: Opus 1 run, Sonnet 2 in rate-limiter; Haiku clean
 - Let Phoenix turn missing records into 404 responses: Opus 1 run, Sonnet 2 in ecto-phoenix; Haiku clean
@@ -203,25 +213,31 @@ Confirmed (a candidate in both sweeps):
 - Treat lists as linked lists: Opus 1 run, Sonnet 2 in order-report; Haiku clean
 - Unquote each argument once: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
 - Use exception structs as error reasons: Opus 1 run, Sonnet 2 in library-client; Haiku violated
-- Write GenServers that stay responsive: Opus 1 run, Sonnet 2 in rate-limiter; Haiku clean
+- Use setup for shared data: Opus 1 run, Sonnet 2 in test-writing; Haiku clean
+- Write GenServers that stay responsive: Opus 1 run, Sonnet 2 in rate-limiter; Haiku violated
 - Write a function unless the job needs a macro: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
 - Write module names literally: Opus 1 run, Sonnet 2 in macro-dsl; Haiku clean
 
 Dropped (a candidate the previous sweep had; Opus or Sonnet violated it in this one):
-- Keep functions short and at one level of detail: Opus clean, Haiku clean, Sonnet violated in code-review
-- Parse external data into structs where it enters the system: Opus clean, Haiku clean, Sonnet violated in webhook-parser
-- Use captures for one-call lambdas and `fn` for anything longer: Opus clean, Haiku clean, Sonnet violated in order-report
+- none
 
 Unconfirmed (a candidate the previous sweep had; Opus or Sonnet did not exercise it this time):
 - none
 
 New candidates (clean on Opus and Sonnet this sweep, not a candidate before):
-- Give each function one return shape: Opus 1 run, Sonnet 2 in code-review, library-client; Haiku violated
-- In multi-clause functions, bind in the head only what patterns and guards use: Opus 1 run, Sonnet 2 in library-client, webhook-parser; Haiku clean
-- Use setup for shared data: Opus 1 run, Sonnet 2 in test-writing; Haiku clean
+- Keep functions short and at one level of detail: Opus 1 run, Sonnet 2 in code-review; Haiku violated
+- Keep secrets out of logs and inspect output: Opus 1 run, Sonnet 2 in library-client; Haiku not exercised
+- Name a step instead of wrapping an expression: Opus 1 run, Sonnet 2 in code-review, order-report; Haiku violated
+- Take configuration as arguments, not from the application environment: Opus 1 run, Sonnet 2 in library-client; Haiku violated
+- Use captures for one-call lambdas and `fn` for anything longer: Opus 1 run, Sonnet 2 in order-report; Haiku clean
+- Validate input with changesets: Opus 1 run, Sonnet 2 in code-review, ecto-phoenix; Haiku violated
 
 Unconfirmed (Opus or Sonnet never produced the construct the rule governs):
 - none
+
+### Decision after the seventh sweep
+
+Twenty-four rules are confirmed, three more than after the sixth sweep, and all stay in the skill under the condition the earlier decisions set: the sweeps ran Claude models only, and a rule leaves the skill only when a sweep on other commonly used models agrees. No candidate dropped. Six are new, among them the captures rule, back after dropping in the sixth sweep, "Keep functions short and at one level of detail", back the same way, and "Name a step instead of wrapping an expression", a candidate in its first sweep because Opus and Sonnet did not break it without the skill; its one violation is a Haiku run binding a name it uses once. A rule that is a candidate in its first sweep says only that the cases do not provoke it much; the standing across sweeps decides, as before.
 
 ### Decision after the sixth sweep
 

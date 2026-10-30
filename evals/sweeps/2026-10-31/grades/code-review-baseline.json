@@ -1,0 +1,525 @@
+{
+ "case": "code-review",
+ "condition": "baseline",
+ "notes": [
+  "Sweep 2026-10-31, five baseline runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2). Each result.json has head 0814e8d, uncommitted false, rc 0, model_id equal to the requested model, files [review.md] and reads []. Every assistant message in each transcript reports only the run's model; each transcript shows a Read of code-review-input.ex and a Write of review.md, no Skill call and no skill file read (no transcript contains the skill's text). Opus-1 also tested its rewrite on SQLite in /tmp/importer-verify; haiku-1 compiled its module with stubs in a check/ folder it left inside its run folder (check/improved.ex equals its review.md block), which result.json's files does not list. Each run's code-review-input.ex equals evals/cases/code-review-input.ex. result.json has no format_ok field, so format_ok comes from this grade's own check.",
+  "Rule list: 16 index rows name code-review, the 15 of the 2026-10-23 grade plus the new 'Name a step instead of wrapping an expression' (index cell: not yet graded). git diff d04061d -- idiomatic-elixir/ changes four rules in the list: the new 'Name a step...' rule; the pipeline rule's first bullet, which gains the never-on-one-line, plain-nested-call and mode-argument sentences; 'Match every expected shape...', which gains the `elem/2` sentence and reformats its examples; and the required-keys rule, which gains the `Keyword.fetch!/2` sentence. The `->` rule, renamed 'Inline `->` clauses that read at a glance; otherwise put each body on its own line', and the other rewritten layout rules are outside this case's list and are checked only for other_violations. The 12 unchanged graded rules are graded to the 2026-10-23 standard: a problem counts as reported only when a finding names it or its stated fix addresses it; a silent fix does not count, and a rule is violated when a planted problem belonging to it goes unreported, the improved code keeps it, or the code adds a new instance; a fix of `min(age, 120)` does not report the 120, while a fix naming `@max_age` does; a one-line `if ..., do:` in a `with` body is not nesting; a `_ ->` inside `case Integer.parse(...)` is not counted; `Map.get/2` on a struct breaks the required-keys rule; an assumed or companion changeset counts as a changeset, and hand parsing beside it is allowed; a `change/1,2` that validates nothing breaks the changeset rule.",
+  "Deciding sentences for the changed rules. 'Name a step instead of wrapping an expression' (new, no earlier verdict): clean in all five, decided by 'A binding earns its place when it names a recognizable thing or a stage of the computation, holds a value used more than once, ...' and 'It does not when it only renames a value used once (...), when the nested call is plain (...)'. The bindings name a record or stage (haiku-1 line 92 `user = %User{...}`, sonnet-2 line 96 `attrs = %{...}`) or a value used twice (opus-1 line 87 `opts`), and plain nested calls stay nested (opus-1 line 109 `put_change(changeset, :nickname, get_change(changeset, :email))`, haiku-2 line 87 `Repo.insert(struct(User, attrs))`, and every `Mailer.deliver(welcome_email(user))`). 'A line break is not decomposition' is not exercised: no output has an expression that is only wrapped. The one borderline case is sonnet-1 line 55, a 111-character `with` clause holding `insert(%{...})` with an inline map; `mix format` breaks it after `<-` and keeps the call on one line, the formatter's own wrap, so it is not counted. Pipeline rule: decided in all five by the unchanged 'Do not pipe a single step' bullet through the unreported input line 12, and, in three runs, also by the new sentence 'A pipeline never sits on one line, however short: two steps on one line ... hide where one step ends and the next begins, so they go on three lines after `words =`, or become a nested call when there are only two': opus-1 line 89 `params |> import_changeset() |> Repo.insert()`, sonnet-1 line 81 `%User{} |> User.changeset(attrs) |> Repo.insert()` and sonnet-2 line 105 `user |> welcome_email() |> Mailer.deliver()`. The mode-argument sentence ('An argument that only selects a kind or a mode does not start a pipeline') is not exercised; sonnet-1 line 75 `Map.fetch(@roles, role) |> role_result()` starts with a call and breaks the unchanged first and second bullets. 'Match every expected shape...': the new sentence 'The same goes for `elem/2` on a tuple whose shape is known' is not exercised, since no output calls `elem/2`; the verdicts come from the unchanged identical-errors and `_ ->` standard. Required keys: the new sentence 'A keyword list has no dot access: read a key it must hold with `Keyword.fetch!/2`, ..., and keep `opts[:key]` for an option that has a default' keeps every run's option reads (opus-1 `opts[:notify]` after `Keyword.validate!/2` with defaults, the haikus' `opts[:notify]` with a documented `false` default, the sonnets' `Keyword.get(opts, :notify, false)`); haiku-1's violation is decided by the unchanged 'Structs do not implement `Access`: ..., so read struct fields with `user.name` or a pattern', against its line 112 `Map.get(user, :name)`.",
+  "Planted problems, mapped as in the 2026-10-23 grades: 21 problems from the case table's 19 rows, with the line 15-17 rebinding counted apart from the magic 120 and the line 49 spawn apart from the closure copy. Counts: opus-1 17, haiku-1 12, haiku-2 11, sonnet-1 15, sonnet-2 16 (2026-10-23: 16; 13, 13; 15, 13). No run reports the line 12 pipe, the line 21 `&&`, the magic 18 or the closure copy. All five report the line 24 lookup-before-insert with the race: opus-1 (finding 5), sonnet-1 (finding 5) and sonnet-2 (finding 5) drop `Repo.get_by/2` for `unique_constraint`; haiku-1 (finding 4) and haiku-2 (finding 6) report it and keep it.",
+  "Judgment calls on 'reported'. Opus-1 names no bare-struct insert on its own, but findings 1, 10, 11 and 12 give `cast/3` and `validate_required/2` as the fix and line 5 says the rewrite is built around a changeset, so it counts through its stated fixes (borderline); its magic 120 counts through finding 3's 'Fix: `min(&1, @max_age)`.' Haiku-2's nesting counts through finding 3's 'validate each field explicitly with `with`', and sonnet-1's through finding 3's 'validate with pattern matching and `with`', as 2026-10-23 counted opus-1's `with` fix; haiku-1's finding 3 fix names no `with` and no nesting, so it misses it. Haiku-1's finding 6 ('Bad input, a duplicate, and a failed insert all collapse into `:invalid` or `:insert_failed`') counts for the identical errors but names no dropped changeset, so the line 33 `_ ->` is unreported; haiku-2's finding 3 ('Callers cannot tell bad input from broken code') treats the rescue only as hiding bugs and does not count for the identical errors. Haiku-1's finding 3 ('`params[\"email\"] |> String.downcase()` (line 12) runs before the `is_binary/1` check (line 21)') and sonnet-2's finding 4 count for the dead `is_binary`, not for the pipe or the `&&`. Sonnet-1's finding 10 is about the operators and names no overlap, so its silent drop of `:silent` leaves the overlapping options unreported; sonnet-2's finding 11 ('`opts[:notify] && !opts[:silent]` is redundant; the improved version keeps only `notify`') counts for the overlap. Sonnet-2's finding 11 ('`&&` and `!` should be `and` and `not` for booleans') quotes no line and names `!`, which occurs only on line 27, so it does not count for line 21, as the 2026-10-22-d grade judged a finding of the same shape. Opus-1 reports the overlap (finding 16) and the `Mailer` problem (finding 9) but keeps both by its own statement, which counts them as reported and the 'applies every finding' check as missed.",
+  "False positives: sonnet-1 finding 10 rewrites must-not-report line 27's operators, and sonnet-2 finding 11 puts them under `and`/`not` (borderline). Neither puts `and` or `not` on a nil-able option, since both drop `:silent`. Opus-1 treats line 27 only as overlapping options; the haikus do not discuss it. Must-not-report line 11: the why-comment is kept by opus-1 (line 99), sonnet-1 (line 61) and sonnet-2 (line 70); haiku-1 drops it silently and haiku-2 drops it although its finding 9 says it stays. Line 19: opus-1's finding 11 is about blank CSV cells, not the access or `||`, so it is not counted, as before; every run keeps the fallback.",
+  "Rules outside the list, checked against their current text for other_violations. Sonnet-1 line 83 is a 106-character `->` clause, which the renamed `->` rule sends to two lines ('a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines'); opus-1's longest clause, line 109, is exactly 70 characters and is not counted. Opus-1's line 89 one-step `with` has a body that cannot fail and no `else`, which the new `with` sentence ('One step is a `with` only when its body cannot fail and there is no `else`') allows. Every `do:` body is one expression on the head's line; no `do:` holds a `fn` or a capture with call arguments; every `fn` passed as an argument holds one call and is on one line where it fits (the `Task.Supervisor.start_child/2` forms would pass 98 characters on one line). No multi-line literal is passed inline after formatting. Directives are in order in every run. The haikus document options under 'Options:' rather than '## Options' and none of them validates options; earlier grades did not list that, so it is not listed.",
+  "Format check: the one elixir block in each review.md was extracted to /private/tmp/claude-501/-Users-suazi-Repos-idiomatic-elixir-skill/63fbd3f7-5995-424e-b268-7679cfbb08c1/scratchpad/grade-scratch-sweep-2026-10-31/code-review-baseline/baseline-<run>.ex. `mix format --check-formatted` (Elixir 1.20.3) exits 0 for opus-1, haiku-1, haiku-2 and sonnet-2, and fails for sonnet-1 on the line 83 syntax error ('unexpected expression after keyword list', the pattern `[constraint: :unique, _]`). A scratch copy with that pattern written as `[{:constraint, :unique}, _]` (baseline-sonnet-1-patched.ex) still needs formatting at lines 45, 55 and 82-84. A misformatted control (bad.ex) exits 1.",
+  "Compile and no-options check: each module was run by drive/run.exs in the scratch folder against real Ecto (Mix.install), an `Accounts.User` schema with email, age, role (`Ecto.Enum` of :admin and :member) and nickname and a `changeset/2` and `import_changeset/2` that cast those fields with `validate_required/2` and `unique_constraint(:email)`, an `Accounts.Repo` whose `get_by/2` returns nil and whose `insert/1` applies a changeset's action or returns a struct as given, `Mailer` and `Accounts.Mailer` stubs that message the driver, and a real `Accounts.TaskSupervisor`. Opus-1, haiku-1, haiku-2 and sonnet-2 compile with no warnings; sonnet-1 runs only from the patched copy. In all five, `import_user(%{\"email\" => \"Ann@Example.com\", \"age\" => \"130\", \"role\" => \"member\"})` with no options returns {:ok, user} with age 120 and a lowercased email and sends no mail, and `notify: true` delivers one email. Age 17 and a missing role return an error in all five. An unknown role \"root\" returns an error in four, but haiku-1's `String.to_existing_atom/1` accepts it and stores `:root`, an atom the VM already holds. Haiku-1's email reads 'Hi there' because `Map.get(user, :name)` is nil. The stub Repo has no database, so `unique_constraint/3` was not exercised.",
+  "Compared with the 2026-10-23 baseline per_rule, six of the 15 earlier rows change. Required keys: haiku clean to violated (haiku-1's `Map.get(user, :name)`). 'Match every expected shape...': sonnet violated to clean (both sonnets now return distinct reasons). 'Branch with function clauses...' and 'Keep functions short...': haiku clean to violated (haiku-1 misses the nesting) and sonnet violated to clean (both sonnets report it, and neither nests a block `if` in its `with`). Overlapping options: opus clean to violated (opus-1 reports `:silent` and keeps it). 'Validate input with changesets': opus and sonnet violated to clean (opus-1 builds a real `cast/3` changeset, and both sonnets insert through an assumed one instead of a `change/2` that validates nothing). The new 'Name a step...' row is clean in every tier. Rules broken per run: opus-1 5, haiku-1 14, haiku-2 10, sonnet-1 6, sonnet-2 4 of 16.",
+  "Evidence line numbers are review.md line numbers; 'input line' means code-review-input.ex."
+ ],
+ "runs": {
+  "baseline-opus-1": {
+   "model_id": "claude-opus-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 11) reports input line 53 `user[:name]`; line 121 `\"Hi #{user.nickname}, welcome! Enjoy your account.\"`. Options are read as `opts[:notify]` after line 87 `opts = Keyword.validate!(opts, notify: false, silent: false)` gives them defaults, the kept form under the new `Keyword.fetch!/2` sentence."
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "Finding 7 (line 21) names the duplicate folded into `:invalid` and the reason `:insert_failed` throws away; line 89 `with {:ok, user} <- params |> import_changeset() |> Repo.insert() do` passes `{:error, changeset}` through unchanged. No `elem/2`."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "Finding 1 (line 9); line 97 `|> cast(params, [:email, :age, :role, :nickname])` casts the role through an `Ecto.Enum` the review assumes (line 47); no `String.to_atom/1`."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "Finding 14 (line 37) 'Lines 10-45: five levels of nesting become one changeset pipeline and one `with`.'; `import_user/2` (lines 86-93) is a one-step `with` whose line 90 `if opts[:notify] && !opts[:silent], do: send_welcome(user)` is one line."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "Finding 1 (line 9) reports the role raise outside the `try`, finding 4 (line 15) the `rescue _`; the improved code has no `rescue` and parses through `cast/3`."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "Input line 21 `if is_binary(email) && age >= 18 do` is unreported; finding 12 (line 31) covers line 21 only for the dead `is_binary(email)`. The improved code has no `&&` on booleans."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "Finding 3 (line 13); line 102 `|> update_change(:age, &min(&1, @max_age))`."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "violated",
+     "evidence": "Reported but kept: finding 16 (line 41) '`:silent` only cancels `:notify`, so one option would do. I kept both, because the gain is only tidiness and removing it means changing callers I cannot see.'; line 83 `* `:silent` - suppress the welcome email even if `:notify` is set. Defaults to `false`.` and line 90 `if opts[:notify] && !opts[:silent], do: send_welcome(user)`."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "Finding 6 (line 19); `:return_id` removed, line 91 `{:ok, user}`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "The magic `18` (input line 21) is in no finding; the code names it silently, line 71 `@min_age 18`. The `120` counts through finding 3's fix (line 13) 'Fix: `min(&1, @max_age)`.' The comments are reported (finding 13, line 35) and replaced with `@moduledoc`/`@doc`; the line 11 why-comment is kept (line 99) above the `update_change(:email, ...)` it explains."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "Finding 14 (line 37) names the nesting; `import_user/2` (lines 86-93) is a short `with` over a private `import_changeset/1`, and no `case`, `if` or `with` sits inside another."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "No expression is only wrapped across lines: the plain nested call on line 109 `nil -> put_change(changeset, :nickname, get_change(changeset, :email))` stays nested, the insert is a pipeline (lines 96-104), and the one binding, line 87 `opts = Keyword.validate!(opts, notify: false, silent: false)`, is used twice. The `fn` on lines 115-117 holds one plain nested call and does not fit on one line."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "Input line 12 `email = params[\"email\"] |> String.downcase()` is unreported (fixed silently at line 100 `|> update_change(:email, &String.downcase/1)`), and line 89 `with {:ok, user} <- params |> import_changeset() |> Repo.insert() do` puts a two-step pipeline on one line, which the new sentence 'A pipeline never sits on one line, however short' forbids. Input line 55 is reported (finding 15) and fixed (line 121)."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "The fixes in findings 1, 10, 11 and 12 (lines 9, 27, 29, 31) move validation into `cast/3` and `validate_required/2`; lines 95-105 build `import_changeset/1` with `cast/3`, `validate_required/2`, `validate_number/3` and line 104 `|> unique_constraint(:email)`. The input line 24 lookup is reported (finding 5) and gone."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "Finding 8 (line 23); line 115 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->`."
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "Unreported; lines 115-116 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->` / `Mailer.deliver(welcome_email(user))` copy the whole `user` into the task when only `nickname` is used."
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: planted problems reported: 17 of 21 (missed: the line 12 pipe, the line 21 `&&`, the magic 18 and the closure copy); the bare-struct insert counts, borderline, through the `cast/3` and `validate_required/2` fixes of findings 1, 10, 11 and 12 and the opening paragraph (line 5), since no finding names it on its own",
+    "met: the input line 24 lookup-before-insert is reported (finding 5, line 17, with the race and `unique_constraint/2` named) and finding 7 names the duplicate folded into `:invalid`; the improved code drops `Repo.get_by/2` for `unique_constraint(:email)` (line 104)",
+    "missed: the improved code applies every reported finding: finding 16 (line 41) keeps `:silent` by its own statement, and finding 9 (line 25) is 'not fixed, because I cannot see `Mailer`'",
+    "met: no must-not-report line reported (the line 11 comment is kept, line 99; finding 11 on line 19 is about blank CSV cells, not the access or `||`; finding 16 on line 27 is about the overlap)",
+    "missed: each finding names the rule and quotes the line: partly; findings give input line numbers and quote code, but none names a rule",
+    "met: import_user(params) with no options returns {:ok, %Accounts.User{age: 120, ...}} against real Ecto and stubs and sends no mail; `notify: true` delivers one email; age 17, an unknown role and a missing role return {:error, changeset}",
+    "met: mix format --check-formatted exits 0 on the improved module, and it compiles with no warnings against the stubs",
+    "met: decomposition: no expression is only wrapped across lines, the plain nested `put_change(..., get_change(...))` stays nested, and no binding renames a value used once",
+    "missed: Expected reads (processes.md, ecto-phoenix.md): reads is empty, as expected without the skill"
+   ],
+   "summary": "Found 17 of 21 planted problems with no false positives, including the lookup (dropped for `unique_constraint(:email)`), missing the line 12 pipe, the `&&`, the magic 18 and the closure copy; the improved code validates through a real `cast/3`/`validate_required/2`/`validate_number/3`/`unique_constraint/3` changeset with a supervised task, but keeps `:silent` although finding 16 calls it redundant, puts a two-step pipeline on one line (line 89) and copies the whole `user` into the task, breaking the `and`/`or`/`not`, overlapping-options, comments, pipeline and send-only-data rules; it read no skill files."
+  },
+  "baseline-haiku-1": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "violated",
+     "evidence": "Line 112 `name = Map.get(user, :name) || \"there\"` reads a struct with `Map.get/2`, as finding 5 (line 15) proposes ('The fix uses `Map.get/2`, which works on structs'); `User` has no `:name` field this module sets, so against the stubs the email always says 'Hi there'."
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "violated",
+     "evidence": "Finding 6 (line 17) names the collapsed errors but 'The fix keeps this contract'; the code returns one reason for every bad field and the duplicate (line 61 `defp normalize_email(_), do: {:error, :invalid}`, line 76 `defp check_adult(_), do: {:error, :invalid}`, line 88 `if Repo.get_by(User, email: email), do: {:error, :invalid}, else: :ok`), and line 96 `{:error, _changeset} -> {:error, :insert_failed}` still drops the changeset; input line 33's `_ ->` is in no finding."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "violated",
+     "evidence": "Line 80 `{:ok, String.to_existing_atom(role)}`, as finding 1 (line 7) proposes; no role atom appears literally in the module, and the rule allows `String.to_existing_atom/1` 'only when every valid atom appears literally in the same module'. Against the stubs, role \"root\" is accepted and stored as `:root`."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "violated",
+     "evidence": "The input nesting (lines 10-44) is named in no finding, and finding 3's fix (line 11) 'checks types first, parses explicitly with `Integer.parse/1`, and removes the `try`' does not address it. The improved code is a flat `with` (lines 49-58)."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "violated",
+     "evidence": "Lines 79-82 `defp parse_role(role) when is_binary(role) do` / `{:ok, String.to_existing_atom(role)}` / `rescue` / `ArgumentError -> {:error, :invalid}` wrap a raising call in `rescue` to get a tuple, which the rule forbids outside third-party code. Finding 1 (line 7) reports the role raise outside the `try` and finding 3 (line 11) the `rescue _`."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "Input line 21 `if is_binary(email) && age >= 18 do` is unreported; finding 3 (line 11) covers line 21 only for the late `is_binary/1` check. Line 101 keeps `&&`/`!` on the nil-able options, which is right."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 9); line 64 `defp parse_age(age) when is_integer(age), do: {:ok, min(age, @max_age)}` and line 68 `{n, \"\"} -> {:ok, min(n, @max_age)}`."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "violated",
+     "evidence": "Unreported; lines 45-46 `* `:notify` - send a welcome email (default `false`)` / `* `:silent` - suppress the welcome email even when `:notify` is set` and line 101 `if opts[:notify] && !opts[:silent], do: send_welcome(user)`."
+    },
+    "Give each function one return shape": {
+     "verdict": "violated",
+     "evidence": "Reported (finding 6, line 17) but kept: line 103 `if opts[:return_id], do: user.id, else: {:ok, user}` and line 47 `* `:return_id` - return the new user's id instead of `{:ok, user}``."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "Magic numbers `120` and `18` are in no finding (finding 2, line 9: 'The fix uses `min(age, 120)` as a value.'); the code names them silently (lines 37-38 `@min_age 18` / `@max_age 120`). The input line 11 why-comment is missing with no finding or note saying so: line 60 `defp normalize_email(email) when is_binary(email), do: {:ok, String.downcase(email)}` has no comment. The other comments are reported (finding 7, line 19) and replaced with `@moduledoc`/`@doc`."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "violated",
+     "evidence": "The input nesting is unreported (see 'Branch with function clauses...'); the improved `import_user/2` (lines 49-58) is a short `with` over named private steps."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "Line 92 `user = %User{email: email, age: age, role: role, nickname: nickname || email}` names the record the next line inserts; line 112 names a computed default; no expression is only wrapped across lines, and line 107 keeps the plain nested `Mailer.deliver(welcome_email(user))`."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "Input line 12 `email = params[\"email\"] |> String.downcase()` is unreported; finding 3 (line 11) quotes it only for the missing email raising. Input line 55 is reported (finding 7, line 19) and fixed (line 113). The improved code has no pipes."
+    },
+    "Validate input with changesets": {
+     "verdict": "violated",
+     "evidence": "Unreported (finding 4, line 13, names a changeset only for mapping the constraint error); line 92 `user = %User{email: email, age: age, role: role, nickname: nickname || email}` and line 94 `case Repo.insert(user) do` insert the bare struct. The input line 24 lookup is reported (finding 4) and kept: line 88 `if Repo.get_by(User, email: email), do: {:error, :invalid}, else: :ok`."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "violated",
+     "evidence": "Reported (finding 5, line 15) but not fixed: line 107 `Task.start(fn -> Mailer.deliver(welcome_email(user)) end)` is unsupervised, though the finding says 'a `Task.Supervisor` is the stronger choice'; the rule names `Task.start/1` outside a supervisor beside `spawn/1`."
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "Unreported; line 107 `Task.start(fn -> Mailer.deliver(welcome_email(user)) end)` copies the whole `user`."
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: planted problems reported: 12 of 21 (missed: the nesting, the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the line 33 `_ ->` and the closure copy)",
+    "missed: the input line 24 lookup-before-insert is reported (finding 4, 'Duplicate check and insert are not atomic', with the race and a unique index named) but kept: `check_unique_email/1` (lines 87-89) still calls `Repo.get_by/2` and folds a duplicate into `{:error, :invalid}`",
+    "missed: the improved code applies every reported finding: finding 4's constraint mapping is absent and the lookup kept, and finding 6 keeps `:return_id` and the collapsed errors by its own statement",
+    "met: no must-not-report line reported (line 19's fallback is kept at line 92; line 27 is not discussed and its `&&`/`!` is kept at line 101), though the line 11 why-comment is dropped without a finding",
+    "missed: each finding names the rule and quotes the line: partly; findings give input line numbers and quote code, but none names a rule",
+    "met: import_user(params) with no options returns {:ok, %Accounts.User{age: 120, ...}} against stubs and sends no mail; `notify: true` delivers one email ('Hi there, welcome! ...', since `Map.get(user, :name)` is nil); age 17 and a missing role return {:error, :invalid}, but role \"root\" is stored as `:root`",
+    "met: mix format --check-formatted exits 0 on the improved module, and it compiles with no warnings against the stubs",
+    "met: decomposition: no expression is only wrapped across lines and no binding renames a value used once",
+    "missed: Expected reads (processes.md, ecto-phoenix.md): reads is empty, as expected without the skill"
+   ],
+   "summary": "Found 12 of 21 planted problems with no false positives, missing the nesting, the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the line 33 `_ ->` and the closure copy; the improved code converts roles with a rescued `String.to_existing_atom/1`, reads the struct with `Map.get/2`, keeps the lookup, `:silent` and `:return_id`, inserts a bare struct, starts an unsupervised `Task.start/1` that copies the whole `user` and drops the line 11 why-comment, breaking 14 of the 16 graded rules; it read no skill files."
+  },
+  "baseline-haiku-2": {
+   "model_id": "claude-haiku-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "Finding 5 (line 11) reports `user[:name]` ('the fix is to use `user.nickname`'); line 106 `\"Hi #{user.nickname}, welcome! Enjoy your account.\"` and line 49 `:ok <- ensure_unique_email(attrs.email),`. Options are read as `opts[:notify]` with a documented default, the kept form."
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "violated",
+     "evidence": "The identical errors (input lines 37, 40, 43) and input line 33's `_ ->` are named in no finding; the code returns one reason for every bad field and the duplicate (line 65 `defp parse_email(_), do: {:error, :invalid}`, line 74 `defp parse_age(_), do: {:error, :invalid}`, line 79 `defp parse_role(_), do: {:error, :invalid}`, line 83 `if Repo.get_by(User, email: email), do: {:error, :invalid}, else: :ok`), and line 89 `{:error, _changeset} -> {:error, :insert_failed}` still drops the changeset."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 5); lines 77-79 `defp parse_role(\"admin\"), do: {:ok, :admin}` / `defp parse_role(\"member\"), do: {:ok, :member}` / `defp parse_role(_), do: {:error, :invalid}`."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "Finding 3's fix (line 7) 'validate each field explicitly with `with`' replaces the nested checks, counted as the 2026-10-23 grade counted opus-1's `with` fix; `import_user/2` (lines 47-54) is a flat `with`, and parsing uses guarded clauses (lines 64-79)."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 5) reports the role raise outside the `try`, finding 3 (line 7) the blanket `rescue _`; the improved code has no `rescue` (line 68 `case Integer.parse(age) do`)."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "Input line 21 `if is_binary(email) && age >= 18 do` is unreported; finding 4 (line 9) covers line 21 only for the dead `is_binary(email)`. Line 94 keeps `&&`/`!` on the options."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "Finding 1 (line 3); line 69 `{value, \"\"} when value >= @min_age -> {:ok, min(value, @max_age)}`."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "violated",
+     "evidence": "Unreported; lines 43-44 `* `:notify` - send a welcome email (default `false`)` / `* `:silent` - suppress the welcome email even if `:notify` is set` and line 94 `if opts[:notify] && !opts[:silent], do: send_welcome(user)`."
+    },
+    "Give each function one return shape": {
+     "verdict": "violated",
+     "evidence": "Reported (finding 7, line 15) but kept: line 98 `if opts[:return_id], do: user.id, else: {:ok, user}` and line 45 `* `:return_id` - return the new user's id instead of `{:ok, user}``."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "Magic numbers `120` and `18` are in no finding (finding 1, line 3: 'Fix: `min(age, 120)`.'); the code names them silently (lines 36-37 `@min_age 18` / `@max_age 120`). Finding 9 (line 19) says the why-comment 'stays', but it is missing: line 64 `defp parse_email(email) when is_binary(email), do: {:ok, String.downcase(email)}` has no comment and no line holds it."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "Finding 3's `with` fix covers the nesting; `import_user/2` (lines 47-54) is a short `with` over named private steps, and no `case`, `if` or `with` sits inside another."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "Line 87 `case Repo.insert(struct(User, attrs)) do` keeps a plain nested call, line 60 builds the result as one expression, and the `with` steps name each result (lines 48-50, 57-59); no expression is only wrapped across lines and no binding renames a value used once."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "Input line 12 `email = params[\"email\"] |> String.downcase()` and input line 55's pipe into an anonymous function are both unreported (no finding names a pipe; line 55 is fixed silently at line 106). The improved code has no pipes."
+    },
+    "Validate input with changesets": {
+     "verdict": "violated",
+     "evidence": "Unreported (finding 6, line 13, asks only for a unique index and handling the constraint error); line 87 `case Repo.insert(struct(User, attrs)) do` inserts a struct built from the params. The input line 24 lookup is reported (finding 6) and kept: line 83 `if Repo.get_by(User, email: email), do: {:error, :invalid}, else: :ok`, under line 81 `# Fast path only. The unique index on users.email is the real guard against races.`"
+    },
+    "Supervise every long-lived process": {
+     "verdict": "violated",
+     "evidence": "Reported (finding 8, line 17) but not fixed: line 102 `Task.start(fn -> Mailer.deliver(welcome_email(user)) end)` is unsupervised; finding 8 calls `Task.start/1` 'a small step up'."
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "Unreported; line 102 `Task.start(fn -> Mailer.deliver(welcome_email(user)) end)` copies the whole `user`."
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: planted problems reported: 11 of 21 (missed: the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the line 33 `_ ->`, the identical errors, the closure copy and the line 55 pipe)",
+    "missed: the input line 24 lookup-before-insert is reported (finding 6, 'Duplicate emails can get through under concurrency', with a unique index named) but kept: `ensure_unique_email/1` (lines 82-84) still calls `Repo.get_by/2` and folds a duplicate into `{:error, :invalid}`, and the constraint error the finding says to handle is mapped to `:insert_failed` (line 89)",
+    "missed: the improved code applies every reported finding: finding 6's constraint handling is absent, finding 7's fix is not applied (`:return_id` kept, line 98), and finding 9's kept why-comment is missing",
+    "met: no must-not-report line reported (line 19's fallback is kept at line 60; line 27 is not discussed and its `&&`/`!` is kept at line 94), though the line 11 why-comment is dropped although finding 9 says it stays",
+    "missed: each finding names the rule and quotes the line: partly; findings quote some code but give no line numbers and name no rule",
+    "met: import_user(params) with no options returns {:ok, %Accounts.User{age: 120, ...}} against stubs and sends no mail; `notify: true` delivers one email; age 17, an unknown role and a missing role return {:error, :invalid}",
+    "met: mix format --check-formatted exits 0 on the improved module, and it compiles with no warnings against the stubs",
+    "met: decomposition: no expression is only wrapped across lines, the plain nested `Repo.insert(struct(User, attrs))` stays nested, and no binding renames a value used once",
+    "missed: Expected reads (processes.md, ecto-phoenix.md): reads is empty, as expected without the skill"
+   ],
+   "summary": "Found 11 of 21 planted problems with no false positives, missing the line 12 pipe, both magic numbers, the `&&`, the bare-struct insert, the overlapping options, the line 33 `_ ->`, the identical errors, the closure copy and the line 55 pipe; the improved code keeps the lookup, `:silent`, `:return_id` and `{:error, :invalid}` for every failure, inserts `struct(User, attrs)`, uses an unsupervised `Task.start/1` that copies the whole `user` and drops the line 11 why-comment its finding 9 keeps, breaking 10 of the 16 graded rules; it read no skill files."
+  },
+  "baseline-sonnet-1": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": false,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "Finding 9 (line 21) reports `user[:name]`; line 94 `defp welcome_email(user), do: \"Hi #{user.nickname}, welcome! Enjoy your account.\"`. Line 56 `Keyword.get(opts, :notify, false)` reads an option with a default, the kept form under the new `Keyword.fetch!/2` sentence."
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "Finding 7 (line 17) names the duplicate folded into `:invalid` and the dropped insert error; the steps return distinct reasons (line 63 `defp parse_email(_), do: {:error, :invalid_email}`, line 68 `{_, \"\"} -> {:error, :underage}`, line 78 `defp role_result(:error), do: {:error, :invalid_role}`) and line 84 `{:error, changeset} -> {:error, changeset}` passes the changeset on. Line 69's `_ ->` inside `case Integer.parse(age)` is not counted. No `elem/2`."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 7); line 41 `@roles %{\"admin\" => :admin, \"member\" => :member}` and line 75 `Map.fetch(@roles, role)`."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "Finding 3's fix (line 9) 'validate with pattern matching and `with`' replaces the nested checks; `import_user/2` (lines 51-59) is a flat `with` whose line 56 `if Keyword.get(opts, :notify, false), do: send_welcome(user)` is one line, and parsing uses guarded clauses (lines 62-73)."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 7) reports the role raise outside the `try`, findings 3 and 4 (lines 9, 11) the `try/rescue` and `Integer.parse/1`; the improved code has no `rescue` (line 66 `case Integer.parse(age) do`)."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "Input line 21 `if is_binary(email) && age >= 18 do` is not tied to any finding (finding 4, line 11, covers line 21 only for the dead `is_binary`); finding 10 (line 23) applies `and`/`not` to must-not-report line 27. The improved code has no `&&`."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "Finding 1 (line 5); line 67 `{n, \"\"} when n >= @min_age -> {:ok, min(n, @max_age)}`."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "violated",
+     "evidence": "The overlap is in no finding: finding 10 (line 23) '`opts[:notify] && !opts[:silent]` reads better as `Keyword.get(opts, :notify, false) and not Keyword.get(opts, :silent, false)`' is about the operators. The code drops `:silent` silently (line 48 `Imports one user. Options: `:notify` (send a welcome email, default `false`).`), which by the kept standard does not count as reporting it."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "Finding 7 (line 17); `:return_id` removed, line 57 `{:ok, user}`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "Magic numbers `120` and `18` are in no finding; finding 1 (line 5) proposes 'Fix: `min(age, 120)`.' The code names them silently (lines 42-43 `@min_age 18` / `@max_age 120`). The comments are reported (finding 10) and replaced with `@moduledoc`/`@doc`; the line 11 why-comment is kept (line 61)."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "Finding 3's `with` fix covers the nesting; `import_user/2` (lines 51-59) is a short `with`, and no `case`, `if` or `with` sits inside another (line 56's one-line `if ..., do:` is not counted)."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "Line 90 `Mailer.deliver(welcome_email(user))` keeps a plain nested call, and the code has no binding that renames a value. Line 55 `{:ok, user} <- insert(%{email: email, age: age, role: role, nickname: params[\"nickname\"] || email}) do` is 111 characters; `mix format` wraps it after `<-` but keeps the `insert(...)` call on one line, so no expression is only wrapped and 'A line break is not decomposition' is not exercised (borderline; the format failure is listed under 'Before you finish')."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "Input line 12 `email = params[\"email\"] |> String.downcase()` is unreported; line 75 `defp parse_role(role), do: Map.fetch(@roles, role) |> role_result()` is a single-step pipe that starts with a call, and line 81 `case %User{} |> User.changeset(attrs) |> Repo.insert() do` puts a two-step pipeline on one line, which the new sentence 'A pipeline never sits on one line, however short' forbids. Input line 55 is reported (finding 9) and fixed (line 94)."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "Finding 6 (line 15) 'Inserting a bare `%User{}` skips all changeset validation. Fix: go through `User.changeset/2`.'; line 81 inserts through the assumed `User.changeset/2` with `unique_constraint(:email)` (line 27). The input line 24 lookup is reported (finding 5) and gone."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "Finding 8 (line 19); line 89 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->`."
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "Unreported; lines 89-90 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->` / `Mailer.deliver(welcome_email(user))` copy the whole `user` into the task."
+    }
+   },
+   "other_violations": [
+    "Before you finish (step 2, 'Compile, and fix every warning'): line 83 `{:error, %Ecto.Changeset{errors: [{:email, {_, [constraint: :unique, _]}} | _]}} -> {:error, :email_taken}` does not compile; Elixir 1.20.3 reports 'unexpected expression after keyword list'.",
+    "Before you finish (step 1, format): `mix format --check-formatted` exits 1 on the same line 83 syntax error; in a scratch copy with it patched, `mix format` still moves line 45 `@type error :: :invalid_email | :invalid_age | :invalid_role | :underage | :email_taken | Ecto.Changeset.t()` (110 characters), line 55's `with` clause and the `case` on lines 82-84.",
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line ('a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines even when it fits in 98'): line 83 `{:error, %Ecto.Changeset{errors: [{:email, {_, [constraint: :unique, _]}} | _]}} -> {:error, :email_taken}` is 106 characters after the indentation."
+   ],
+   "checks": [
+    "missed: planted problems reported: 15 of 21 (missed: the line 12 pipe, both magic numbers, the line 21 `&&`, the overlapping options and the closure copy)",
+    "met: the input line 24 lookup-before-insert is reported (finding 5, 'Race condition on duplicates', with a unique index and `unique_constraint(:email)` named) and finding 7 names the duplicate folded into `:invalid`; the improved code drops `Repo.get_by/2` for the assumed `User.changeset/2` and maps the violation to `:email_taken` (line 83), though that line does not compile",
+    "missed: the improved code applies every reported finding: finding 5's `:email_taken` is matched with a pattern that does not compile (line 83)",
+    "missed: must-not-report line 27 reported: finding 10 ('`opts[:notify] && !opts[:silent]` reads better as `Keyword.get(opts, :notify, false) and not Keyword.get(opts, :silent, false)`'); the code drops `:silent` instead, so no `and`/`not` lands on a nil-able option; the line 11 comment and line 19's fallback are kept (lines 61, 55)",
+    "missed: each finding names the rule and quotes the line: partly; findings quote code but give no line numbers and name no rule",
+    "met: with line 83's pattern rewritten as `[{:constraint, :unique}, _]` in a scratch copy, import_user(params) with no options returns {:ok, %Accounts.User{age: 120, ...}} against real Ecto and stubs and sends no mail; `notify: true` delivers one email; age 17 gives :underage and an unknown or missing role :invalid_role",
+    "missed: mix format --check-formatted exits 1, and the module does not compile (line 83)",
+    "met: decomposition: no expression is only wrapped across lines and no binding renames a value used once (line 55's inline map is borderline, see the 'Name a step' verdict)",
+    "missed: Expected reads (processes.md, ecto-phoenix.md): reads is empty, as expected without the skill"
+   ],
+   "summary": "Found 15 of 21 planted problems with one false positive (finding 10 rewrites line 27's operators), including the lookup and the bare-struct insert, missing the line 12 pipe, both magic numbers, the `&&`, the overlapping options (dropped silently) and the closure copy; the improved code inserts through an assumed `User.changeset/2` with distinct errors and a supervised task, but adds a single-step pipe and a one-line pipeline (lines 75, 81), copies the whole `user` into the task, fails the format check and does not compile (line 83), breaking 6 of the 16 graded rules; it read no skill files."
+  },
+  "baseline-sonnet-2": {
+   "model_id": "claude-sonnet-5-5",
+   "reads": [],
+   "format_ok": true,
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "Finding 9 (line 21) reports `user[:name]`; line 110 `\"Hi #{user.nickname || \"there\"}, welcome! Enjoy your account.\"`. Line 65 `Keyword.get(opts, :notify, false)` reads an option with a default, the kept form under the new `Keyword.fetch!/2` sentence."
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "Finding 7 (line 17) names the collapsed errors and the dropped insert reason; the steps return distinct reasons (line 72 `defp parse_email(_), do: {:error, :invalid_email}`, line 86 `defp check_age(_), do: {:error, :under_age}`, line 91 `:error -> {:error, :invalid_role}`) and `insert/4` (lines 95-101) returns `Repo.insert/1`'s result unchanged. Line 79's `_ ->` inside `case Integer.parse(age)` is not counted. No `elem/2`."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 7); line 46 `@roles %{\"admin\" => :admin, \"member\" => :member}` and line 89 `case Map.fetch(@roles, role) do`."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "Finding 11 (line 25) 'The `import_user/2` nesting of `if`/`case`/`if` is flattened with `with`.'; `import_user/2` (lines 60-68) is a flat `with` whose line 65 `if Keyword.get(opts, :notify, false), do: send_welcome(user)` is one line, and parsing uses guarded clauses (lines 71-86)."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "Finding 2 (line 7) reports the role raise outside the `try`, finding 3 (line 9) the `try/rescue` and `Integer.parse/1`; the improved code has no `rescue` (line 77 `case Integer.parse(age) do`)."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "Input line 21 `if is_binary(email) && age >= 18 do` is not tied to any finding: finding 11 (line 25) '`&&` and `!` should be `and` and `not` for booleans.' quotes no line and names `!`, which occurs only on must-not-report line 27, quoted in the next sentence, as the 2026-10-22-d grade judged haiku-2's finding 12; finding 4 (line 11) covers line 21 only for check order. The improved code has no `&&`."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "Finding 1 (line 5); line 85 `defp check_age(age) when age >= @min_age, do: {:ok, min(age, @max_age)}`."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "Finding 11 (line 25) '`opts[:notify] && !opts[:silent]` is redundant; the improved version keeps only `notify`.'; line 65 `if Keyword.get(opts, :notify, false), do: send_welcome(user)`."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "Finding 8 (line 19); `:return_id` removed, line 66 `{:ok, user}`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "Magic numbers `120` and `18` are in no finding; finding 1 (line 5) proposes 'Fix: `age = min(age, 120)`.' The code names them silently (lines 47-48 `@min_age 18` / `@max_age 120`). The comments are reported (finding 11) and replaced with `@moduledoc`/`@doc`; the line 11 why-comment is kept (line 70)."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "Finding 11 (line 25) names the nesting; `import_user/2` (lines 60-68) is a short `with`, and no `case`, `if` or `with` sits inside another."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "Line 96 `attrs = %{email: email, age: age, role: role, nickname: nickname || email}` names the attributes the changeset takes before the call; no expression is only wrapped across lines and no binding renames a value used once."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "Input line 12 `email = params[\"email\"] |> String.downcase()` is unreported, and line 105 `user |> welcome_email() |> Mailer.deliver()` puts a two-step pipeline on one line, which the new sentence 'A pipeline never sits on one line, however short' forbids ('or become a nested call when there are only two'). Lines 98-100 start with `%User{}`, one step per line; input line 55 is reported (finding 9) and fixed (line 110)."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "Finding 6 (line 15) '`Repo.insert(%User{...})` skips validation'; lines 98-100 `%User{}` / `|> User.import_changeset(attrs)` / `|> Repo.insert()` insert through the assumed `User.import_changeset/2` with a unique index (line 32). The input line 24 lookup is reported (finding 5) and gone."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "Finding 10 (line 23); line 104 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->`."
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "Unreported; lines 104-105 `Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->` / `user |> welcome_email() |> Mailer.deliver()` copy the whole `user` into the task."
+    }
+   },
+   "other_violations": [],
+   "checks": [
+    "missed: planted problems reported: 16 of 21 (missed: the line 12 pipe, both magic numbers, the line 21 `&&` and the closure copy)",
+    "met: the input line 24 lookup-before-insert is reported (finding 5, 'Check-then-insert race', with a unique index and `unique_constraint` named) and finding 7 names the duplicate folded into `:invalid`; the improved code drops `Repo.get_by/2` and returns the insert's `{:error, changeset}` (lines 98-100)",
+    "missed: the improved code applies every reported finding: finding 7 (line 17) lists `:email_taken` among the new reasons, but a duplicate comes back as the changeset (lines 98-100), as finding 6 says; the two fixes disagree and the code follows finding 6",
+    "missed: must-not-report line 27 reported: finding 11 puts its `&&`/`!` under `and`/`not` (borderline, since the same finding also names the overlap); the code drops `:silent`, so no `and`/`not` lands on a nil-able option; the line 11 comment is kept (line 70) and line 19's fallback is kept (line 96)",
+    "missed: each finding names the rule and quotes the line: partly; findings quote code but give no line numbers and name no rule",
+    "met: import_user(params) with no options returns {:ok, %Accounts.User{age: 120, ...}} against real Ecto and stubs and sends no mail; `notify: true` delivers one email; age 17 gives :under_age and an unknown or missing role :invalid_role",
+    "met: mix format --check-formatted exits 0 on the improved module, and it compiles with no warnings against the stubs",
+    "met: decomposition: `attrs` is built under a name before the call, no expression is only wrapped across lines and no binding renames a value used once",
+    "missed: Expected reads (processes.md, ecto-phoenix.md): reads is empty, as expected without the skill"
+   ],
+   "summary": "Found 16 of 21 planted problems with one borderline false positive (finding 11 puts line 27's `&&`/`!` under `and`/`not`), missing the line 12 pipe, both magic numbers, the `&&` and the closure copy; the improved code is a flat `with` with distinct errors, an assumed `User.import_changeset/2` and a supervised task, but puts a two-step pipeline on one line (line 105) and copies the whole `user` into the task, breaking the `and`/`or`/`not`, comments, pipeline and send-only-data rules; it read no skill files."
+  }
+ },
+ "per_rule": {
+  "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Match every expected shape and let unexpected ones crash": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Convert external strings to atoms with explicit clauses": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Branch with function clauses and guards before reaching for `if` or `cond`": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Use `and`, `or`, `not` when the operands are booleans": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Use one atom-valued field or option instead of overlapping booleans": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Give each function one return shape": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Keep functions short and at one level of detail": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Name a step instead of wrapping an expression": {
+   "opus": "clean",
+   "haiku": "clean",
+   "sonnet": "clean"
+  },
+  "Write pipelines that start with a value and read top to bottom": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  },
+  "Validate input with changesets": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Supervise every long-lived process": {
+   "opus": "clean",
+   "haiku": "violated",
+   "sonnet": "clean"
+  },
+  "Send processes only the data they need": {
+   "opus": "violated",
+   "haiku": "violated",
+   "sonnet": "violated"
+  }
+ }
+}

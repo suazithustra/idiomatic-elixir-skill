@@ -1,0 +1,518 @@
+{
+  "case": "order-report",
+  "condition": "skill",
+  "notes": [
+    "Seventh sweep (previous sweep d04061d): five skill runs (opus-1, haiku-1, haiku-2, sonnet-1, sonnet-2), all rc 0, each model_id matching its tier, each result.json recording head 0814e8d with no uncommitted changes and skill_hash 38869366..., which equals evals/tools/common.py folder_hash of the current idiomatic-elixir/ folder; every transcript contains the new Readability text (\"A line break is not decomposition\"). skills_listed is 209 for every run. Opus-1 read SKILL.md and references/library-design.md with Read, haiku-2 SKILL.md with cat and library-design.md with sed (the whole 84-line file), and haiku-1, sonnet-1 and sonnet-2 SKILL.md only, so Expected reads (none) is met in all five. Opus-1 and haiku-2 also wrote probe files under /tmp outside their run folders, which no rule covers. In the scratch folder all five pass mix format --check-formatted and run against a stand-in Decimal written there (the earlier graders' stub plus nan?/1 and inf?/1, which opus-1 calls). A probe gave correct per-currency totals (haiku-1 in integer cents, 2000 for 19.99 + 0.01), correct last-order values and empty results for []; every run returns {:error, ...} for a missing key, a bad amount, an unknown status and a bad date, and haiku-2 raises FunctionClauseError for a non-string amount because string_field/2 (lines 156-161) does not check the value's type, which no listed rule covers. Haiku-1 and haiku-2 report the last order as a DateTime (last_order_at) where the prompt asks for a date, which no rule covers.",
+    "Rules changed since d04061d, graded against the current text. The with rule is decided by \"One step is a `with` only when its body cannot fail and there is no `else`\" (build/1 in all five: opus-1 66-68, haiku-1 25-27, haiku-2 72-74, sonnet-1 75-77, sonnet-2 64-68) and by \"A body that is one call whose `{:ok, value}` or `{:error, reason}` goes out as the function's own result ... is a tail call, not a second step, and the one-step `with` stays\" (haiku-2 130-132, sonnet-1 85-87); under the d04061d text (\"With one there is nothing to chain ... so use `case`\") every one of these would have been a violation, and all five 2026-10-23 runs wrote build/1 as a case. The pass-through sentence (\"A `case` whose error clause is `{:error, _reason} = error -> error` ... write it as the `with`\") finds no such case: opus-1 (76-82) and sonnet-2 (109-115) retag the error with the row position, and haiku-1's reduce_while case (32-35) wraps it in {:halt, error}. The captures rule's new fn paragraph, \"A `fn` body is laid out like any other body: one expression stays on the head's line\", makes the one-line Enum.sort_by(fn {customer_id, count} -> {-count, customer_id} end) that all five runs write clean; the 2026-10-31-check text (\"A `fn` that binds names takes the room its names earn\") graded the same line violated, and the d04061d text held it clean (2026-10-23 opus-1 line 228). Its other new sentence, \"with `&1` and `&2` in that order and each used once\", is met by &Decimal.add(&1.amount, &2) (haiku-2 108, sonnet-1 167). The do: rule's new text (\"a literal, a tuple, a field read, a comparison, or a call, nested or not\"; the capture, one-line if and for sentences) adds no violation: haiku-2's defp completed(orders), do: Enum.filter(orders, &(&1.status == :completed)) (line 125) holds a capture of a comparison, not \"a capture that carries a call with arguments of its own\", held clean as 2026-10-30-check-3 held the identical line; opus-1's two ifs (183, 192) are blocks; no run writes for. The Enum/Map table's two new rows (List.keymember?/3, for as a filter) have no matching shape in any run; the unchanged sentence \"a `reduce` that reads and writes one key per element is these two written by hand\" decides, 0 of 5.",
+    "Rules new to this case's row since 2026-10-23 (no earlier sweep standard here). Write pipelines that start with a value and read top to bottom: decided by \"A pipeline never sits on one line, however short\"; haiku-2 line 94 (totals: customer_orders |> completed() |> totals_by_currency(),) is the one violation, 1 of 5; the d04061d text (\"then one transformation per line\") would also have counted it. Inline `->` clauses that read at a glance; otherwise put each body on its own line (the d04061d skill had no `->` rule; the 2026-10-23 order-report grades graded none): clean in all five, decided by \"stays on one line when the clauses form a table, or when each body is one expression simple enough to take in together with its pattern\" and \"a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines\"; the longest one-line case clause is opus-1 line 162 at exactly 70 characters, and the longest single-clause fn arguments (opus-1 99, haiku-1 112) have a 71-character clause holding one tuple, held within \"about 70\" under \"A single-clause `fn` passed as an argument reads the same way: one expression stays on its line\"; every case with a clause of several expressions or a nested call (opus-1 169-178, haiku-1 69-79, sonnet-1 and sonnet-2 throughout) breaks every clause with blank lines between. One expression per line, and tabular clauses: clean in all five, decided by \"A line reads in one pass when it holds a selection and the one expression that selection produces\" and the table paragraph (parse_status/1 in every run); the one-line sort_by fns are covered by \"`fn {customer_id, count} -> {-count, customer_id} end` holds a pattern and one expression and stays on one line\". Name a step instead of wrapping an expression: clean in all five, decided by \"A binding earns its place when it names a recognizable thing or a stage of the computation\"; the sonnet runs' formatter-wrapped {:ok, %Order{...}} (sonnet-1 103-110, sonnet-2 149-156) is held clean as in both 2026-10-31 check batches, a tag around a struct literal with no computational steps to name, and sonnet-1's 92-column line 167 is one expression on one line, under \"Length alone decides nothing\".",
+    "Unchanged rules, graded to the 2026-10-23 standard. Atoms, dates, money and processes: clean in all five (haiku-1 stores integer cents, the others Decimal; every run uses Enum.max(DateTime) or Enum.max_by(..., DateTime)). Lists: haiku-1 prepends in reduce_while without reversing (line 33), held clean as before because nothing downstream depends on the order; the others prepend and reverse. Naming: haiku-1's defp fetch_string(row, key) (line 60), which returns {:error, {:invalid_field, key}} or {:error, {:missing_field, key}}, breaks \"A function that looks a key up and also checks the value, returning `{:error, reason}`, is not a `fetch`\", the shape the 2026-10-23 baseline opus-1 grade counted (fetch_string/2); 1 of 5. Other rules: haiku-1's @doc on build/1 (lines 10-23) has no ## Examples, recorded under other_violations as in earlier sweeps; sonnet-1 and sonnet-2 match the five required keys in a multi-line head with a catch-all clause below (sonnet-1 90-114, sonnet-2 136-160), held clean under the head rule as the 2026-10-23 grades held haiku-1 and sonnet-2. No case or with nests inside another, every defstruct uses @enforce_keys, and no other violation was found."
+  ],
+  "runs": {
+    "skill-opus-1": {
+      "model_id": "claude-opus-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 206: defp parse_status(\"completed\"), do: {:ok, :completed}; line 207: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 208: defp parse_status(\"pending\"), do: {:ok, :pending}; line 209: defp parse_status(_other), do: {:error, {:invalid_field, \"status\"}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 66-68: with {:ok, orders} <- parse_orders(rows) do / {:ok, %{customers: customer_summaries(orders), top_customers: top_customers(orders)}} (one step, body cannot fail, no else); lines 76-82: case Order.parse(row) do with line 81: {:error, {:invalid_order, position, reason}} (a case that retags the error, not a pass-through); lines 139-147: nine-step with of string_field/2 and parse helpers, no else, no case nested in its body"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "clean",
+          "evidence": "lines 86-88: orders |> Enum.group_by(& &1.customer_id) |> Map.new(fn {customer_id, orders} -> {customer_id, customer_summary(orders)} end); lines 98-99: |> Enum.group_by(& &1.currency, & &1.amount) |> Map.new(fn {currency, amounts} -> {currency, Enum.reduce(amounts, &Decimal.add/2)} end); line 112: |> Enum.frequencies_by(& &1.customer_id); no reduce that reads and writes one key per element"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 73: defp parse_orders([], _position, orders), do: {:ok, Enum.reverse(orders)}; line 78: parse_orders(rest, position + 1, [order | orders]); line 104: |> Enum.map(& &1.placed_at); no ++, length or Enum.at"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 105: |> Enum.max(DateTime); line 106: |> DateTime.to_date()"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 169: case Decimal.parse(text) do; line 183: if Decimal.nan?(amount) or Decimal.inf?(amount) do; line 99: Enum.reduce(amounts, &Decimal.add/2)"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 118: defp completed?(order), do: order.status == :completed (boolean ends in ?); line 160: defp string_field(row, key) do (a lookup that checks the value, named by its job); domain names (rows, orders, amount_text, placed_at_text, status_text; id in fn {id, count} at lines 113 and 115 holds the customer id); ignored values _position, _offset, _reason, _value, _other"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 71: defp parse_orders(rows), do: parse_orders(rows, 1, []); line 73 beside the block clause at lines 75-83, set apart by blank line 74; line 118: a comparison; lines 206-209: parse_status/1 table; every do: on its head's line; no do: body holds a fn, a call-carrying capture or a block construct; the ifs at lines 183 and 192 are blocks; no for"
+        },
+        "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+          "verdict": "clean",
+          "evidence": "lines 162-164: %{^key => value} when is_binary(value) and value != \"\" -> {:ok, value} / %{^key => _value} -> {:error, {:invalid_field, key}} / %{} -> {:error, {:missing_field, key}} (one tuple each, longest 70 characters after the indentation, line 162, not past about 70); lines 201-202: one tuple each, longest 60; lines 76-82 and 169-178 put every body on its own line with blank lines between; fn arguments at lines 88, 99, 113, 115 hold one expression each (line 99's clause is 71 characters)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 67: {:ok, %{customers: customer_summaries(orders), top_customers: top_customers(orders)}} and line 92: %{total_spent: total_spent(orders), most_recent_order_on: most_recent_order_on(orders)} are one expression each; lines 206-209: parse_status/1 is a table; lines 162-164, 201-202: a pattern and one tuple each; the with body (148-156) and the case bodies sit below their heads"
+        },
+        "Name a step instead of wrapping an expression": {
+          "verdict": "clean",
+          "evidence": "lines 148-156: order = %__MODULE__{ ... } then {:ok, order} (names the built order); lines 182-188: finite_amount/1 names the NaN and Infinity check as a helper; no expression is only wrapped by mix format; no binding renames a value used once"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "lines 86-88, 96-99, 103-106, 110-115: each starts with orders, one step per line; no one-line pipeline, no single-step pipe"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 87: & &1.customer_id; line 97: &completed?/1; line 98: & &1.currency, & &1.amount; line 99: &Decimal.add/2; line 113: |> Enum.sort_by(fn {id, count} -> {-count, id} end) and line 115: |> Enum.map(fn {id, count} -> %{customer_id: id, completed_orders: count} end) (fns that destructure, one expression on the head's line)"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: amounts parsed and summed with Decimal (lines 169, 99), NaN and Infinity rejected (line 183)",
+        "met: dates compared with Enum.max(DateTime) (line 105)",
+        "met: Enum.group_by/2 and /3 with Map.new/2 (lines 86-88, 98-99) and Enum.frequencies_by/2 (line 112), no hand-written reduce",
+        "met: status converted with explicit clauses (lines 206-209)",
+        "met: prepend and reverse in a hand-written loop (lines 73, 78); Enum.map (line 104); no ++ or length",
+        "met: one-call lambdas are captures; fns destructure tuples with one expression on the head's line (lines 88, 99, 113, 115)",
+        "met: no process",
+        "met: completed?/1 ends in ?; no is_ name; domain variable names",
+        "met: build/1 is a one-step with whose body cannot fail, no else (lines 66-68); parse_orders/3 is a case that retags the error (lines 76-82); nine-step with in Order.parse/1 (lines 139-147)",
+        "met: every head, -> pattern and condition shares its line with one expression; parse_status/1 is a table",
+        "met: no expression only wrapped across lines; order bound before {:ok, order} (line 148)",
+        "met: do: only on one-expression bodies on the head's line; the mixed parse_orders/3 sets its block clause apart (line 74); the ifs are blocks; no for",
+        "met: one-line case clauses each hold one tuple, longest 70 characters (line 162); multi-expression cases break every clause with blank lines; fn arguments hold one expression on their line",
+        "met: every pipeline starts with a value, one step per line; none on one line",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads none; read SKILL.md and references/library-design.md (an extra read)"
+      ],
+      "summary": "Parses rows in a hand-written loop through a nine-step with into an Order struct with Decimal amounts (NaN and Infinity rejected), a checked three-letter currency, DateTime values and explicit status clauses, returns the first bad row with its position, and builds the report with group_by, Map.new, Enum.max(DateTime) and frequencies_by behind a one-step with in build/1. It breaks none of the case's rules and no other rule was found broken; build/1 has two doctests. It read SKILL.md and references/library-design.md."
+    },
+    "skill-haiku-1": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 89: defp parse_status(\"completed\"), do: {:ok, :completed}; line 90: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 91: defp parse_status(\"pending\"), do: {:ok, :pending}; line 92: defp parse_status(other), do: {:error, {:unknown_status, other}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 25-27: with {:ok, orders} <- parse_rows(rows) do / {:ok, %{customers: customer_summaries(orders), top_customers: top_customers(orders)}} (one step, body cannot fail, no else); lines 40-47: eight-step with of fetch_string/2 and parse helpers, no else, no case nested in its body; lines 32-35: the case inside reduce_while ends {:error, _reason} = error -> {:halt, error}, which wraps the error for reduce_while and is not the pass-through case"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "clean",
+          "evidence": "lines 95-99: orders |> Enum.group_by(& &1.customer_id) |> Map.new(fn {customer_id, customer_orders} ->; lines 109-112: |> Enum.filter(&(&1.status == :completed)) |> Enum.group_by(& &1.currency) |> Map.new(fn {currency, completed} -> {currency, Enum.sum_by(completed, & &1.cents)} end); line 118: |> Enum.frequencies_by(& &1.customer_id); no reduce that reads and writes one key per element"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 33: {:ok, order} -> {:cont, {:ok, [order | orders]}} (prepends without reversing; nothing downstream depends on the order, held clean as in 2026-10-23); no ++, length or Enum.at"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 103: latest = Enum.max_by(orders, & &1.placed_at, DateTime)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 71: {:ok, String.to_integer(units) * 100}; line 75: {:ok, String.to_integer(units) * 100 + fraction_cents}; line 112: Enum.sum_by(completed, & &1.cents) (integer cents throughout)"
+        },
+        "Naming": {
+          "verdict": "violated",
+          "evidence": "line 60: defp fetch_string(row, key) do (lines 62-64 return {:ok, value}, {:error, {:invalid_field, key}} or {:error, {:missing_field, key}}: a lookup that also checks the value, which the Naming bullet says is not a fetch). Clean otherwise: no boolean function; domain names (rows, orders, amount_text, cents, placed_text, status_text); ignored values _reason, _value, _all, _offset"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "lines 89-92: parse_status/1 one-expression clauses on the head's line (a table); no other do:; every case, with and multi-step body is a block; no if, no for"
+        },
+        "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+          "verdict": "clean",
+          "evidence": "lines 33-34: {:ok, order} -> {:cont, {:ok, [order | orders]}} / {:error, _reason} = error -> {:halt, error} (a table with one final report row, longest 48 characters); lines 62-64 and 84-85: one tuple each, longest 60 (line 85: {:error, _reason} -> {:error, {:invalid_field, \"placed_at\"}}); lines 69-79: parse_amount/1 puts every body on its own line with blank lines between, since lines 74-75 are two expressions; fn arguments at lines 112 and 119 hold one expression each (line 112's clause is 71 characters)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 26: {:ok, %{customers: customer_summaries(orders), top_customers: top_customers(orders)}} and line 105: %{totals: spent_by_currency(orders), last_order_at: latest.placed_at} are one expression each; lines 89-92: parse_status/1 is a table; lines 73-75: the binding and tuple sit below the pattern"
+        },
+        "Name a step instead of wrapping an expression": {
+          "verdict": "clean",
+          "evidence": "line 74: fraction_cents = String.to_integer(String.pad_trailing(fraction, 2, \"0\")) names a stage before line 75; lines 48-56: order = %{ ... } then {:ok, order}; line 103: latest names the latest order; no expression is only wrapped; no binding renames a value used once"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "lines 95-99, 109-112, 116-120: each starts with orders, one step per line; no one-line pipeline, no single-step pipe"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 96: & &1.customer_id; line 103: & &1.placed_at; line 110: &(&1.status == :completed); line 112: & &1.cents; line 112: fn {currency, completed} -> {currency, Enum.sum_by(completed, & &1.cents)} end and line 119: fn {customer_id, count} -> {-count, customer_id} end (one expression on the head's line); lines 97-99: fn with its body on the next line"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [
+        "Comments explain why; documentation goes in `@moduledoc` and `@doc`: line 10: @doc \"\"\" (the @doc on build/1, lines 10-23, has no ## Examples)"
+      ],
+      "checks": [
+        "met: amounts parsed into and summed as integer cents (lines 71, 75, 112)",
+        "met: dates compared with Enum.max_by(..., DateTime) (line 103)",
+        "met: Enum.group_by/2 with Map.new/2 (lines 95-99, 111-112), Enum.sum_by/2 and Enum.frequencies_by/2 (lines 112, 118), no hand-written reduce",
+        "met: status converted with explicit clauses (lines 89-92)",
+        "met: prepend in reduce_while (line 33); no ++ or length",
+        "met: one-call lambdas are captures; fns destructure tuples",
+        "met: no process",
+        "missed: fetch_string/2 (line 60) checks the value and returns {:error, reason}, so it is not a fetch; no boolean function; domain variable names",
+        "met: build/1 is a one-step with whose body cannot fail, no else (lines 25-27); eight-step with in parse_row/1 (lines 40-47)",
+        "met: every head, -> pattern and condition shares its line with one expression; parse_status/1 is a table",
+        "met: no expression only wrapped; fraction_cents and order named (lines 74, 48)",
+        "met: do: only on parse_status/1's one-expression clauses; no if, no for",
+        "met: one-line case clauses hold one tuple each (longest 60); parse_amount/1 breaks every clause with blank lines",
+        "met: every pipeline starts with a value, one step per line; none on one line",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads none; read SKILL.md only"
+      ],
+      "summary": "Parses rows in reduce_while through an eight-step with into atom-keyed maps with integer-cent amounts, DateTime values and explicit status clauses, and builds the report with group_by, Map.new, Enum.sum_by, Enum.max_by(DateTime) and frequencies_by behind a one-step with in build/1, reporting the last order as a DateTime. It breaks Naming (fetch_string/2 at line 60, which checks the value); outside the list its @doc has no examples. It read SKILL.md only."
+    },
+    "skill-haiku-2": {
+      "model_id": "claude-haiku-5-5",
+      "reads": [
+        "SKILL.md",
+        "library-design.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 178: defp parse_status(\"completed\"), do: {:ok, :completed}; line 179: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 180: defp parse_status(\"pending\"), do: {:ok, :pending}; line 181: defp parse_status(_unknown), do: {:error, {:invalid_field, \"status\"}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 72-74: with {:ok, orders} <- parse_orders(rows, []) do / {:ok, summarize(orders)} (one step, body cannot fail, no else); lines 130-132: with {:ok, order} <- parse_order(row) do / parse_orders(rows, [order | orders]) (a tail call, which the rule names as not a second step); lines 136-143: eight-step with of string_field/2 and parse helpers, no else, no case nested in its body"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "clean",
+          "evidence": "lines 85-89: orders |> Enum.group_by(& &1.customer_id) |> Map.new(fn {customer_id, customer_orders} ->; lines 100-104: |> Enum.group_by(& &1.currency) |> Map.new(fn {currency, currency_orders} ->; line 120: |> Enum.frequencies_by(& &1.customer_id); line 108: Enum.reduce(orders, Decimal.new(0), &Decimal.add(&1.amount, &2)) is a Decimal sum no table row replaces; no reduce that reads and writes one key per element"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 127: defp parse_orders([], orders), do: {:ok, Enum.reverse(orders)}; line 131: parse_orders(rows, [order | orders]); line 113: |> Enum.map(& &1.placed_at); no ++, length or Enum.at"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 113: |> Enum.map(& &1.placed_at); line 114: |> Enum.max(DateTime)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 164: case Decimal.parse(text) do; line 108: Enum.reduce(orders, Decimal.new(0), &Decimal.add(&1.amount, &2))"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "line 156: defp string_field(row, field) do (not named fetch); line 125: defp completed(orders) returns a list, not a boolean; domain names (rows, orders, customer_orders, currency_orders, amount_text, placed_at_text, status_text); ignored values _amount, _rest, _offset, _reason, _unknown"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 125: defp completed(orders), do: Enum.filter(orders, &(&1.status == :completed)) (a capture of a comparison, not a capture that carries a call with arguments of its own, held clean as 2026-10-30-check-3 held the identical line); line 127 beside the block clause at lines 129-133, set apart by blank line 128; lines 178-181: parse_status/1 table; every do: on its head's line; no if, no for"
+        },
+        "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+          "verdict": "clean",
+          "evidence": "lines 158-159: {:ok, value} -> {:ok, value} / :error -> {:error, {:invalid_field, field}}; lines 165-167 and 173-174: one tuple each, longest 60 characters after the indentation (line 174: {:error, _reason} -> {:error, {:invalid_field, \"placed_at\"}}); line 121: fn {customer_id, count} -> {-count, customer_id} end holds one expression; fns at lines 87-89 and 102-104 put the body on the next line"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "lines 178-181: parse_status/1 is a table; line 125: head and one call; lines 158-159, 165-167, 173-174: a pattern and one tuple each; lines 78-81: %{customers: customer_summaries(orders), top_customers: top_customers(orders)} laid out one field per line; the with bodies sit below their heads"
+        },
+        "Name a step instead of wrapping an expression": {
+          "verdict": "clean",
+          "evidence": "lines 144-152: order = %Order{ ... } then {:ok, order} (names the built order); lines 107-109: sum_amounts/1 names the Decimal sum as a helper; no expression is only wrapped by mix format; no binding renames a value used once"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "violated",
+          "evidence": "line 94: totals: customer_orders |> completed() |> totals_by_currency(), (a two-step pipeline on one line). Clean: lines 85-89, 100-104, 112-114, 118-122 start with orders, one step per line"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 86: & &1.customer_id; line 108: &Decimal.add(&1.amount, &2) (&1 and &2 in order, each once); line 113: & &1.placed_at; line 125: &(&1.status == :completed); line 121: |> Enum.sort_by(fn {customer_id, count} -> {-count, customer_id} end) (one expression on the head's line); lines 87-89 and 102-104: fns with the body on the next line"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: amounts parsed and summed with Decimal (lines 164, 108)",
+        "met: dates compared with Enum.max(DateTime) (line 114)",
+        "met: Enum.group_by/2 with Map.new/2 (lines 85-89, 100-104) and Enum.frequencies_by/2 (line 120), no hand-written reduce",
+        "met: status converted with explicit clauses (lines 178-181)",
+        "met: prepend and reverse in a hand-written loop (lines 127, 131); no ++ or length",
+        "met: one-call lambdas are captures, &Decimal.add(&1.amount, &2) in order (line 108); fns destructure tuples",
+        "met: no process",
+        "met: no boolean function, no is_ name; domain variable names",
+        "met: build/1 is a one-step with whose body cannot fail (lines 72-74); parse_orders/2's one-step with ends in a tail call (lines 130-132); eight-step with in parse_order/1 (lines 136-143)",
+        "met: every head, -> pattern and condition shares its line with one expression; parse_status/1 is a table",
+        "met: no expression only wrapped; order named (line 144), the sum moved into sum_amounts/1",
+        "met: do: only on one-expression bodies on the head's line; parse_orders/2 sets its block clause apart (line 128); no if, no for",
+        "met: one-line case clauses hold one tuple each (longest 60)",
+        "missed: line 94 puts a two-step pipeline on one line",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads none; read SKILL.md and references/library-design.md (an extra read)"
+      ],
+      "summary": "Parses rows in a hand-written loop through an eight-step with into an Order struct with Decimal amounts, DateTime values and explicit status clauses, and builds the report with group_by, Map.new, Enum.max(DateTime) and frequencies_by behind a one-step with in build/1, reporting the last order as a DateTime; it breaks the pipeline rule (a two-step pipeline on one line at line 94), and a non-string amount raises FunctionClauseError, which no listed rule covers. No other rule was found broken. It read SKILL.md and references/library-design.md."
+    },
+    "skill-sonnet-1": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 143: defp parse_status(\"completed\"), do: {:ok, :completed}; line 144: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 145: defp parse_status(\"pending\"), do: {:ok, :pending}; line 146: defp parse_status(_other), do: {:error, {:invalid_field, \"status\"}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 75-77: with {:ok, orders} <- parse_orders(rows) do / {:ok, %{customers: summarize_customers(orders), top_customers: top_customers(orders)}} (one step, body cannot fail, no else); lines 85-87: with {:ok, order} <- parse_order(row, index) do / parse_orders(rest, [order | orders]) (a tail call, which the rule names as not a second step); lines 100-102: three-step with of parse_amount/1, parse_placed_at/1, parse_status/1, no else, no case nested in its body"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "clean",
+          "evidence": "lines 149-153: orders |> Enum.group_by(& &1.customer_id) |> Map.new(fn {customer_id, customer_orders} ->; lines 163-168: |> Enum.filter(&(&1.status == :completed)) |> Enum.group_by(& &1.currency) |> Map.new(fn {currency, currency_orders} ->; line 174: |> Enum.frequencies_by(& &1.customer_id); no reduce that reads and writes one key per element"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 80: defp parse_orders(rows), do: parse_orders(Enum.with_index(rows), []); line 82: defp parse_orders([], orders), do: {:ok, Enum.reverse(orders)}; line 86: parse_orders(rest, [order | orders]); no ++, length or Enum.at"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 157: latest = Enum.max_by(orders, & &1.placed_at, DateTime); line 159: last_order_on: DateTime.to_date(latest.placed_at)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 117: case Decimal.parse(text) do; line 167: {currency, Enum.reduce(currency_orders, Decimal.new(0), &Decimal.add(&1.amount, &2))}"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "no boolean function, no fetch-named function; domain names (rows, orders, customer_orders, currency_orders, latest, placed_at); ignored values _index, _amount, _rest, _utc_offset, _reason, _other, _row"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 80: defp parse_orders(rows), do: parse_orders(Enum.with_index(rows), []) (a nested call); line 82 beside the block clause at lines 84-88, set apart by blank line 83; line 114: defp parse_order(_row, index), do: {:error, {:invalid_order, index}} after the block clause at lines 90-112, blank line 113; lines 129 and 141 after their block clauses, blank lines 128 and 140; lines 143-146: parse_status/1 table; no do: body holds a fn, a call-carrying capture or a block construct; no if, no for"
+        },
+        "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+          "verdict": "clean",
+          "evidence": "lines 117-126 and 132-138: every body on its own line with a blank line between clauses; line 175: |> Enum.sort_by(fn {customer_id, count} -> {-count, customer_id} end) holds one expression; fns at lines 151-153 and 166-168 put the body on the next line"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 76: {:ok, %{customers: summarize_customers(orders), top_customers: top_customers(orders)}} and line 159: %{totals: totals_per_currency(orders), last_order_on: DateTime.to_date(latest.placed_at)} are one expression each; lines 143-146: parse_status/1 is a table; lines 80, 82, 114, 129, 141: head and one expression"
+        },
+        "Name a step instead of wrapping an expression": {
+          "verdict": "clean",
+          "evidence": "lines 103-110: {:ok, / %Order{ ... }} is a tagged struct literal that mix format lays out one field per line, data with no computational steps to name (the judgment of both 2026-10-31 check batches); line 157: latest names the latest order; line 167: one long expression on one line, which \"Length alone decides nothing\" allows; no binding renames a value used once"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "lines 149-153, 163-168, 172-176: each starts with orders, one step per line; no one-line pipeline, no single-step pipe"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 150: & &1.customer_id; line 157: & &1.placed_at; line 164: &(&1.status == :completed); line 167: &Decimal.add(&1.amount, &2) (&1 and &2 in order, each once); line 175: fn {customer_id, count} -> {-count, customer_id} end (one expression on the head's line); lines 151-153, 166-168: fns with the body on the next line"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: amounts parsed and summed with Decimal (lines 117, 167)",
+        "met: dates compared with Enum.max_by(..., DateTime) (line 157)",
+        "met: Enum.group_by/2 with Map.new/2 (lines 149-153, 165-168) and Enum.frequencies_by/2 (line 174), no hand-written reduce",
+        "met: status converted with explicit clauses (lines 143-146)",
+        "met: Enum.with_index, prepend and reverse (lines 80, 82, 86); no ++ or length",
+        "met: one-call lambdas are captures, &Decimal.add(&1.amount, &2) in order (line 167); fns destructure tuples",
+        "met: no process",
+        "met: no boolean function, no is_ name; domain variable names",
+        "met: build/1 is a one-step with whose body cannot fail (lines 75-77); parse_orders/2's one-step with ends in a tail call (lines 85-87); three-step with in parse_order/2 (lines 100-102)",
+        "met: every head, -> pattern and condition shares its line with one expression; parse_status/1 is a table",
+        "met: no expression only wrapped beyond the tagged struct literal (lines 103-110, held clean)",
+        "met: do: only on one-expression bodies on the head's line; each block clause set apart from the do: clauses by a blank line; no if, no for",
+        "met: every case breaks each clause with blank lines between",
+        "met: every pipeline starts with a value, one step per line; none on one line",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads none; read SKILL.md only"
+      ],
+      "summary": "Matches the five required keys in parse_order/2's multi-line head with an {:error, {:invalid_order, index}} catch-all, parses through a three-step with into an Order struct with Decimal amounts, DateTime values and explicit status clauses, and builds the report with group_by, Map.new, Enum.max_by(DateTime) and frequencies_by behind a one-step with in build/1. It breaks none of the case's rules and no other rule was found broken; build/1 has a doctest. It read SKILL.md only."
+    },
+    "skill-sonnet-2": {
+      "model_id": "claude-sonnet-5-5",
+      "reads": [
+        "SKILL.md"
+      ],
+      "format_ok": true,
+      "compiles": true,
+      "verdicts": {
+        "Convert external strings to atoms with explicit clauses": {
+          "verdict": "clean",
+          "evidence": "line 189: defp parse_status(\"completed\"), do: {:ok, :completed}; line 190: defp parse_status(\"refunded\"), do: {:ok, :refunded}; line 191: defp parse_status(\"pending\"), do: {:ok, :pending}; line 192: defp parse_status(_other), do: {:error, {:invalid_field, \"status\"}}"
+        },
+        "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+          "verdict": "clean",
+          "evidence": "lines 64-68: with {:ok, orders} <- parse_orders(rows) do / completed = Enum.filter(orders, &(&1.status == :completed)) / {:ok, %{customers: summarize_customers(orders), top_customers: top_customers(completed)}} (one step, body cannot fail, no else); lines 108-116: case Order.parse(row) do with line 114: {:error, {:invalid_order, index, reason}} (a case that retags the error, not a pass-through); lines 146-148: three-step with, no else, no case nested in its body"
+        },
+        "Use the `Enum` or `Map` function made for the job": {
+          "verdict": "clean",
+          "evidence": "lines 72-76: orders |> Enum.group_by(& &1.customer_id) |> Map.new(fn {customer_id, customer_orders} ->; lines 89-94: |> Enum.group_by(& &1.currency, & &1.amount) |> Map.new(fn {currency, amounts} -> ... Enum.reduce(amounts, Decimal.new(0), &Decimal.add/2); line 99: |> Enum.frequencies_by(& &1.customer_id); no reduce that reads and writes one key per element"
+        },
+        "Treat lists as linked lists": {
+          "verdict": "clean",
+          "evidence": "line 106: defp parse_orders([], _index, orders), do: {:ok, Enum.reverse(orders)}; line 111: parse_orders(rest, index + 1, [order | orders]); no ++, length or Enum.at"
+        },
+        "Compare dates, times, and decimals with their module functions": {
+          "verdict": "clean",
+          "evidence": "line 80: latest = Enum.max_by(orders, & &1.placed_at, DateTime); line 84: last_order_on: DateTime.to_date(latest.placed_at)"
+        },
+        "Store and compute money as integer minor units or `Decimal`, never floats": {
+          "verdict": "clean",
+          "evidence": "line 163: case Decimal.parse(text) do; line 93: {currency, Enum.reduce(amounts, Decimal.new(0), &Decimal.add/2)}"
+        },
+        "Naming": {
+          "verdict": "clean",
+          "evidence": "no boolean function, no fetch-named function; domain names (rows, orders, completed, completed_orders, customer_orders, amounts, latest); ignored values _index, _row, _amount, _rest, _utc_offset, _reason, _text, _other"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 104: defp parse_orders(rows), do: parse_orders(rows, 0, []); line 106 beside the block clause at lines 108-116, set apart by blank line 107; line 160: def parse(_row), do: {:error, :invalid_order} after the block clause at lines 136-158, blank line 159; lines 175 and 187 after their block clauses, blank lines 174 and 186; lines 189-192: parse_status/1 table; no do: body holds a fn, a call-carrying capture or a block construct; no if, no for"
+        },
+        "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+          "verdict": "clean",
+          "evidence": "lines 109-115, 163-172, 178-184: every body on its own line with a blank line between clauses; line 100: |> Enum.sort_by(fn {customer_id, count} -> {-count, customer_id} end) holds one expression; fns at lines 74-76 and 92-94 put the body on the next line"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 67: {:ok, %{customers: summarize_customers(orders), top_customers: top_customers(completed)}} is one expression; lines 82-85: a two-field map, one field per line; lines 189-192: parse_status/1 is a table; lines 104, 106, 160, 175, 187: head and one expression"
+        },
+        "Name a step instead of wrapping an expression": {
+          "verdict": "clean",
+          "evidence": "line 65: completed = Enum.filter(orders, &(&1.status == :completed)) names the completed orders, a stage of the computation; line 80: latest names the latest order; lines 149-156: {:ok, / %__MODULE__{ ... }} is a tagged struct literal laid out one field per line, data with no computational steps to name (the judgment of both 2026-10-31 check batches); no binding renames a value used once"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "lines 72-76, 89-94, 98-101: each starts with a variable, one step per line; no one-line pipeline, no single-step pipe"
+        },
+        "Use captures for one-call lambdas and `fn` for anything longer": {
+          "verdict": "clean",
+          "evidence": "line 65: &(&1.status == :completed); line 73: & &1.customer_id; line 80: & &1.placed_at; line 91: & &1.currency, & &1.amount; line 93: &Decimal.add/2; line 100: fn {customer_id, count} -> {-count, customer_id} end (one expression on the head's line); lines 74-76 and 92-94: fns with the body on the next line"
+        },
+        "Decide whether you need a process": {
+          "verdict": "clean",
+          "evidence": "no GenServer, Agent, Task or spawn"
+        }
+      },
+      "other_violations": [],
+      "checks": [
+        "met: amounts parsed and summed with Decimal (lines 163, 93)",
+        "met: dates compared with Enum.max_by(..., DateTime) (line 80)",
+        "met: Enum.group_by/3 with Map.new/2 (lines 72-76, 91-94) and Enum.frequencies_by/2 (line 99), no hand-written reduce",
+        "met: status converted with explicit clauses (lines 189-192)",
+        "met: prepend and reverse in a hand-written loop (lines 106, 111); no ++ or length",
+        "met: one-call lambdas are captures; fns destructure tuples",
+        "met: no process",
+        "met: no boolean function, no is_ name; domain variable names",
+        "met: build/1 is a one-step with whose body cannot fail (lines 64-68); parse_orders/3 is a case that retags the error (lines 108-116); three-step with in Order.parse/1 (lines 146-148)",
+        "met: every head, -> pattern and condition shares its line with one expression; parse_status/1 is a table",
+        "met: completed and latest named (lines 65, 80); no expression only wrapped beyond the tagged struct literal (lines 149-156, held clean)",
+        "met: do: only on one-expression bodies on the head's line; each block clause set apart from the do: clauses by a blank line; no if, no for",
+        "met: every case breaks each clause with blank lines between",
+        "met: every pipeline starts with a value, one step per line; none on one line",
+        "met: mix format --check-formatted passes",
+        "met: Expected reads none; read SKILL.md only"
+      ],
+      "summary": "Matches the five required keys in Order.parse/1's multi-line head, with a guard on customer_id and currency and an {:error, :invalid_order} catch-all, parses through a three-step with into an Order struct with Decimal amounts, DateTime values and explicit status clauses, returns the first bad row with its index, and builds the report with group_by, Map.new, Enum.max_by(DateTime) and frequencies_by behind a one-step with in build/1. It breaks none of the case's rules and no other rule was found broken; build/1 has a doctest. It read SKILL.md only."
+    }
+  },
+  "per_rule": {
+    "Convert external strings to atoms with explicit clauses": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Chain fallible steps with `with`; normalize each step's error in a small private function": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Use the `Enum` or `Map` function made for the job": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Treat lists as linked lists": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Compare dates, times, and decimals with their module functions": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Store and compute money as integer minor units or `Decimal`, never floats": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Naming": {
+      "opus": "clean",
+      "haiku": "violated",
+      "sonnet": "clean"
+    },
+    "Use `do:` for a one-expression body and `do ... end` for anything else": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Inline `->` clauses that read at a glance; otherwise put each body on its own line": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "One expression per line, and tabular clauses": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Name a step instead of wrapping an expression": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+      "opus": "clean",
+      "haiku": "violated",
+      "sonnet": "clean"
+    },
+    "Use captures for one-call lambdas and `fn` for anything longer": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    },
+    "Decide whether you need a process": {
+      "opus": "clean",
+      "haiku": "clean",
+      "sonnet": "clean"
+    }
+  }
+}
