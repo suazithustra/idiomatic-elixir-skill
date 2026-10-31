@@ -1,0 +1,136 @@
+defmodule Shop.CartTest do
+  use ExUnit.Case, async: true
+
+  alias Shop.Cart
+
+  describe "add_item/3" do
+    test "adds a new item" do
+      cart = Cart.add_item(Cart.new(), "APPLE", 2)
+      assert cart.items == %{"APPLE" => 2}
+    end
+
+    test "increases the quantity of an item already in the cart" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 2)
+        |> Cart.add_item("APPLE", 3)
+
+      assert cart.items == %{"APPLE" => 5}
+    end
+  end
+
+  describe "total_quantity/1" do
+    test "sums the units of every item" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 2)
+        |> Cart.add_item("PEAR", 1)
+
+      assert Cart.total_quantity(cart) == 3
+    end
+  end
+
+  describe "remove_item/3" do
+    test "removes some units and keeps the rest" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 5)
+        |> Cart.remove_item("APPLE", 2)
+
+      assert cart.items == %{"APPLE" => 3}
+    end
+
+    test "removes the item when the quantity equals the units in the cart" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 2)
+        |> Cart.remove_item("APPLE", 2)
+
+      assert cart.items == %{}
+    end
+
+    test "removes the item when the quantity exceeds the units in the cart" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 2)
+        |> Cart.add_item("PEAR", 1)
+        |> Cart.remove_item("APPLE", 9)
+
+      assert cart.items == %{"PEAR" => 1}
+    end
+
+    test "leaves the cart unchanged for a SKU it does not hold" do
+      cart = Cart.add_item(Cart.new(), "APPLE", 2)
+      assert Cart.remove_item(cart, "PEAR", 1) == cart
+    end
+  end
+
+  describe "apply_code/2" do
+    test "accepts SAVE10" do
+      assert {:ok, %Cart{code: "SAVE10"}} = Cart.apply_code(Cart.new(), "SAVE10")
+    end
+
+    test "accepts FREESHIP" do
+      assert {:ok, %Cart{code: "FREESHIP"}} = Cart.apply_code(Cart.new(), "FREESHIP")
+    end
+
+    test "returns an error for an unknown code" do
+      assert Cart.apply_code(Cart.new(), "BOGUS") == {:error, {:unknown_code, "BOGUS"}}
+    end
+
+    test "replaces the code already applied" do
+      assert {:ok, cart} = Cart.apply_code(Cart.new(), "SAVE10")
+      assert {:ok, %Cart{code: "FREESHIP"}} = Cart.apply_code(cart, "FREESHIP")
+    end
+  end
+
+  describe "total_cents/2" do
+    @prices %{"APPLE" => 150, "PEAR" => 200}
+
+    test "adds the shipping fee to the subtotal when no code is applied" do
+      cart =
+        Cart.new()
+        |> Cart.add_item("APPLE", 2)
+        |> Cart.add_item("PEAR", 1)
+
+      assert Cart.total_cents(cart, @prices) == 500 + 499
+    end
+
+    test "takes 10% off the item subtotal for SAVE10" do
+      assert {:ok, cart} =
+               Cart.new()
+               |> Cart.add_item("APPLE", 2)
+               |> Cart.apply_code("SAVE10")
+
+      # subtotal 300, discount 30, shipping 499
+      assert Cart.total_cents(cart, @prices) == 270 + 499
+    end
+
+    test "rounds the SAVE10 discount to the nearest cent, halves up" do
+      prices = %{"CANDY" => 5}
+
+      assert {:ok, cart} =
+               Cart.new()
+               |> Cart.add_item("CANDY", 5)
+               |> Cart.apply_code("SAVE10")
+
+      # subtotal 25, discount 2.5 rounds up to 3, shipping 499
+      assert Cart.total_cents(cart, prices) == 22 + 499
+    end
+
+    test "waives the shipping fee for FREESHIP without discounting items" do
+      assert {:ok, cart} =
+               Cart.new()
+               |> Cart.add_item("APPLE", 2)
+               |> Cart.apply_code("FREESHIP")
+
+      assert Cart.total_cents(cart, @prices) == 300
+    end
+
+    test "raises when a SKU in the cart has no price" do
+      cart = Cart.add_item(Cart.new(), "MANGO", 1)
+
+      assert_raise KeyError, fn -> Cart.total_cents(cart, @prices) end
+    end
+  end
+end
