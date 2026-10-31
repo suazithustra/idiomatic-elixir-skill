@@ -83,15 +83,7 @@ defmodule MyApp.Counters do
 
   @impl true
   def init(name) do
-    table_options = [
-      :named_table,
-      :public,
-      :set,
-      read_concurrency: true,
-      write_concurrency: true
-    ]
-
-    :ets.new(name, table_options)
+    :ets.new(name, [:named_table, :public, :set, read_concurrency: true, write_concurrency: true])
     {:ok, nil}
   end
 end

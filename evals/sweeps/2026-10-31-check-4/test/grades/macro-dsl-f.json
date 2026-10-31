@@ -1,0 +1,259 @@
+{
+ "block": "macro-dsl-f",
+ "runs": {
+  "run-qkwmj": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 65: @doc false; line 66: def __put_route__(module, path, handler) do; no @spec on __put_route__/3; __match__/2 and the generated functions have specs; line 81: @spec __match__([{[String.t() | {:param, String.t()}], module()}], String.t()) ::; line 56: @spec routes() :: [{String.t(), module()}]; line 60: @spec match(String.t()) :: {:ok, module(), %{String.t() => String.t()}} | :error"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 42: defmacro get(path, handler) do; line 30: defmacro __using__(_opts) do; line 50: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "clean",
+     "evidence": "line 46: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)); validation and recording in the @doc false __put_route__/3, lines 67-77; line 61: def match(path), do: TinyRouter.__match__(unquote(Macro.escape(patterns)), path); the __before_compile__ quote, lines 55-61, holds routes/0 and a one-call match/1"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 46: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)); line 57: def routes, do: unquote(Macro.escape(routes)); line 61: def match(path), do: TinyRouter.__match__(unquote(Macro.escape(patterns)), path); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: Declares routes in a module and matches request paths against them.; line 30: defmacro __using__(_opts) do; @moduledoc, lines 2-28, has no admonition and never says what use does to the caller; __using__, lines 32-35, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 43: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:119: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:120: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 43: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Validates and records in a @doc false __put_route__/3 called from a one-line quote and keeps handlers runtime-only, but __put_route__/3 has no @spec and @moduledoc has no use admonition."
+  },
+  "run-rjtga": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 73: @doc false; line 74: @spec __match__([{String.t(), module()}], String.t()) ::; line 75: {:ok, module(), %{atom() => String.t()}} | :error; line 64: @spec routes() :: [{String.t(), module()}]; line 68: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error; __using__ and __before_compile__ @doc false, lines 27 and 57"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 43: defmacro get(path, handler) do; line 28: defmacro __using__(_opts) do; line 58: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 53: @tiny_router_routes {unquote(path), unquote(handler)}; a direct attribute write inside get's quote; validation runs in the macro body through; line 50: check_route!(path, handler, __CALLER__)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 53: @tiny_router_routes {unquote(path), unquote(handler)}; line 65: def routes, do: unquote(Macro.escape(routes)); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 5: ## Usage; line 18: > #### `use TinyRouter` {: .info}; the admonition comes after the Usage example and a paragraph, not at the top of @moduledoc; __using__, lines 30-34, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 48: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:130: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:131: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 48: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Specs every public function and keeps handlers runtime-only, but writes the route attribute directly inside get's quote and places its use admonition after the Usage example."
+  },
+  "run-tqxxc": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 47: @doc false; line 48: @spec __put_route__(module(), String.t(), module()) :: :ok; line 69: @doc false; line 70: @spec __match__([{String.t(), module()}], String.t()) ::; line 71: {:ok, module(), %{atom() => String.t()}} | :error; line 61: @spec routes() :: [{String.t(), module()}]; line 64: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error; __before_compile__ @doc false, line 53; __using__ has no @doc false but its __ name hides it (Code.fetch_docs reports :hidden)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 37: defmacro get(path, handler) do; line 24: defmacro __using__(_opts) do; line 54: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "clean",
+     "evidence": "line 43: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)); the route is recorded by the regular function __put_route__/3,; line 50: Module.put_attribute(module, :tiny_router_routes, {path, handler}); validation runs in the macro body through private functions, outside quote:; line 38: path = validate_path!(path); line 40: handler = validate_handler!(handler)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 43: TinyRouter.__put_route__(__MODULE__, unquote(path), unquote(handler)); line 62: def routes, do: unquote(Macro.escape(routes)); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 5: Use it in a module and declare each route with `get/2`:; line 24: defmacro __using__(_opts) do; @moduledoc, lines 2-22, has no admonition and never says what use does to the caller; __using__, lines 26-30, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 39: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:117: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:118: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 39: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Records through a specced @doc false __put_route__/3 called from a one-line quote, validates in the macro body through private functions and keeps handlers runtime-only, but has no use admonition."
+  },
+  "run-uhuah": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 81: @doc false; line 82: @spec __define__(module(), String.t(), module()) :: :ok; line 99: @doc false; line 100: @spec match([{String.t(), module()}], String.t()) :: {:ok, module(), params()} | :error; line 66: @spec routes() :: [{String.t(), module()}]; line 74: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error; __using__ and __before_compile__ have no @doc false but their __ names hide them (Code.fetch_docs reports :hidden)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 50: defmacro get(path, handler) do; line 34: defmacro __using__(_opts) do; line 58: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "clean",
+     "evidence": "line 54: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); validation and recording in the @doc false __define__/3, lines 83-97; line 76: TinyRouter.match(routes(), request_path); the __before_compile__ quote, lines 65-77, holds routes/0 and a one-call match/1"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 54: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); line 67: def routes, do: unquote(Macro.escape(routes)); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "clean",
+     "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports the `get/2` macro and defines; directly under the one-line summary; __using__, lines 36-40, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 51: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:139: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:140: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 51: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Validates and records in a specced @doc false __define__/3 called from a one-line quote, matches through a specced @doc false match/2, keeps handlers runtime-only and puts its admonition at the top; breaks none of the seven rules."
+  },
+  "run-wxjgw": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 89: @doc false; line 90: def __match__(routes, path) do; no @spec on __match__/2; __define__/3 and the generated functions have specs; line 43: @spec __define__(module(), term(), term()) :: :ok; line 79: @spec routes() :: [{String.t(), module()}]; line 82: @spec match(String.t()) :: {:ok, module(), map()} | :error"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 32: defmacro get(path, handler) do; line 60: defmacro __using__(_opts) do; line 70: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "clean",
+     "evidence": "line 38: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); validation and recording in the @doc false __define__/3, lines 45-56; line 84: TinyRouter.__match__(unquote(Macro.escape(compiled)), path); the __before_compile__ quote, lines 79-85, holds routes/0 and a one-call match/1"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 38: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); line 80: def routes, do: unquote(Macro.escape(routes)); line 84: TinyRouter.__match__(unquote(Macro.escape(compiled)), path); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "clean",
+     "evidence": "line 5: `use TinyRouter` imports `get/2` into the module and defines `routes/0` and; line 8: > #### `use TinyRouter` {: .info}; line 10: > When you `use TinyRouter`, it imports `get/2`, collects the routes declared; after the summary and one paragraph stating the same effects, before the first heading and the example; __using__, lines 62-65, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 35: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:130: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:131: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 35: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Validates and records in a specced @doc false __define__/3 called from a one-line quote, keeps handlers runtime-only and documents use in an admonition before the example, but __match__/2 has no @spec."
+  },
+  "run-yaxup": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "violated",
+     "evidence": "line 74: @doc false; line 75: def __match__(compiled, path) do; no @spec on __match__/2; the generated functions have specs; line 63: @spec routes() :: [{String.t(), module()}]; line 67: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 41: defmacro get(path, handler) do; line 29: defmacro __using__(_opts) do; line 53: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "violated",
+     "evidence": "line 48: @tiny_router_routes {unquote(path), unquote(handler)}; a direct attribute write inside get's quote; validation runs in the macro body through; line 42: validate_path!(__CALLER__, path); line 45: validate_handler!(__CALLER__, handler)"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 48: @tiny_router_routes {unquote(path), unquote(handler)}; line 64: def routes, do: unquote(Macro.escape(routes)); line 69: TinyRouter.__match__(unquote(Macro.escape(compiled)), path); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "violated",
+     "evidence": "line 3: Declares path routes in a module and matches request paths to them.; line 29: defmacro __using__(_opts) do; @moduledoc, lines 2-27, has no admonition and never says what use does to the caller; __using__, lines 31-34, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 44: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:134: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:135: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 44: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Keeps handlers runtime-only, but writes the route attribute directly inside get's quote, leaves __match__/2 without a @spec and has no use admonition."
+  },
+  "run-ynygx": {
+   "verdicts": {
+    "Add specs, and hide technical functions from the docs": {
+     "verdict": "clean",
+     "evidence": "line 70: @doc false; line 71: @spec __define__(module(), term(), term()) :: :ok; line 86: @doc false; line 87: @spec __match__([{module(), list()}], String.t()) :: {:ok, module(), map()} | :error; line 61: @spec routes() :: [{String.t(), module()}]; line 65: @spec match(String.t()) :: {:ok, module(), %{atom() => String.t()}} | :error; __using__ and __before_compile__ have no @doc false but their __ names hide them (Code.fetch_docs reports :hidden)"
+    },
+    "Write a function unless the job needs a macro": {
+     "verdict": "clean",
+     "evidence": "line 34: defmacro get(path, handler) do; line 42: defmacro __using__(_opts) do; line 51: defmacro __before_compile__(env) do; only get, __using__ and __before_compile__ are macros; match/1, routes/0 and every helper are functions"
+    },
+    "Keep `quote` blocks small": {
+     "verdict": "clean",
+     "evidence": "line 38: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); validation and recording in the @doc false __define__/3, lines 73-83; line 66: def match(path), do: TinyRouter.__match__(unquote(Macro.escape(compiled)), path); the __before_compile__ quote, lines 60-66, holds routes/0 and a one-call match/1"
+    },
+    "Unquote each argument once": {
+     "verdict": "clean",
+     "evidence": "line 38: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); line 62: def routes, do: unquote(Macro.escape(routes)); line 66: def match(path), do: TinyRouter.__match__(unquote(Macro.escape(compiled)), path); each value unquoted once"
+    },
+    "Offer `import` or `alias` instead of `use` when they are enough": {
+     "verdict": "clean",
+     "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > Imports `get/2` into the caller, and defines `routes/0` and `match/1`; directly under the one-line summary; __using__, lines 44-47, injects only import, attribute registration and @before_compile"
+    },
+    "Avoid compile-time dependencies on modules used only at runtime": {
+     "verdict": "clean",
+     "evidence": "line 35: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); mix xref trace: lib/tiny_router.ex:127: alias MyApp.PageHandler (runtime), lib/tiny_router.ex:128: alias MyApp.UserHandler (runtime)"
+    },
+    "Write module names literally": {
+     "verdict": "clean",
+     "evidence": "line 35: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:call, 2}}); no Module.concat or interpolation builds a module name"
+    }
+   },
+   "planted_reported": 0,
+   "planted_missed": [],
+   "summary": "Validates and records in a specced @doc false __define__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and puts its admonition at the top; breaks none of the seven rules."
+  }
+ },
+ "notes": [
+  "Keep `quote` blocks small, run-tqxxc: the case's check says the validation runs in the recording function, and here it runs in the macro body through private functions, while the quote only calls __put_route__/3. Held clean. The trigger in the standard is a direct attribute write inside get's quote, this quote has none, and the rule's concern (code compiled at every call site) does not apply. evals/cases/macro-dsl.md lines 56 and 59 record the same shape (validation at expansion time, recording through a @doc false function from a one-line quote) with no Keep quote blocks small break; line 59 says it breaks none of the seven rules.",
+  "Keep `quote` blocks small, run-rjtga and run-yaxup: both validate in the macro body and write the attribute inside get's quote. Violated, as with 2026-10-31 skill-haiku-1 and skill-haiku-2.",
+  "The use rule, run-wxjgw: the admonition (line 8) follows the summary and a two-line paragraph (lines 5-6) that states the same effects, but comes before the first heading and the example. Held clean. Both misplaced admonitions in the standard had the example first (2026-10-23 skill-haiku-1, 2026-10-31 skill-haiku-2), and here use's effects are the first thing after the summary. run-rjtga has the example first, so it is violated.",
+  "The use rule, run-qkwmj, run-tqxxc and run-yaxup: no admonition at all and no statement of what use does beyond the example, so violated.",
+  "Spec rule: __using__ and __before_compile__ without @doc false are accepted because their __ names hide them. Code.fetch_docs reported :hidden for both macros and for every @doc false function in all seven runs. The @doc false match/2 in run-uhuah is held as 2026-10-31 skill-sonnet-2's match/2 was.",
+  "Compile-time dependencies: one scratch Mix project per run, the file copied unchanged to lib/tiny_router.ex with empty MyApp.PageHandler and MyApp.UserHandler in lib/handlers.ex. All seven compile under mix compile --warnings-as-errors (Elixir 1.20.3) and mix xref trace reports both handlers as (runtime); no handler line reports (compile). All seven call Macro.expand_literals with function {:call, 2}.",
+  "Outside the seven rules: in all seven projects, Code.compile_string of get 123, MyApp.PageHandler and of get \"/\", \"not a module\" fails while the router compiles, with ArgumentError (run-qkwmj, run-tqxxc, run-uhuah, run-wxjgw, run-ynygx) or CompileError (run-rjtga, run-yaxup). All seven return routes in declaration order and match \"/\", \"/users/42\" and \"/nope\" as asked. Formatting and parentheses on the get calls were not graded, as the brief says."
+ ]
+}
