@@ -67,7 +67,7 @@ name = get_in(request.user.profile.name)
 
 ### Match every expected shape and let unexpected ones crash
 
-A `_ ->` clause after `{:ok, value}` turns every other return value, including ones added later, into the same error and hides bugs. Match the error shape explicitly. Destructure results with a pattern so malformed input raises at the cause instead of producing wrong values.
+A `_ ->` clause after `{:ok, value}` turns every other return value, including ones added later, into the same error and hides bugs. Match the error shape explicitly. Different failures need different reasons too: a caller cannot tell a missing field from a bad number when both return `{:error, :invalid}`. Destructure results with a pattern so malformed input raises at the cause instead of producing wrong values.
 
 ```elixir
 # Instead of
