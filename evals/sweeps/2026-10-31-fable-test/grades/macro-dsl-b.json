@@ -1,0 +1,322 @@
+{
+  "block": "macro-dsl-b",
+  "runs": {
+    "run-ddcxh": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 78: @spec __route__(module(), String.t(), module()) :: :ok; line 109: @spec __match__([compiled_route()], String.t()) :: {:ok, module(), params()} | :error; line 98: @spec routes() :: [TinyRouter.route()]; line 101: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__route__/3 and __match__/2 are @doc false at lines 77 and 108; routes/0 and match/1 specced inside the quote directly above each def; __using__ and __before_compile__ @doc false at lines 47 and 92)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 48: defmacro __using__(_opts) do; line 69: defmacro get(path, handler) do; line 93: defmacro __before_compile__(env) do; line 45: defguardp is_module_name(handler) when is_atom(handler) and handler not in [nil, true, false] (only __using__, get and __before_compile__ are macros, plus a private guard used in the `when` at line 79; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 73: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __route__/3, lines 79-90; the __before_compile__ quote, lines 97-105, holds routes/0 and a one-call match/1)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 73: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)); line 99: def routes, do: unquote(Macro.escape(routes)); line 103: TinyRouter.__match__(unquote(Macro.escape(compiled_routes)), path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` and defines `routes/0` (directly under the one-line summary; __using__, lines 49-54, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 70: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:146: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:147: alias MyApp.UserHandler (runtime))"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 70: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 99: def routes, do: unquote(Macro.escape(routes)); line 121: defp compile_path(path), do: Enum.map(split_path(path), &compile_segment/1); line 125: defp compile_segment(\":\" <> name), do: {:param, String.to_atom(name)}; line 130: defp match_segments([], [], params), do: {:ok, params}; line 140: defp match_segments(_pattern, _segments, _params), do: :error (block clauses 132-134 and 136-138 set apart, 150 and 119 joined; no fn or argument-carrying capture on do:, no one-line if with else, no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 95: compiled_routes = Enum.map(routes, fn {path, handler} -> {compile_path(path), handler} end); line 115: {:ok, params} -> {:ok, handler, params}; line 116: :error -> nil (lines 115-116 are a mapping with one fallback row; the fn holding a case, lines 113-118, goes below its head; sequences sit below their heads)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "violated",
+          "evidence": "line 94: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse() (a two-step pipeline on one line)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 146: get \"/\", MyApp.PageHandler; line 147: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __route__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks only the pipeline rule, with a one-line pipeline at line 94."
+    },
+    "run-fkkyc": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 88: @spec __define__(module(), String.t(), module()) :: :ok; line 96: @spec __match__([compiled_route()], String.t()) :: {:ok, module(), params()} | :error; line 77: @spec routes() :: [TinyRouter.route()]; line 80: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__define__/3 and __match__/2 are @doc false at lines 87 and 95; routes/0 and match/1 specced inside the quote directly above each def; __using__ and __before_compile__ @doc false at lines 40 and 69; the specs on the three macros are not required and not a violation)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 42: defmacro __using__(_opts) do; line 61: defmacro get(path, handler) do; line 71: defmacro __before_compile__(env) do (only __using__, get and __before_compile__ are macros; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 65: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __define__/3, lines 89-93; the __before_compile__ quote, lines 76-84, holds routes/0 and a one-call match/1)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 65: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); line 78: def routes, do: unquote(Macro.escape(declared)); line 82: TinyRouter.__match__(unquote(Macro.escape(compiled)), path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` and, once the module body (directly under the one-line summary; __using__, lines 43-48, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 62: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:get, 2}}) (the function named need not exist; mix xref trace: lib/tiny_router.ex:150: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:151: alias MyApp.UserHandler (runtime))"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 62: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:get, 2}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 78: def routes, do: unquote(Macro.escape(declared)); line 73: declared = for {path, handler, _pattern} <- routes, do: {path, handler}; line 74: compiled = for {_path, handler, pattern} <- routes, do: {handler, pattern}; line 90: if not is_binary(path), do: raise(ArgumentError, path_message(path)); line 91: if not module_name?(handler), do: raise(ArgumentError, handler_message(handler)); line 119: defp parse_segment(\":\" <> name), do: {:param, String.to_atom(name)}; line 134: defp match_segments([], [], params), do: {:ok, params}; line 144: defp match_segments(_pattern, _request, _params), do: :error (one-line for is clean under the current text; one-line if without else, as the macros.md example; block clauses 136-138 and 140-142 set apart, 144 and 117 joined; no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 73: declared = for {path, handler, _pattern} <- routes, do: {path, handler}; line 90: if not is_binary(path), do: raise(ArgumentError, path_message(path)); line 91: if not module_name?(handler), do: raise(ArgumentError, handler_message(handler)) (a generator or condition and one expression; sequences sit below their heads, __define__/3 lines 90-92 and __before_compile__ lines 72-84; the case at lines 125-131 is broken)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "line 72: routes = Enum.reverse(Module.get_attribute(env.module, :tiny_router_routes)) (no |> in the file; the two steps are a nested call)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 150: get \"/\", MyApp.PageHandler; line 151: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __define__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks none of the eleven rules."
+    },
+    "run-fuhmx": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 100: @spec __define__(module(), path(), module()) :: :ok; line 117: @spec __match__([matcher()], String.t()) :: {:ok, module(), params()} | :error; line 86: @spec routes() :: [TinyRouter.route()]; line 89: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__define__/3 and __match__/2 are @doc false at lines 99 and 116; routes/0 and match/1 specced inside the quote directly above each def; __using__ and __before_compile__ have no @doc false, and Code.fetch_docs reports both :hidden)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 55: defmacro __using__(_opts) do; line 70: defmacro get(path, handler) do; line 81: defmacro __before_compile__(env) do; line 96: defguardp is_module_name(handler) (only __using__, get and __before_compile__ are macros, plus a private guard used in the `when` at line 101; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 77: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __define__/3, lines 101-114; the __before_compile__ quote, lines 85-93, holds routes/0 and a one-call match/1)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 77: TinyRouter.__define__(__MODULE__, unquote(path), unquote(handler)); line 87: def routes, do: unquote(Macro.escape(routes)); line 91: TinyRouter.__match__(unquote(Macro.escape(matchers)), request_path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` into your module and, once (directly under the one-line summary; __using__, lines 56-61, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 74: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:168: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:169: alias MyApp.UserHandler (runtime); same with the handler modules moved out of the file)"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 74: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 87: def routes, do: unquote(Macro.escape(routes)); line 122: defp find_route([], _request_segments), do: :error; line 131: defp bind_params([], [], params), do: {:ok, params}; line 141: defp bind_params(_segments, _request_segments, _params), do: :error; line 152: defp segment(\":\" <> name), do: {:param, String.to_atom(name)} (block clauses 133-135 and 137-139 set apart, 142 and 158 joined; no fn or argument-carrying capture on do:, no one-line if with else, no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 83: matchers = Enum.map(routes, fn {path, handler} -> {segments(path), handler} end); line 126: {:ok, params} -> {:ok, handler, params}; line 127: :error -> find_route(matchers, request_segments) (each row is one pattern and one expression, so the rule's first sentence passes them without the table paragraph; that the second row continues the recursion belongs to the `->` rule, outside this list; see notes)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "violated",
+          "evidence": "line 82: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse() (a two-step pipeline on one line; lines 145-147 write the other pipeline correctly)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 168: get \"/\", MyApp.PageHandler; line 169: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __define__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks only the pipeline rule, with a one-line pipeline at line 82."
+    },
+    "run-nkzjn": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 93: @spec __route__(module(), String.t(), module()) :: :ok; line 101: @spec __match__([{pattern(), module()}], String.t()) :: {:ok, module(), params()} | :error; line 82: @spec routes() :: [TinyRouter.route()]; line 85: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__route__/3 and __match__/2 are @doc false at lines 92 and 100; routes/0 and match/1 specced inside the quote directly above each def; __before_compile__ @doc false at line 76; __using__ has no @doc false, and Code.fetch_docs reports it :hidden)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 49: defmacro __using__(_opts) do; line 68: defmacro get(path, handler) do; line 77: defmacro __before_compile__(env) do (only __using__, get and __before_compile__ are macros; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 72: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __route__/3, lines 94-98; the __before_compile__ quote, lines 81-89, holds routes/0 and a one-call match/1)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 72: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)); line 83: def routes, do: unquote(Macro.escape(routes)); line 87: TinyRouter.__match__(unquote(Macro.escape(table)), request_path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 6: > #### `use TinyRouter` {: .info}; line 8: > When you `use TinyRouter`, it imports `get/2` into your module and, once (directly under the two-line summary; __using__, lines 50-55, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 69: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:154: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:155: alias MyApp.UserHandler (runtime))"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 69: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 83: def routes, do: unquote(Macro.escape(routes)); line 106: defp validate_path!(path) when is_binary(path), do: :ok; line 120: defp parse_path(path), do: Enum.map(split_path(path), &parse_segment/1); line 129: defp find_route([], _request_segments), do: :error; line 138: defp match_segments([], [], params), do: {:ok, params}; line 148: defp match_segments(_pattern, _request_segments, _params), do: :error (block clauses set apart, match_segments/3 lines 140-142 and 144-146 at 162 and 135 joined; no fn or argument-carrying capture on do:, no one-line if with else, no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 79: table = Enum.map(routes, fn {path, handler} -> {parse_path(path), handler} end); line 133: {:ok, params} -> {:ok, handler, params}; line 134: :error -> find_route(table, request_segments) (each row is one pattern and one expression, so the rule's first sentence passes them without the table paragraph; that the second row continues the recursion belongs to the `->` rule, outside this list; see notes)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "violated",
+          "evidence": "line 78: routes = env.module |> Module.get_attribute(:tiny_router_routes) |> Enum.reverse() (a two-step pipeline on one line)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 154: get \"/\", MyApp.PageHandler; line 155: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __route__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks only the pipeline rule, with a one-line pipeline at line 78."
+    },
+    "run-sqmvf": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 100: @spec __route__(module(), String.t(), module()) :: :ok; line 108: @spec __match__(table(), String.t()) :: {:ok, module(), params()} | :error; line 89: @spec routes() :: [TinyRouter.route()]; line 92: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__route__/3 and __match__/2 are @doc false at lines 99 and 107; routes/0 and match/1 specced inside the quote directly above each def; __before_compile__ @doc false at line 83; __using__ has no @doc false, and Code.fetch_docs reports it :hidden)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 53: defmacro __using__(_opts) do; line 75: defmacro get(path, handler) do; line 84: defmacro __before_compile__(env) do (only __using__, get and __before_compile__ are macros; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 79: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __route__/3, lines 101-105; the __before_compile__ quote, lines 88-96, holds routes/0 and a one-call match/1)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 79: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)); line 90: def routes, do: unquote(Macro.escape(routes)); line 94: TinyRouter.__match__(unquote(Macro.escape(table)), request_path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 6: > #### `use TinyRouter` {: .info}; line 8: > When you `use TinyRouter`, it imports `get/2` into your module and, once (directly under the two-line summary; __using__, lines 54-59, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 76: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:172: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:173: alias MyApp.UserHandler (runtime))"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 76: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 90: def routes, do: unquote(Macro.escape(routes)); line 113: defp validate_path!(path) when is_binary(path), do: :ok; line 137: defp compile_segment(\":\" <> name), do: {:param, String.to_atom(name)}; line 140: defp find_route([], _request_segments), do: :error (all four bind_params/3 clauses, lines 152-166, are blocks; the two short ones would fit on the head's line, which is not counted, see notes; no fn or argument-carrying capture on do:, no one-line if with else, no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 86: table = Enum.map(routes, fn {path, handler} -> {compile_path(path), handler} end); line 137: defp compile_segment(\":\" <> name), do: {:param, String.to_atom(name)} (a pattern or head and one expression; the case at lines 143-149 is broken; the if at lines 120-126 and sequences sit below their heads)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "line 85: routes = Enum.reverse(Module.get_attribute(env.module, :tiny_router_routes)); line 130: path; line 131: |> String.split(\"/\", trim: true); line 132: |> Enum.map(&compile_segment/1) (a nested call for the two __before_compile__ steps, and a pipeline with each |> on its own line under the value)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 172: get \"/\", MyApp.PageHandler; line 173: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __route__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks none of the eleven rules."
+    },
+    "run-utxgk": {
+      "verdicts": {
+        "Add specs, and hide technical functions from the docs": {
+          "verdict": "clean",
+          "evidence": "line 64: @spec __route__(module(), term(), term()) :: :ok; line 94: @spec __match__([compiled_route()], String.t()) :: {:ok, module(), params()} | :error; line 78: @spec routes() :: [TinyRouter.route()]; line 86: @spec match(String.t()) :: {:ok, module(), TinyRouter.params()} | :error (__route__/3 and __match__/2 are @doc false at lines 63 and 93; routes/0 and match/1 specced inside the quote directly above each def; __before_compile__ @doc false at line 71; __using__ has no @doc false, and Code.fetch_docs reports it :hidden)"
+        },
+        "Write a function unless the job needs a macro": {
+          "verdict": "clean",
+          "evidence": "line 38: defmacro __using__(_opts) do; line 55: defmacro get(path, handler) do; line 72: defmacro __before_compile__(env) do (only __using__, get and __before_compile__ are macros; match/1, routes/0 and every helper are functions)"
+        },
+        "Keep `quote` blocks small": {
+          "verdict": "clean",
+          "evidence": "line 59: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)) (validation and recording run in __route__/3, lines 65-69; the __before_compile__ quote, lines 76-90, holds routes/0 and a one-call match/1 with their @doc text)"
+        },
+        "Unquote each argument once": {
+          "verdict": "clean",
+          "evidence": "line 59: TinyRouter.__route__(__MODULE__, unquote(path), unquote(handler)); line 79: def routes, do: unquote(Macro.escape(routes)); line 88: TinyRouter.__match__(unquote(Macro.escape(compiled_routes)), path) (each argument and each computed value unquoted once)"
+        },
+        "Offer `import` or `alias` instead of `use` when they are enough": {
+          "verdict": "clean",
+          "evidence": "line 5: > #### `use TinyRouter` {: .info}; line 7: > When you `use TinyRouter`, it imports `get/2` into your module and, once the (directly under the one-line summary; __using__, lines 39-44, injects only import, attribute registration and @before_compile)"
+        },
+        "Avoid compile-time dependencies on modules used only at runtime": {
+          "verdict": "clean",
+          "evidence": "line 56: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (mix xref trace: lib/tiny_router.ex:154: alias MyApp.PageHandler (runtime); lib/tiny_router.ex:155: alias MyApp.UserHandler (runtime))"
+        },
+        "Write module names literally": {
+          "verdict": "clean",
+          "evidence": "line 56: handler = Macro.expand_literals(handler, %{__CALLER__ | function: {:match, 1}}) (handlers kept as written; no Module.concat or interpolation in the file)"
+        },
+        "Use `do:` for a one-expression body and `do ... end` for anything else": {
+          "verdict": "clean",
+          "evidence": "line 79: def routes, do: unquote(Macro.escape(routes)); line 99: defp validate_path!(path) when is_binary(path), do: :ok; line 115: defp module_name?(handler), do: is_atom(handler) and Macro.classify_atom(handler) == :alias; line 126: defp find_route([], _segments), do: :error; line 138: defp match_segments([], [], params), do: {:ok, params}; line 148: defp match_segments(_pattern, _segments, _params), do: :error (block clauses set apart, match_segments/3 lines 140-142 and 144-146 guarded; no fn or argument-carrying capture on do:, no one-line if with else, no do: on a line of its own)"
+        },
+        "One expression per line, and tabular clauses": {
+          "verdict": "clean",
+          "evidence": "line 74: routes = Enum.map(compiled_routes, fn {path, handler, _pattern} -> {path, handler} end); line 115: defp module_name?(handler), do: is_atom(handler) and Macro.classify_atom(handler) == :alias (a pattern or head and one expression; the case at lines 129-135 is broken; the if at lines 106-112 and sequences sit below their heads)"
+        },
+        "Write pipelines that start with a value and read top to bottom": {
+          "verdict": "clean",
+          "evidence": "line 73: compiled_routes = Enum.reverse(Module.get_attribute(env.module, :tiny_router_routes)); line 118: Enum.map(String.split(path, \"/\", trim: true), &compile_segment/1) (no |> in the file; the two-step cases are nested calls)"
+        },
+        "Give macros called without parentheses a `.formatter.exs`": {
+          "verdict": "clean",
+          "evidence": ".formatter.exs line 1: locals_without_parens = [get: 2]; .formatter.exs line 5: locals_without_parens: locals_without_parens,; .formatter.exs line 6: export: [locals_without_parens: locals_without_parens]; line 154: get \"/\", MyApp.PageHandler; line 155: get \"/users/:id\", MyApp.UserHandler (calls bare in the delivered file; mix format --check-formatted tiny_router.ex passes from the folder holding both files, and without .formatter.exs mix format changes only the two get lines)"
+        }
+      },
+      "planted_reported": 0,
+      "planted_missed": [],
+      "summary": "Validates and records routes in a specced @doc false __route__/3 called from a one-line quote, matches through a specced @doc false __match__/2, keeps handlers runtime-only and documents use in an admonition; breaks none of the eleven rules."
+    }
+  },
+  "notes": [
+    "Verdicts by rule: ten rules are clean in all six runs. The pipeline rule is violated in run-ddcxh (line 94), run-fuhmx (line 82) and run-nkzjn (line 78), each by the same two-step pipeline on one line, and clean in run-fkkyc, run-sqmvf and run-utxgk. Deciding sentence, SKILL.md: \"A pipeline never sits on one line, however short\". A nested call in place of the pipeline is clean rather than not exercised, as 2026-10-31 held opus-1 line 83. One-line pipelines are graded only under the pipeline rule and not again under One expression per line, as 2026-10-31-check held them.",
+    "Closest call, One expression per line, and tabular clauses: run-fuhmx lines 126-127 and run-nkzjn lines 133-134 keep a case on one line per clause, where the first row returns a finished value and the second continues the recursion. Held clean. Each row is one pattern and one expression, so \"A line reads in one pass when it holds a selection and the one expression that selection produces.\" passes it, and the table paragraph is not needed; 2026-10-31-check held compact case clauses this way. The shape is the value_end/3 Instead-of under the `->` rule, which is not one of the eleven rules here, so it is not graded. Direct precedent: 2026-10-31-b order-report baseline-sonnet-1 and 2026-10-31 order-report baseline-opus-1 have this shape and were graded violated on the `->` rule and clean on this rule. If the `->` rule were graded, both runs would be violated on it. run-ddcxh lines 115-116 are the clean mapping with one fallback row (`:error -> nil`) that the standard held clean.",
+    "The do: rule: one-expression blocks with no guard that would fit on the head's line are not counted, because \"the text does not require do: for a fitting body\" (2026-10-31-b notes). They are run-fkkyc 101-103 (94 joined), 109-111 (93) and 113-115 (90), run-nkzjn 102-104 (85), and run-sqmvf 152-154 (53) and 164-166 (68). The two run-sqmvf cases are the shortest seen, but they are the same shape, and all four bind_params/3 clauses share one form, which \"when the clauses are one parallel group, give them one form\" allows. Mixed functions set each block clause apart, and their block clauses join to more than 98 characters. The one-line for at run-fkkyc lines 73-74 is clean under the current text. The one-line if at run-fkkyc lines 90-91 has no else and one call as its body, the same shape as the macros.md example. A scan finds no do: at the start of a line in any file.",
+    "Write a function unless the job needs a macro: run-ddcxh line 45 and run-fuhmx lines 96-97 define a private guard with defguardp. The macro-dsl standards have no precedent. Held clean on the rule's text, which lists \"a check usable in guards\" as a job for a macro and says \"For guards, use `defguard`.\" Both guards are used in a `when`.",
+    "Spec rule: __using__ and __before_compile__ without @doc false are accepted because their __ names hide them, as in the standard; Code.fetch_docs reports both as :hidden in all six runs. The @spec on three macros in run-fkkyc (lines 41, 60, 70) and on a private function in run-fuhmx (line 143) goes beyond the rule and is not a violation.",
+    "Compile-time rule: mix xref trace in one scratch Mix project per run, set up as the brief says, reports both handlers as (runtime) in all six, and all six compile under mix compile --warnings-as-errors (Elixir 1.20.3). run-fkkyc uses function {:get, 2}, the other five {:match, 1}; \"The function named in the environment need not exist.\" run-ddcxh, run-fuhmx and run-nkzjn check is_atom and not nil, true or false, so they accept a lowercase atom such as :foo as a handler; the standard held that this is not a rule (haiku-2).",
+    "run-fuhmx defines MyApp.PageHandler and MyApp.UserHandler in its own file as well as the brief's lib/handlers.ex. The trace reports (runtime) in that setup, with no handlers.ex, and with the two modules moved to handlers.ex, so the verdict does not depend on the setup.",
+    "Format: mix format --check-formatted passes in all six from a folder holding both files, naming the file and through each file's own inputs. Without .formatter.exs, mix format changes only the two get lines in all six. Each .formatter.exs has `locals_without_parens = [get: 2]` under both keys; only the inputs differ, which the standard did not count.",
+    "Outside the rules: in all six, routes/0 returns declaration order, \"/\", \"/users/42\" and \"/users/42/\" match, \"/nope\" returns :error, and match(123) fails with FunctionClauseError. get 123, MyApp.PageHandler and get \"/\", \"not a module\" both fail with ArgumentError while the router compiles, twelve of twelve."
+  ]
+}
