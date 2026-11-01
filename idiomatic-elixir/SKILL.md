@@ -292,7 +292,7 @@ A function ending in `!` raises instead of returning a tuple. Write it on top of
 
 ### Use `and`, `or`, `not` when the operands are booleans
 
-`and`, `or`, and `not` raise if their first operand is not a boolean, so they document and check intent. `&&`, `||`, and `!` accept any value. Keep those for truthy defaults such as `opts[:name] || "anonymous"`.
+`and`, `or`, and `not` raise if their first operand is not a boolean, so they document and check intent. `&&`, `||`, and `!` accept any value. Keep those for truthy defaults such as `opts[:name] || "anonymous"` and for operands that can be `nil`, such as `opts[:verbose]`, which `and` and `not` raise on.
 
 ```elixir
 # Instead of

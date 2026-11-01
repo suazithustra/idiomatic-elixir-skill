@@ -1,0 +1,702 @@
+{
+ "block": "code-review-g",
+ "runs": {
+  "run-ggfrj": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 135:     name = user.name || \"there\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 23: 10. **One error reason for every failure** (`{:error, :invalid}` at lines 37, 40 and 43). Callers cannot tell a bad age, an underage user and a duplicate email apart. Fix: `{:error, {:invalid_field, \"age\"}}`, `{:error, :underage}`, and the changeset for a duplicate."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 119:   defp parse_role(other), do: {:error, {:unknown_role, other}}"
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 25: 11. **Nested `if`/`case`/`if`** (lines 21-41). Fix: a `with` chain of small private steps (`parse_email/1`, `parse_age/1`, `parse_role/1`, `insert_user/1`)."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 7: 2. **`try/rescue` with `rescue _ ->` around the whole function** (lines 10 and 42-43). It turns every bug (`String.to_integer/1` on bad input, `nil` email, a `Repo` crash) into `{:error, :invalid}`. Fix: use the non-raising `Integer.parse/1` and check input with `with` steps; remove the `try`."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 13: 5. **`&&` and `!` on booleans** (line 21: `is_binary(email) && age >= 18`). Use `and`. Line 27 uses `&&` and `!` on `opts[:notify]`, which can be `nil`. That is replaced by finding 7."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 113:   defp check_age(age) when age >= @minimum_age, do: {:ok, min(age, @maximum_age)}"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 79:     opts = Keyword.validate!(opts, notify: false)"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 17: 7. **Overlapping booleans and a changing return shape** (lines 27 and 31: `notify`, `silent`, `return_id`). `notify: true, silent: true` is contradictory, and `return_id` makes the function return either an integer or `{:ok, user}`. Fix: one option, `notify:` (default `false`), checked with `Keyword.validate!/2` and documented under `## Options`. The function always returns `{:ok, user}`; callers read `user.id`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "line 35: 16. **Magic numbers** 18 and 120. Fix: `@minimum_age` and `@maximum_age`."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "violated",
+     "evidence": "line 85:       if Keyword.fetch!(opts, :notify) do"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 11: 4. **`params[\"email\"] |> String.downcase()` and `params[\"age\"]` read required keys with `[]`** (lines 12-13). A missing key becomes `nil` and fails later in `String.downcase/1`, far from the cause. Fix: match `\"email\"`, `\"age\"` and `\"role\"` in the function head, with an `{:error, :invalid_payload}` fallback clause. This also drops the pipeline of a single step."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 19: 8. **Lookup before insert, and an unvalidated struct inserted directly** (lines 22-24: `Repo.get_by(...) == nil` and `Repo.insert(user)`). The lookup is a race: two imports can both pass it, and the second insert then raises. Nothing validates the struct. Fix: `User.changeset/2` with `unique_constraint(:email)`, so a duplicate returns `{:error, changeset}`."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 131:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(email) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 130:     email = welcome_email(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 122:     attrs = %{email: email, age: age, role: role, nickname: nickname || email}"
+    }
+   },
+   "planted_reported": 21,
+   "planted_missed": [],
+   "false_positives": [
+    "finding 5 (line 13): the title '`&&` and `!` on booleans' reaches must-not-report line 27, the only line with a `!`, and the finding discusses that line; borderline, see notes"
+   ],
+   "summary": "Reports all 21 planted problems and keeps a flat `with`, but puts a block `if` inside the `with` body (lines 85-87), which breaks the short-functions rule, and one borderline false positive on line 27 through its finding title."
+  },
+  "run-jntda": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 131:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 19: 7. **Different failures share one error.** Lines 37, 40 and 43 return `{:error, :invalid}` for a bad email, an under-age user, and a duplicate. A caller cannot tell them apart. Rule: \"Different failures need different reasons too\" (from \"Match every expected shape and let unexpected ones crash\"). Fix: `parse_params/1` returns `{:error, {:missing_field, key}}` or `{:error, {:invalid_field, key}}`, and a duplicate returns `{:error, changeset}`."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 106:   defp parse_role(other), do: {:error, {:unknown_role, other}}"
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 29: 12. **Nested `if` blocks hide the success path.** Lines 15 to 41 nest four `if` and `case` levels. Rule: \"Chain fallible steps with `with`; normalize each step's error in a small private function\". Fix: a `with` over `parse_params/1` and `insert_user/1`, where each step is a private function."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 11: 3. **The `rescue` hides bugs.** Line 10 `try do` and line 43 `_ -> {:error, :invalid}` turn any exception, including a typo in this module, into the same `:invalid` error. Rule: \"Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs\". Fix: remove the `try`. `Integer.parse/1` replaces `String.to_integer/1`, and each field check returns a tagged reason."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 31: 13. **Validation runs in the wrong order.** Line 12 `params[\"email\"] |> String.downcase()` runs before the type check, and it is a one-step pipe. Line 21 `if is_binary(email) && age >= 18 do` combines two checks with `&&`. Rules: \"Do not pipe a single step\" and \"Use `and`, `or`, `not` when the operands are booleans\". Fix: `required_string/2` checks the type before `String.downcase/1` runs, and `parse_age/1` checks the minimum age with a guard."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 110:       {age, \"\"} when age >= @min_age -> {:ok, min(age, @max_age)}"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 66:     opts = Keyword.validate!(opts, welcome: :skip)"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 23: 9. **The return shape depends on an option.** Line 31 `if opts[:return_id], do: user.id, else: {:ok, user}` returns an integer in one mode and a tuple in the other. Rule: \"Give each function one return shape\". Fix: remove `:return_id`. `import_user/2` always returns `{:ok, user}`, and a caller that needs the ID reads `user.id`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "clean",
+     "evidence": "line 35: 15. **Magic numbers.** Lines 15 and 21 use `120` and `18` directly. Rule: \"Name magic numbers with module attributes\". Fix: `@min_age 18` and `@max_age 120`."
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 68:     with {:ok, attrs} <- parse_params(params),"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 33: 14. **A pipe runs into an anonymous function.** Line 55 `greeting |> (fn text -> text <> \" Enjoy your account.\" end).()`. Rule: \"Do not pipe into an anonymous function call\". Fix: one interpolated string."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 15: 5. **Lookup, then insert, is a race.** Lines 22 to 25 build a `%User{}` struct, check `Repo.get_by(User, email: email) == nil`, and then call `Repo.insert(user)`. Two requests with the same email can both pass the check, and a duplicate that gets through raises instead of returning an error. Rule: \"Validate input with changesets\" in `ecto-phoenix.md`, which names `unique_constraint/3` for this case. Fix: `User.changeset/2` casts and validates the attributes and declares `unique_constraint(:email)`, and `Repo.insert/1` returns `{:error, changeset}` for a duplicate."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 127:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(message) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 126:     message = welcome_message(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 82:       email = String.downcase(raw_email)"
+    }
+   },
+   "planted_reported": 21,
+   "planted_missed": [],
+   "false_positives": [],
+   "summary": "Reports all 21 planted problems with no false positive and breaks none of the 16 rules."
+  },
+  "run-npytu": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 76:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "violated",
+     "evidence": "line 7: 2. **Errors are hidden by `rescue _`.** Lines 42-43 rescue every exception in the function, so a bug and bad input both return `{:error, :invalid}`. Rule: SKILL.md, section \"Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs\": \"rescue the specific exception, never `rescue _ ->`\". Fix: remove the `try`. The parsing is done by `cast/3` in the changeset, which returns errors instead of raising."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 13: 5. **String.to_atom on external input.** Line 8, `String.to_atom(params[\"role\"])`, creates an atom from input. Atoms are never freed and the VM has a fixed limit, so input can crash the node. A nil role also raises here, outside the `try`. Rule: SKILL.md, section \"Convert external strings to atoms with explicit clauses\". Fix: declare `field :role, Ecto.Enum, values: [...]` in the schema. `Ecto.Enum` casts only the listed values and returns an error for anything else. The values in the example are placeholders for the project's real roles."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 33: 15. **One function does too much at four levels of nesting.** `import_user/2` nests `try`, `if`, `if`, `case` and `if`. Rule: SKILL.md, section \"Keep functions short and at one level of detail\". Fix: the public function becomes two steps (insert, then optional email), and the parsing and validation move to the changeset."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 7: 2. **Errors are hidden by `rescue _`.** Lines 42-43 rescue every exception in the function, so a bug and bad input both return `{:error, :invalid}`. Rule: SKILL.md, section \"Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs\": \"rescue the specific exception, never `rescue _ ->`\". Fix: remove the `try`. The parsing is done by `cast/3` in the changeset, which returns errors instead of raising."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 25: 11. **`&&` on boolean operands.** Line 21, `is_binary(email) && age >= 18`, uses `&&` where both operands are booleans. Rule: SKILL.md, section \"Use `and`, `or`, `not` when the operands are booleans\". The `is_binary` check is also dead code, because `String.downcase/1` on line 12 already raises for a non-string. Fix: `validate_required` and `validate_number` in the changeset replace both checks."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 96:     |> update_change(:age, &min(&1, @max_age))"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 23: 10. **Two booleans overlap.** Line 27, `opts[:notify] && !opts[:silent]`, has a meaningless combination (`notify: true, silent: true`). Rule: SKILL.md, section \"Use one atom-valued field or option instead of overlapping booleans\". Fix: one option, `notify: :welcome | :silent`, defaulting to `:silent`. Callers that pass `notify: true` now send nothing, so they must change to `notify: :welcome`."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 21: 9. **An option changes the return shape.** Line 31, `if opts[:return_id], do: user.id, else: {:ok, user}`, returns a bare integer in one mode and a tuple in the other. Rule: SKILL.md, section \"Give each function one return shape\". Fix: remove the `:return_id` option. Callers read `user.id` from the `{:ok, user}` tuple. Callers that pass `return_id:` must change."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 99:     |> validate_number(:age, greater_than_or_equal_to: 18)"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 33: 15. **One function does too much at four levels of nesting.** `import_user/2` nests `try`, `if`, `if`, `case` and `if`. Rule: SKILL.md, section \"Keep functions short and at one level of detail\". Fix: the public function becomes two steps (insert, then optional email), and the parsing and validation move to the changeset."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 29: 13. **Single-step pipe.** Line 12, `params[\"email\"] |> String.downcase()`, pipes one step. Rule: SKILL.md, section \"Write pipelines that start with a value and read top to bottom\": \"Do not pipe a single step\". Fix: the lowercasing moves into the changeset as `update_change(:email, &String.downcase/1)`, where the changeset ignores a missing email."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 5: 1. **Invalid data is inserted without validation.** Line 22 builds `%User{email: email, age: age, role: role, nickname: nickname}` and line 25 passes it to `Repo.insert(user)`. Ecto (the database library) inserts a struct as given, so no rule is checked. Rule: `references/ecto-phoenix.md`, section \"Validate input with changesets\". Fix: put the validations in `User.changeset/2` (shown below) and insert with `%User{} |> User.changeset(params) |> Repo.insert()`."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 72:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(email) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 71:     email = welcome_email(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 59:     changeset = User.changeset(%User{}, params)"
+    }
+   },
+   "planted_reported": 19,
+   "planted_missed": [
+    "21: magic number `18`",
+    "37, 40, 43: every failure returns the same `{:error, :invalid}`"
+   ],
+   "false_positives": [],
+   "summary": "Reports 19 of 21, missing the magic `18`, which stays a literal on line 99, and the identical errors, which finding 2 treats only as the rescue hiding bugs, so it breaks the expected-shapes and comments rules."
+  },
+  "run-tdprf": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 74:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 23: 10. **One error reason covers unrelated failures.** Rule: \"Different failures need different reasons\". Lines 37 and 40-41 return `{:error, :invalid}` for a duplicate email, a too-young user, and a bad input alike. Fix: the changeset names each field and the reason, so a caller can tell them apart."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 9: 3. **External input becomes an atom.** Rule: \"Convert external strings to atoms with explicit clauses\". Line 8: `role = String.to_atom(params[\"role\"])` lets any caller add atoms to the VM's atom table (a fixed-size lookup table; it is never freed), and it raises for a missing role before the `try` runs. Fix: cast `role` through the changeset, with the schema declaring `role` as an `Ecto.Enum` so only known values convert."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 15: 6. **Validation is done by hand, and one check is dead.** Rule: \"Validate input with changesets\" (`references/ecto-phoenix.md`). Line 21: `if is_binary(email) && age >= 18 do` checks fields by hand. The `is_binary` test can never fail, because line 12 already calls `String.downcase/1`, which raises on a non-string. Fix: `validate_required/2` and `validate_number/3` in the changeset. The nested `if` chain on lines 15-41 then disappears."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 11: 4. **Catch-all rescue hides bugs.** Rule: \"rescue the specific exception, never `rescue _ ->` ... around a whole function\". Line 42-43: `rescue _ -> {:error, :invalid}` turns database failures and programming errors into \"invalid input\". Fix: remove the `try`; use functions that return tuples."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "violated",
+     "evidence": "line 15: 6. **Validation is done by hand, and one check is dead.** Rule: \"Validate input with changesets\" (`references/ecto-phoenix.md`). Line 21: `if is_binary(email) && age >= 18 do` checks fields by hand. The `is_binary` test can never fail, because line 12 already calls `String.downcase/1`, which raises on a non-string. Fix: `validate_required/2` and `validate_number/3` in the changeset. The nested `if` chain on lines 15-41 then disappears."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 82:     |> Changeset.update_change(:age, &min(&1, @max_age))"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 25: 11. **Overlapping options.** Rule: \"Use one atom-valued field or option instead of overlapping booleans\". Line 27: `opts[:notify] && !opts[:silent]` lets `notify: true, silent: true` mean \"no email\". Fix: drop `:silent`; a caller who does not want the email omits `notify`. Callers that pass both flags will now get an email."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 27: 12. **One function, two return shapes.** Rule: \"Give each function one return shape\". Line 31: `if opts[:return_id], do: user.id, else: {:ok, user}` returns an integer in one mode and a tuple in the other. Fix: drop `:return_id`; callers read `user.id` from `{:ok, user}`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 48:   @min_age 18"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 62:     with {:ok, user} <- Repo.insert(changeset(params)) do"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 35: 16. **Single-step pipe.** Rule: \"Do not pipe a single step\". Line 12: `params[\"email\"] |> String.downcase()`. Fix: the changeset lowercases the email with `update_change/3`, and the comment on line 11 stays above it."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 19: 8. **Struct inserted without validation.** Rule: \"Validate input with changesets\". Line 22 and 25: `%User{email: email, ...}` goes straight to `Repo.insert(user)`, so nothing is checked. Fix: build the changeset from `%User{}` and `params`, and insert that."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 70:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(email) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 69:     email = welcome_email(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 90:     email = Changeset.get_field(changeset, :email)"
+    }
+   },
+   "planted_reported": 19,
+   "planted_missed": [
+    "21: `&&` with boolean operands",
+    "21: magic number `18`"
+   ],
+   "false_positives": [],
+   "summary": "Reports 19 of 21, missing the `&&`, since finding 6 quotes line 21 only for hand validation and the dead check, and the magic `18`, which becomes `@min_age` silently, so it breaks the `and`/`or`/`not` and comments rules."
+  },
+  "run-tszww": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 109:   defp welcome_text(user), do: \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 9: 3. **Bad age text raises, then gets rescued (line 13).** `String.to_integer(params[\"age\"])` raises on `\"abc\"` or `nil`, and the `rescue` below turns it into `:invalid`, so the caller cannot tell which field was wrong. Fix: `Integer.parse/1` returns `:error`, and the function returns `{:error, {:invalid_field, \"age\"}}`. Rule: \"Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs\"."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 7: 2. **The role becomes an atom from user input (line 8).** `role = String.to_atom(params[\"role\"])` lets input create atoms, which are never freed, and a missing role crashes outside the `try`. Fix: keep the role as a string and let the schema cast it with `Ecto.Enum`, which accepts only the listed values. Rules: \"Convert external strings to atoms with explicit clauses\"; \"Use `Ecto.Enum` for fields with a fixed set of atom values\"."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 27: 12. **Four nested levels in one function (line 15-41).** `if`, `if`, `if`, and `case` nest inside each other, and the reader has to track each condition at once. Fix: a `with` chain with one private function per step, each returning `{:ok, value}` or `{:error, reason}`. Rules: \"Chain fallible steps with `with`\"; \"Keep functions short and at one level of detail\"."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 11: 4. **`rescue _ ->` hides every error (line 42-43).** It catches database failures and bugs as well as bad input, and reports them all as `:invalid`. Fix: remove the `try`; the non-raising calls return tuples, and real bugs raise. Rule: \"Use `rescue` only around third-party code ... never `rescue _ ->` ... around a whole function\"."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 13: 5. **`&&` between booleans (line 21).** Both operands are booleans, so `and` states the intent. The `is_binary(email)` check is also dead code: line 12 already crashed on a `nil` email. Fix: the age check moves to `check_adult/1`, and the email check goes. Rule: \"Use `and`, `or`, `not` when the operands are booleans\"."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 79:       {value, \"\"} -> {:ok, min(value, @max_age)}"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 65:     opts = Keyword.validate!(opts, notify: false)"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 21: 9. **Two return shapes from one function (line 31).** `if opts[:return_id], do: user.id, else: {:ok, user}` returns a bare integer in one mode and a tuple in the other. Fix: always return `{:ok, user}`; a caller that needs the ID reads `user.id`. Rule: \"Give each function one return shape\"."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 48:   @max_age 120"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 67:     with {:ok, age} <- parse_age(age),"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 25: 11. **Single-step pipe and late key read (line 12).** `params[\"email\"] |> String.downcase()` pipes one step, and the required keys are read in the body instead of the head. Fix: match `\"email\"` and `\"age\"` in the head and call `String.downcase/1` directly. Rules: \"Do not pipe a single step\"; \"A function that parses string-keyed input matches the keys it requires in its head\"."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 15: 6. **Check, then insert, with a bare struct (line 24-25).** `Repo.get_by(User, email: email) == nil` followed by `Repo.insert(user)` on a `%User{}` runs two steps, so two concurrent imports can both pass the check, and the struct insert skips validation. Fix: build a changeset that declares `unique_constraint(:email)`; the database rejects the duplicate and `Repo.insert/1` returns `{:error, changeset}`. Rules: \"Validate input with changesets\"; \"Declare database constraints in the changeset (`unique_constraint/3`...)\"."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 106:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(text) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 104:     text = welcome_text(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 89:     email = String.downcase(email)"
+    }
+   },
+   "planted_reported": 19,
+   "planted_missed": [
+    "15-17: magic number `120`",
+    "21: magic number `18`"
+   ],
+   "false_positives": [],
+   "summary": "Reports 19 of 21, missing both magic numbers, which become `@min_age` and `@max_age` only in the code, so it breaks the comments rule."
+  },
+  "run-ufduj": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 86:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "violated",
+     "evidence": "line 11: 3. The whole function sits in `try ... rescue _ -> {:error, :invalid}` (lines 10 and 42-43), which hides every bug as bad input. Rule: rescue only third-party code, never `rescue _ ->` around a whole function. Fix: remove the `try`; the changeset returns errors instead of raising."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 9: 2. `String.to_atom(params[\"role\"])` on line 8 turns caller input into atoms, and atoms are never freed (the VM has a fixed limit). Rule: convert external strings to atoms with explicit clauses. Fix: declare `role` as an `Ecto.Enum` field, so the changeset maps only the listed strings to atoms and rejects the rest."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 35: 15. `import_user/2` nests five levels deep (lines 10-44). Rule: keep functions short and at one level of detail; chain fallible steps with `with`. Fix: the validation moves into the changeset, and the insert is one `with` step."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "violated",
+     "evidence": "line 9: 2. `String.to_atom(params[\"role\"])` on line 8 turns caller input into atoms, and atoms are never freed (the VM has a fixed limit). Rule: convert external strings to atoms with explicit clauses. Fix: declare `role` as an `Ecto.Enum` field, so the changeset maps only the listed strings to atoms and rejects the rest."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 17: 6. Line 21 uses `&&` on `is_binary(email)` and `age >= 18`, which are both booleans. Rule: use `and` when the operands are booleans. Fix: the check moves into the changeset as `validate_number/3`, so no boolean operator remains in the importer."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 116:     |> update_change(:age, &min(&1, @max_age))"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 27: 11. Lines 27 and the `opts` list use two overlapping booleans, `:notify` and `:silent`. `:silent` only matters when `:notify` is true, so it adds nothing a caller cannot get by leaving `:notify` out. Rule: avoid overlapping booleans, and validate options with `Keyword.validate!/2` and document them under `## Options`. Fix: keep `:notify` only, validate with `Keyword.validate!(opts, notify: false)`, and document it in `@doc`."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 25: 10. Line 31, `if opts[:return_id], do: user.id, else: {:ok, user}`, makes an option change the return type. Rule: give each function one return shape. Fix: removed. Callers that need the ID read `user.id` from `{:ok, user}`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 98:   @adult_age 18"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 74:     with {:ok, user} <- Repo.insert(User.import_changeset(%User{}, params)) do"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "clean",
+     "evidence": "line 15: 5. `params[\"email\"] |> String.downcase()` on line 12 pipes a single step, and it raises when `email` is missing. Rule: do not pipe a single step. Fix: lowercase the address in the changeset with `update_change/3`, which runs only when the field is present."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 21: 8. Line 22 builds `%User{...}` and line 25 passes it straight to `Repo.insert/1`, so nothing is validated. Rule: cast and validate with a changeset. Fix: `User.import_changeset(%User{}, params)`, shown below."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 82:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(email) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 81:     email = welcome_email(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 81:     email = welcome_email(user)"
+    }
+   },
+   "planted_reported": 17,
+   "planted_missed": [
+    "8: a missing role raises outside the `try`, unlike every other bad field",
+    "21: `is_binary(email)` can never be false, because `String.downcase/1` already raised on non-strings",
+    "21: magic number `18`",
+    "37, 40, 43: every failure returns the same `{:error, :invalid}`"
+   ],
+   "false_positives": [],
+   "summary": "Reports 17 of 21, missing the line 8 raise, the dead `is_binary`, the magic `18` and the identical errors, so it breaks the expected-shapes, return-tuple and comments rules, although its code fixes those silently."
+  },
+  "run-vzhev": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 114:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 23: 9. **Nested `if` / `case` / `if`, duplicate `{:error, :invalid}`** (lines 21-41). Three levels deep, and two different failures share one reason. Rule: `with` with a small function per step. Fix: flat `with` in `import_user/2`."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 83:   defp role_atom(_other), do: {:error, {:invalid_field, \"role\"}}"
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 23: 9. **Nested `if` / `case` / `if`, duplicate `{:error, :invalid}`** (lines 21-41). Three levels deep, and two different failures share one reason. Rule: `with` with a small function per step. Fix: flat `with` in `import_user/2`."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 9: 2. **`try ... rescue _ -> {:error, :invalid}`** (lines 10, 42-43). It hides every bug (a typo, a failed `Repo` call) behind one error. Rule: use non-raising functions; never `rescue _`. Fix: `Integer.parse/1` and pattern matching, chained with `with`."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 19: 7. **`&&` and `!` on booleans, and overlapping options `notify`/`silent`** (lines 21, 27). Rules: `and` for boolean operands; one option instead of overlapping booleans. Fix: `age >= 18` moves into the changeset; only `notify: false` remains, checked with `Keyword.validate!/2`."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 90:   defp parse_age(%{\"age\" => age}) when is_integer(age), do: {:ok, min(age, @max_age)}"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 58:     opts = Keyword.validate!(opts, notify: false)"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 21: 8. **`opts[:return_id]` changes the return type** (line 31). Returns an id in one mode and `{:ok, user}` in the other. Rule: one return shape. Fix: removed. Callers read `user.id`."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 126:   |> validate_number(:age, greater_than_or_equal_to: 18)"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 60:     with {:ok, role} <- parse_role(params),"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "line 13: 4. **`String.to_integer(params[\"age\"])`, `String.downcase` on `params[\"email\"]`** (lines 12-13). A missing or non-string value raises, and the `is_binary(email)` check on line 21 runs after `String.downcase` already needed a binary. Rule: match required string-keyed input and report which field is bad. Fix: `parse_email/1` and `parse_age/1`, returning `{:error, {:missing_field, key}}` or `{:error, {:invalid_field, key}}`."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 17: 6. **`Repo.insert(%User{...})` built from params, and `_ -> {:error, :insert_failed}`** (lines 22, 25, 33). Nothing is validated (the age check is by hand), and the catch-all drops the reason. Rule: validate with changesets; match every shape. Fix: `User.changeset/2` then `Repo.insert/1`; the `{:error, changeset}` goes to the caller unchanged."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 110:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(email) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 109:     email = welcome_email(user)"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 70:     attrs = Map.put(attrs, :nickname, params[\"nickname\"] || attrs.email)"
+    }
+   },
+   "planted_reported": 19,
+   "planted_missed": [
+    "12: single-step pipe",
+    "21: magic number `18`"
+   ],
+   "false_positives": [
+    "finding 7 (line 19): the title '`&&` and `!` on booleans' and the lines cited (21, 27) put must-not-report line 27 under the `and` rule, the same shape as the standard's sonnet-1 finding 7"
+   ],
+   "summary": "Reports 19 of 21, missing the line 12 pipe and the magic `18`, which stays a literal on line 126, so it breaks the comments and pipeline rules, with one false positive on line 27."
+  },
+  "run-wrmbp": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 134:     message = \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 41: A taken email, a missing email, and an age under 18 all return `{:error, :invalid}`. A caller cannot tell them apart. Rule: different failures need different reasons. Fix: the changeset carries one error per invalid field."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 146:   field :role, Ecto.Enum, values: [:admin, :editor, :member]   # placeholder values"
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 69: `import_user/2` is 40 lines with three levels of nesting. Rule: a public function reads as a short sequence of named steps, with details in private functions. Fix: `import_user/2` is now a `with` over `Repo.insert/1`, and each step is a private function."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 9: `rescue _ -> {:error, :invalid}` turns every exception into the same answer, including typos and bugs in this module. A caller cannot tell a bad age from a crash. Rule: `rescue` only around third-party code with no non-raising version, and never `rescue _ ->` around a whole function. Fix: call the non-raising versions and let real bugs raise."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 29: `is_binary(email) && age >= 18` joins two booleans, so the rule says `and`. The `is_binary/1` check is also dead code, since line 12 would already have raised on a non-string. Fix: the age rule moves into `validate_number/3` in the changeset, and the check goes away."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 119:   defp clamp_age(age) when is_integer(age), do: min(age, @max_age)"
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 94:     opts = Keyword.validate!(opts, notify: :none)"
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 45: `if opts[:return_id], do: user.id, else: {:ok, user}` returns a bare integer in one mode and a tuple in the other. Rule: give each function one return shape. Fix: `import_user/2` always returns `{:ok, user}`. Callers that need the id read `user.id`. This removes the `:return_id` option, which is a change for any caller that passes it."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 152:     |> validate_number(:age, greater_than_or_equal_to: 18)"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 69: `import_user/2` is 40 lines with three levels of nesting. Rule: a public function reads as a short sequence of named steps, with details in private functions. Fix: `import_user/2` is now a `with` over `Repo.insert/1`, and each step is a private function."
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "line 96:     with {:ok, user} <- params |> build_changeset() |> Repo.insert() do"
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 33: `%User{email: ..., age: ..., role: ...}` passed to `Repo.insert/1` skips validation entirely. `Repo.get_by(User, email: email) == nil` followed by an insert is also a race: two imports of the same email can both pass the check. Rule: insert a changeset, and declare `unique_constraint/3` so a duplicate returns `{:error, changeset}`. Fix: `build_changeset/1` and `User.changeset/2` (see the note below the code)."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 136:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn -> Mailer.deliver(message) end)"
+    },
+    "Send processes only the data they need": {
+     "verdict": "clean",
+     "evidence": "line 57: A spawned process has no supervisor, so it is not restarted, not shut down in order, and not visible to tools such as Observer. Rule: start one-off work under `Task.Supervisor`. Fix: `Task.Supervisor.start_child/2` under `Accounts.TaskSupervisor`. The closure now captures only the finished message string, not the whole `user` struct."
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 104:     email = normalize_email(params[\"email\"])"
+    }
+   },
+   "planted_reported": 20,
+   "planted_missed": [
+    "21: magic number `18`"
+   ],
+   "false_positives": [],
+   "summary": "Reports 20 of 21, missing only the magic `18`, which stays a literal on line 152, and its code adds a two-step pipeline on one line (line 96), so it breaks the comments and pipeline rules."
+  },
+  "run-zrrgq": {
+   "verdicts": {
+    "Read required keys with `map.key` or a pattern; keep `map[:key]` for optional keys": {
+     "verdict": "clean",
+     "evidence": "line 126:     \"Hi #{user.nickname}, welcome! Enjoy your account.\""
+    },
+    "Match every expected shape and let unexpected ones crash": {
+     "verdict": "clean",
+     "evidence": "line 9: 2. **`try/rescue` with `rescue _ ->` around the whole function.** It turns bugs (`nil` email, `nil` age, a failed insert) and expected failures into the same `{:error, :invalid}`. Rule: use the non-raising version, and never rescue `_` around a whole function. Fix: `Integer.parse/1` and `with`, with a separate reason for each failure."
+    },
+    "Convert external strings to atoms with explicit clauses": {
+     "verdict": "clean",
+     "evidence": "line 7: 1. **`String.to_atom/1` on input** (`role = String.to_atom(params[\"role\"])`). Anyone who controls `params[\"role\"]` can exhaust the atom table (atoms are never garbage-collected) and crash the node. A missing role also raises. Rule: convert external strings to atoms with explicit clauses. Fix: make `role` an `Ecto.Enum` field and let `cast/3` accept only the listed values. An unknown role then comes back as a changeset error."
+    },
+    "Branch with function clauses and guards before reaching for `if` or `cond`": {
+     "verdict": "clean",
+     "evidence": "line 27: 11. **Nested `case` inside `if` inside `if` inside `try`.** Rule: keep functions short and at one level of detail. Fix: `import_user/2` is a short `with`; `insert_user/1`, `parse_age/1` and `maybe_send_welcome/2` hold the details."
+    },
+    "Return `{:ok, value}` or `{:error, reason}` for expected failures; raise only for bugs": {
+     "verdict": "clean",
+     "evidence": "line 9: 2. **`try/rescue` with `rescue _ ->` around the whole function.** It turns bugs (`nil` email, `nil` age, a failed insert) and expected failures into the same `{:error, :invalid}`. Rule: use the non-raising version, and never rescue `_` around a whole function. Fix: `Integer.parse/1` and `with`, with a separate reason for each failure."
+    },
+    "Use `and`, `or`, `not` when the operands are booleans": {
+     "verdict": "clean",
+     "evidence": "line 15: 5. **`if is_binary(email) && age >= 18`.** Two problems. `&&` is used on booleans (rule: use `and`). And `is_binary(email)` runs after `String.downcase(email)` already raised for a non-binary, so it never checks anything. Fix: `is_binary(email)` is a guard in the head, and `age >= 18` moves into the changeset as `validate_number/3`."
+    },
+    "Assign the result of `if`, `case`, and `Enum` calls; rebinding inside a block does not escape it": {
+     "verdict": "clean",
+     "evidence": "line 13: 4. **`if age > 120 do age = 120 end`.** A rebinding inside `if` does not escape the block, so the age is never capped, and the compiler warns. Rule: assign the result of `if`. Fix: `min(age, @max_age)`, and the cap is a named module attribute (`@max_age`)."
+    },
+    "Use one atom-valued field or option instead of overlapping booleans": {
+     "verdict": "clean",
+     "evidence": "line 23: 9. **`opts[:notify] && !opts[:silent]`**: two overlapping booleans (`notify: true, silent: true` is meaningless), `!` on values that may be `nil`, and no option validation. Fix: a single `:notify` option, checked with `Keyword.validate!/2` and documented under `## Options`. If `:silent` has callers, they need a migration, so this is an API change."
+    },
+    "Give each function one return shape": {
+     "verdict": "clean",
+     "evidence": "line 25: 10. **`opts[:return_id]` changes the return shape** (`user.id` or `{:ok, user}`). Rule: one return shape per function. Fix: drop the option; callers who want the ID read `user.id`. This is an API change."
+    },
+    "Comments explain why; documentation goes in `@moduledoc` and `@doc`": {
+     "verdict": "violated",
+     "evidence": "line 147:   |> validate_number(:age, greater_than_or_equal_to: 18)"
+    },
+    "Keep functions short and at one level of detail": {
+     "verdict": "clean",
+     "evidence": "line 79:     with {:ok, age} <- parse_age(age),"
+    },
+    "Write pipelines that start with a value and read top to bottom": {
+     "verdict": "violated",
+     "evidence": "line 11: 3. **`String.to_integer(params[\"age\"])` and `params[\"email\"] |> String.downcase()`** read required keys with `params[\"key\"]` and then crash on `nil`. Rules: match required string-keyed input in the function head, with a separate clause for no match; read required keys without `nil` surprises. Fix: match `\"email\"`, `\"age\"` and `\"role\"` in the head, with `{:error, :invalid_params}` as the last clause. The age is parsed in `parse_age/1`, which returns `{:error, {:invalid_field, \"age\"}}`."
+    },
+    "Validate input with changesets": {
+     "verdict": "clean",
+     "evidence": "line 17: 6. **`%User{...}` passed to `Repo.insert/1` with no changeset.** Nothing is validated and a constraint violation raises. Rule (ecto-phoenix): cast and validate with a changeset. Fix: `User.changeset/2` (proposed below)."
+    },
+    "Supervise every long-lived process": {
+     "verdict": "clean",
+     "evidence": "line 120:     Task.Supervisor.start_child(Accounts.TaskSupervisor, fn ->"
+    },
+    "Send processes only the data they need": {
+     "verdict": "violated",
+     "evidence": "line 121:       Mailer.deliver(welcome_email(user))"
+    },
+    "Name a step instead of wrapping an expression": {
+     "verdict": "clean",
+     "evidence": "line 103:     attrs = %{"
+    }
+   },
+   "planted_reported": 18,
+   "planted_missed": [
+    "12: single-step pipe",
+    "21: magic number `18`",
+    "49: the closure copies the whole `user` struct"
+   ],
+   "false_positives": [
+    "finding 9 (line 23): lists '`!` on values that may be `nil`' as a fault of must-not-report line 27, where the case says `!` is right; borderline, see notes"
+   ],
+   "summary": "Reports 18 of 21, missing the line 12 pipe, the magic `18` and the closure copy, and its task still captures `user` (lines 120-122), so it breaks the comments, pipeline and send-only-data rules, with one borderline false positive on line 27."
+  }
+ },
+ "notes": [
+  "Standard: 2026-10-31-b's code-review skill grade, then 2026-10-31's. A problem counts as reported only when a finding names it or its stated fix addresses it. A silent fix, or a mention only under assumptions or behaviour changes, does not count, and a rule is violated when a planted problem belonging to it goes unreported, even if the code fixed it. The 21 problems are the case table's 19 rows with the rebinding split from the magic 120 and the spawn split from the closure copy.",
+  "Evidence is one whole verbatim review.md line, with review.md line numbers. Where a violation is an omission, the line is the nearest finding, or the code line that shows the silent fix or the kept literal, and planted_missed and these notes say what is absent. 'Input line' means code-review-input.ex.",
+  "For close calls the two named files do not settle, I also read the 2026-10-23 baseline grade and the three 2026-10-31-haiku-test code-review grades, which were not on the do-not-read list. No check-6 or check-7 file was read.",
+  "Identical errors. Counted: ggfrj finding 10, jntda finding 7, tdprf finding 10, vzhev finding 9 and wrmbp finding 9 name them. zrrgq finding 2 counts through 'bugs ... and expected failures into the same `{:error, :invalid}`' with the fix 'a separate reason for each failure'. tszww finding 3 counts, borderline, through 'so the caller cannot tell which field was wrong' with a per-field fix. Not counted: npytu finding 2 ('a bug and bad input both return') and ufduj finding 3 ('hides every bug as bad input') treat the rescue only as hiding bugs, with no distinct reasons in the fix, as the standard judged sonnet-1. ufduj's line 3 lead sentence ('every failure, including bugs') is not a finding, and its line 47 sits under assumptions. Held the other way, each of those two would gain one problem and be clean on 'Match every expected shape...'.",
+  "Line 8 raise. Eight runs name a raise on a missing or nil role, which counts with or without saying it is outside the `try`. ufduj names no such raise: finding 2 is only about atoms and its `Ecto.Enum` fix is not stated as handling a missing role, so 'Return `{:ok, value}`...' is violated for that run, as 2026-10-31 held for both haikus.",
+  "Magic numbers. ggfrj finding 16 and jntda finding 15 name both. npytu, tdprf, ufduj, vzhev, wrmbp and zrrgq count for the 120 through a fix that names `@max_age` or says the 120 becomes a module attribute, and none names the 18. In tdprf (`@min_age`) and ufduj (`@adult_age`) the 18 is named only in the code, a silent fix; in npytu, vzhev, wrmbp and zrrgq it stays a literal in the changeset. tszww names neither number: finding 1 says only `min/2`. So 'Comments explain why...' is violated in seven of the nine runs, through the numbers alone: all nine report the comments and keep the line 11 comment.",
+  "tdprf `&&`: finding 6 quotes input line 21 for hand validation and the dead check and never names the operator, so it counts for the dead `is_binary` and not for the `&&`, as 2026-10-31's baseline and haiku-test code-review-a judged the same shape. 'Use `and`, `or`, `not`...' is violated although its code has no `&&` on booleans.",
+  "Dead `is_binary`. jntda finding 13 ('runs before the type check') and vzhev finding 4 ('runs after `String.downcase` already needed a binary') count, as the 2026-10-31 baseline counted that wording. ufduj finding 6 quotes the check only for the `&&` and moves it, and a move alone does not count. The dead `is_binary` belongs to no rule, so this changes only counts.",
+  "Nesting. tdprf counts, borderline, through finding 6's 'The nested `if` chain on lines 15-41 then disappears.', which names it inside another finding. Held the other way, tdprf would be 18 of 21 and violated on 'Branch...' and 'Keep functions short...'. A nesting finding under any rule name counts for both rules (jntda finding 12, for example, cites the `with` rule).",
+  "ggfrj lines 85-87: a block `if` inside the `with` body. The 2026-10-31 exception covers only a one-line `if ..., do:`, and the 2026-10-23 baseline held that a block `if` inside a `with` breaks 'Keep functions short...' ('When a `case`, `if`, or `with` appears inside another one, move the inner one into a named private function'). 'Branch...' stays clean, since that rule allows a single boolean condition. The other four runs with an `if` there use the one-line form.",
+  "wrmbp line 96 `with {:ok, user} <- params |> build_changeset() |> Repo.insert() do` is decided by 'A pipeline never sits on one line, however short', as the 2026-10-31 baseline judged the same shape. wrmbp reports input lines 12 and 55, so this is the only reason the pipeline rule is violated for it. vzhev and zrrgq are violated through input line 12: vzhev finding 4 and zrrgq finding 3 discuss that line only as a key read that crashes.",
+  "Closure copy. jntda finding 8 ('the closure captures only the message string') and wrmbp finding 13 count through their stated fixes, as earlier grades counted a fix that captures only the built email. zrrgq finding 12 names only the supervisor and lines 120-122 still capture `user`.",
+  "jntda's bare-struct insert counts through finding 5's fix, 'casts and validates the attributes', though the finding is titled for the race. A finding that names a changeset only as the place for `unique_constraint` would not count.",
+  "Changeset rule: all nine are clean under 'An assumed or companion changeset counts as a changeset', which includes hand parsing beside it. Three runs go further and keep the age floor out of the changeset: ggfrj line 113, jntda line 110 and tszww line 84. The 2026-10-21-check grade held that shape clean, and I follow it. haiku-test code-review-c held one such run violated as a new call, and ggfrj's assumed changeset has no validate call at all (line 41), so this is the closest verdict on this rule. Held the other way, those three would be violated, with no change in counts.",
+  "False positives on line 27. vzhev finding 7 has nearly the title the standard counted for sonnet-1. ggfrj finding 5 uses the same title, and I list it for that reason, but it is borderline: its body says the operand 'can be `nil`' and sends the line to finding 7, which matches the case's reason. zrrgq finding 9 reports the overlap correctly but also lists '`!` on values that may be `nil`' as a fault, which the case says is fine, so it is listed, also borderline. None changes a verdict: all three report line 21 and none puts `and` or `not` on a nil-able option. No run reports line 19, and every run keeps the line 11 comment.",
+  "tdprf line 90 `email = Changeset.get_field(changeset, :email)` is used once, on line 91, which comes close to 'only renames a value used once'. I held 'Name a step...' clean because it names the fallback in an `||` and shortens that expression; the case's check and the rule's example are about plain renames. No run has an expression that is only wrapped across lines.",
+  "Not counted, following the standard: `_ ->` inside `case Integer.parse(...)` (ggfrj line 106, tszww line 80, wrmbp line 124, zrrgq line 95), body string reads (tszww line 94, wrmbp lines 104, 108, 109), and `opts[:notify]` without `Keyword.validate!/2` where the default is documented (npytu line 56, tdprf line 59). `Ecto.Enum` assumed for `role` counts for the atom rule. tszww's non-string age or email raises `FunctionClauseError` (lines 78, 89), the probe the standard said decides no verdict. wrmbp's `clamp_age/1` returns an integer or the raw value, but the return-shape rule's text is about options, so it is clean. npytu line 68 `defp maybe_send_welcome(_user, _silent), do: :ok` swallows any value, including `notify: true`, as finding 10 admits; that run is already violated on 'Match every expected shape...', so it decides nothing.",
+  "Verdicts come from reading the reviews. The code blocks were not compiled or format-checked, since none of these verdicts depends on that."
+ ]
+}
