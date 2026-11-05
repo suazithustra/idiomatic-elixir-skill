@@ -67,7 +67,7 @@ name = get_in(request.user.profile.name)
 
 ### Match every expected shape and let unexpected ones crash
 
-A `_ ->` clause after `{:ok, value}` turns every other return value, including ones added later, into the same error and hides bugs. Match the error shape explicitly. Different failures need different reasons too: a caller cannot tell a missing field from a bad number when both return `{:error, :invalid}`. Destructure results with a pattern so malformed input raises at the cause instead of producing wrong values.
+A `_ ->` clause after `{:ok, value}` turns every other return value, including ones added later, into the same error and hides bugs. Match the error shape explicitly. Different failures need different reasons too: a caller cannot tell a missing field from a bad number when both return `{:error, :invalid}`. That holds where the caller acts on the reason; a lookup whose contract is a value or `nil` fails with `nil` from every step. Destructure results with a pattern so malformed input raises at the cause instead of producing wrong values.
 
 ```elixir
 # Instead of
@@ -185,7 +185,7 @@ Use `if` for a single boolean condition, not `case flag do true -> ...; false ->
 
 ### Chain fallible steps with `with`; normalize each step's error in a small private function
 
-A `with` chains two or more `<-` steps. One step is a `with` only when its body cannot fail and there is no `else`, so the `with` does nothing but pass the error through; any other one-step `with` is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function whose failure already has the shape the function returns, `{:error, reason}` for a function that returns tuples, `:error` for a fetch, `nil` for a lookup that returns a value or `nil`, and let `with` pass it through unchanged. A step that returns a value or `nil` matches with a guard: `name when is_binary(name) <- first_match(patterns, header)`.
+A `with` chains two or more `<-` steps. One step is a `with` only when its body cannot fail and there is no `else`, so the `with` does nothing but pass the error through; any other one-step `with` is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function whose failure already has the shape the function holding the `with` returns, `{:error, reason}` for a function that returns tuples, `:error` for a fetch, `nil` for a lookup that returns a value or `nil`, and let `with` pass it through unchanged. A step that returns a value or `nil` matches with a guard: `name when is_binary(name) <- first_match(patterns, header)`. An `else` whose every clause returns the same value is the sign: the steps should fail with that value, and the `else` goes.
 
 ```elixir
 # Instead of
@@ -331,7 +331,7 @@ Use `Enum.each/2` only for side effects. When you need results, use `Enum.map/2`
 | `Enum.group_by(items, &k/1) \|> Map.new(fn {k, v} -> {k, length(v)} end)` | `Enum.frequencies_by(items, &k/1)` |
 | `Enum.sort(items) \|> Enum.reverse()` | `Enum.sort(items, :desc)` |
 | `Enum.find(items, &f/1) != nil` | `Enum.any?(items, &f/1)` |
-| `Enum.find(pairs, fn {_k, v} -> f(v) end)` followed by a `case` that takes `k` out | `Enum.find_value(pairs, fn {k, v} -> if f(v), do: k end)` |
+| `Enum.find(pairs, fn {_k, v} -> f(v) end)` followed by a `case` that takes `k` out | `Enum.find_value/2`, with an `fn` that returns `k` when `f(v)` holds |
 | `List.keyfind(pairs, key, 0) == nil` | `not List.keymember?(pairs, key, 0)` |
 | `for path <- paths, File.read!(path) =~ ~r/Yex/, do: path` | `Enum.filter(paths, &(File.read!(&1) =~ ~r/Yex/))` |
 | `if Map.has_key?(map, k), do: Map.get(map, k)` | `case Map.fetch(map, k) do` |
@@ -545,9 +545,9 @@ else
 end
 ```
 
-### Inline `->` clauses that read at a glance; otherwise put each body on its own line
+### Put each `->` body on its own line unless the clauses read as a table
 
-A clause of `case`, `cond`, `receive`, `with ... else` or a multi-clause `fn` stays on one line when the clauses form a table, or when each body is one expression simple enough to take in together with its pattern: `{:ok, width} -> width` above `{:error, _} -> 80`. That pair stays inline because both rows return a value; when the success row calls on, as `{:ok, bytes} -> hash_if_canonical(token, bytes)` does beside `_other -> :error`, the clauses are not a table and every body goes below. The body goes on the line after the `->` when it holds several sequential expressions or a nested construct, when it needs more than a glance beside its pattern, or when the clauses do different kinds of work, one returning a finished value while another continues the computation, as in `value_end/3` below; and a clause whose pattern, `->` and body pass about 70 characters after the indentation goes to two lines even when it fits in 98. `mix format` breaks a block as a whole: when one clause breaks, every clause of that `case` does, with a blank line between clauses, so keep that layout and do not pull a short clause back onto one line. `cond` already carries an expression on the left of each `->`, so its bodies go on the next line unless every one is a short literal or name. A single-clause `fn` passed as an argument reads the same way: one expression stays on its line, more goes below.
+A clause of `case`, `cond`, `receive`, `with ... else` or a multi-clause `fn` puts its body on the line after the `->`. The exception is clauses that read as a table: the rows line up as alternatives of one mapping, so reading down them shows what each input gives, as `{:ok, width} -> width` above `{:error, _} -> 80` does, and the ETS lookup below, where a found count and a default `0` are both the answer. A row that calls on, as `{:ok, bytes} -> hash_if_canonical(token, bytes)` does beside `_other -> :error`, does not read that way, because one row gives an answer and the other hands off; `value_end/3` below shows the same. Neither do bodies of several expressions or a nested construct. A table row past about 70 characters after the indentation still breaks. `mix format` breaks a block as a whole: when one clause breaks, every clause of that `case` does, with a blank line between clauses, so keep that layout and do not pull a short clause back onto one line. `cond` already carries an expression on the left of each `->`, so its bodies go on the next line unless every one is a short literal or name. A single-clause `fn` passed as an argument follows the one-expression rule instead: one expression stays on the `fn`'s line, more goes below.
 
 ```elixir
 # Instead of
