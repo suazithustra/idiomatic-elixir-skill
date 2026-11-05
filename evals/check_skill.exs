@@ -160,6 +160,45 @@ defmodule Evals.SkillCheck do
     end
   end
 
+  # A Phoenix project's .formatter.exs imports these from Ecto and ecto_sql, so the
+  # examples are formatted as such a project would format them, `from u in User` unwrapped.
+  @locals_without_parens [
+    from: 2,
+    field: 1,
+    field: 2,
+    field: 3,
+    timestamps: 1,
+    belongs_to: 2,
+    belongs_to: 3,
+    has_one: 2,
+    has_one: 3,
+    has_many: 2,
+    has_many: 3,
+    many_to_many: 2,
+    many_to_many: 3,
+    embeds_one: 2,
+    embeds_one: 3,
+    embeds_one: 4,
+    embeds_many: 2,
+    embeds_many: 3,
+    embeds_many: 4,
+    add: 2,
+    add: 3,
+    alter: 2,
+    create: 1,
+    create: 2,
+    drop: 1,
+    drop: 2,
+    execute: 1,
+    execute: 2,
+    modify: 2,
+    modify: 3,
+    remove: 1,
+    remove: 2,
+    rename: 2,
+    rename: 3
+  ]
+
   @spec check_block(block()) :: :ok | :skipped | {:failed, [finding()]}
   def check_block(%{unclosed: language} = block) do
     {:failed, [finding(block, :parse, nil, "the #{language} code fence is never closed")]}
@@ -226,7 +265,10 @@ defmodule Evals.SkillCheck do
   end
 
   defp format(code) do
-    formatted = code |> Code.format_string!() |> IO.iodata_to_binary()
+    formatted =
+      code
+      |> Code.format_string!(locals_without_parens: @locals_without_parens)
+      |> IO.iodata_to_binary()
 
     if formatted == String.trim(code) do
       :ok

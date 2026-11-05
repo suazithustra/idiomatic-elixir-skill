@@ -21,7 +21,7 @@ Write all the code (context, schema, migration, any script, controller) to <outp
 - `user_id` is not in the `cast/3` list. It is set from the given user, with `put_assoc/3`, `build_assoc/2`, or on the struct.
 - The listing query preloads or joins the author; there is no `Repo` call inside `Enum.map/2`.
 - Publishing uses `Repo.transact/2` or `Ecto.Multi`, so the audit row and the post update succeed or fail together.
-- The migration only adds the column. The backfill of `published_at` is a separate script, Mix task, or release task, and it does not use `MyApp.Blog.Post`.
+- The schema migration only adds the column. The backfill of `published_at` is a data migration kept apart from the schema migrations (such as `priv/repo/data_migrations`) and run by hand, or a script, Mix task or release task; it uses raw SQL or a schema defined inside it, not `MyApp.Blog.Post`. A second migration in the normal migrations folder runs automatically and misses this.
 - The controller calls context functions; it does not build queries or call `Repo` itself.
 - The show action lets `Repo.get!/2` raise for a missing id, which Phoenix turns into a 404, instead of matching `nil` and rendering a 404 by hand.
 - Error reasons are atoms, tuples, or changesets, not strings.
