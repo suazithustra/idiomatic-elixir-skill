@@ -185,7 +185,7 @@ Use `if` for a single boolean condition, not `case flag do true -> ...; false ->
 
 ### Chain fallible steps with `with`; normalize each step's error in a small private function
 
-A `with` chains two or more `<-` steps. One step is a `with` only when its body cannot fail and there is no `else`, so the `with` does nothing but pass the error through; any other one-step `with` is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function that returns `{:ok, value}` or `{:error, reason}`, and let `with` pass the error through unchanged.
+A `with` chains two or more `<-` steps. One step is a `with` only when its body cannot fail and there is no `else`, so the `with` does nothing but pass the error through; any other one-step `with` is a `case`. A large `else` block that maps errors back to steps is hard to follow and breaks when two steps fail with the same shape. Give each step a private function whose failure already has the shape the function returns, `{:error, reason}` for a function that returns tuples, `:error` for a fetch, `nil` for a lookup that returns a value or `nil`, and let `with` pass it through unchanged. A step that returns a value or `nil` matches with a guard: `name when is_binary(name) <- first_match(patterns, header)`.
 
 ```elixir
 # Instead of
@@ -286,7 +286,7 @@ end
 
 Do not wrap a raising call in `try/rescue` to get a tuple. Call the non-raising version instead: `File.read/1`, `Integer.parse/1`, `DateTime.from_unix/1`, `Repo.insert/1`. Use `rescue` only around third-party code that has no non-raising version, and rescue the specific exception, never `rescue _ ->` or `rescue e ->` around a whole function.
 
-Use atoms, tagged tuples, or exception structs as error reasons, not strings: `{:error, :not_found}`, `{:error, {:missing_field, "amount"}}`, `{:error, %MyApp.Error{}}`. Callers can match on those. A string can only be displayed.
+Use atoms, tagged tuples, or exception structs as error reasons, not strings: `{:error, :not_found}`, `{:error, {:missing_field, "amount"}}`, `{:error, %MyApp.Error{}}`. Callers can match on those. A string can only be displayed. A lookup whose only failure is absence may return `nil`, as a `get` does; a failure with a reason the caller can act on returns `{:error, reason}`.
 
 A function ending in `!` raises instead of returning a tuple. Write it on top of the non-bang version. Call bang functions where failure means a bug, such as in scripts, tests, seeds, and boot-time setup. Do not call them on user-supplied input in a request path unless the framework turns the exception into a response.
 
@@ -331,6 +331,7 @@ Use `Enum.each/2` only for side effects. When you need results, use `Enum.map/2`
 | `Enum.group_by(items, &k/1) \|> Map.new(fn {k, v} -> {k, length(v)} end)` | `Enum.frequencies_by(items, &k/1)` |
 | `Enum.sort(items) \|> Enum.reverse()` | `Enum.sort(items, :desc)` |
 | `Enum.find(items, &f/1) != nil` | `Enum.any?(items, &f/1)` |
+| `Enum.find(pairs, fn {_k, v} -> f(v) end)` followed by a `case` that takes `k` out | `Enum.find_value(pairs, fn {k, v} -> if f(v), do: k end)` |
 | `List.keyfind(pairs, key, 0) == nil` | `not List.keymember?(pairs, key, 0)` |
 | `for path <- paths, File.read!(path) =~ ~r/Yex/, do: path` | `Enum.filter(paths, &(File.read!(&1) =~ ~r/Yex/))` |
 | `if Map.has_key?(map, k), do: Map.get(map, k)` | `case Map.fetch(map, k) do` |
