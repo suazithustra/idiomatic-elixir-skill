@@ -78,37 +78,38 @@ defmodule Evals.SkillCheck do
     }
 
     print_summary(block_results, coverage_report, counts)
-    if counts.blocks + counts.index + counts.phrases == 0, do: 0, else: 1
+
+    if counts.blocks + counts.index + counts.phrases == 0 do
+      0
+    else
+      1
+    end
   end
 
   @spec extract_blocks(String.t(), String.t()) :: [block()]
   def extract_blocks(markdown, file) do
-    markdown
-    |> scan()
-    |> Enum.reduce({nil, %{}, []}, fn
-      {:heading, _level, text}, {_heading, ordinals, blocks} ->
-        {text, ordinals, blocks}
+    {_heading, _ordinals, blocks} =
+      markdown
+      |> scan()
+      |> Enum.reduce({nil, %{}, []}, &collect_block(&1, &2, file))
 
-      {:block, code}, {heading, ordinals, blocks} ->
-        ordinals = Map.update(ordinals, heading, 1, &(&1 + 1))
-        block = %{file: file, heading: heading, ordinal: ordinals[heading], code: code}
-        {heading, ordinals, [block | blocks]}
+    Enum.reverse(blocks)
+  end
 
-      {:unclosed_fence, language}, {heading, ordinals, blocks} ->
-        ordinals = Map.update(ordinals, heading, 1, &(&1 + 1))
+  defp collect_block({:heading, _level, text}, {_heading, ordinals, blocks}, _file) do
+    {text, ordinals, blocks}
+  end
 
-        block = %{
-          file: file,
-          heading: heading,
-          ordinal: ordinals[heading],
-          code: "",
-          unclosed: language
-        }
+  defp collect_block({:block, code}, acc, file), do: add_block(acc, file, %{code: code})
 
-        {heading, ordinals, [block | blocks]}
-    end)
-    |> elem(2)
-    |> Enum.reverse()
+  defp collect_block({:unclosed_fence, language}, acc, file) do
+    add_block(acc, file, %{code: "", unclosed: language})
+  end
+
+  defp add_block({heading, ordinals, blocks}, file, fields) do
+    ordinals = Map.update(ordinals, heading, 1, &(&1 + 1))
+    block = Map.merge(%{file: file, heading: heading, ordinal: ordinals[heading]}, fields)
+    {heading, ordinals, [block | blocks]}
   end
 
   @spec rule_headings(String.t(), String.t()) :: [String.t()]
@@ -127,7 +128,13 @@ defmodule Evals.SkillCheck do
       |> String.split("\n")
       |> Enum.reduce({nil, [], []}, &scan_line/2)
 
-    events = if language, do: [{:unclosed_fence, language} | events], else: events
+    events =
+      if language do
+        [{:unclosed_fence, language} | events]
+      else
+        events
+      end
+
     Enum.reverse(events)
   end
 
@@ -136,7 +143,7 @@ defmodule Evals.SkillCheck do
   end
 
   defp scan_line("```" <> _, {"elixir", lines, events}) do
-    code = lines |> Enum.reverse() |> Enum.join("\n") |> Kernel.<>("\n")
+    code = Enum.join(Enum.reverse(lines), "\n") <> "\n"
     {nil, [], [{:block, code} | events]}
   end
 
@@ -245,15 +252,17 @@ defmodule Evals.SkillCheck do
   defp split_parts(code) do
     code
     |> String.split("\n")
-    |> Enum.reduce([{"block", []}], fn line, [{part, lines} | rest] ->
-      case Regex.run(@marker, line) do
-        [_, marker] -> [{marker, []}, {part, lines} | rest]
-        nil -> [{part, [line | lines]} | rest]
-      end
-    end)
+    |> Enum.reduce([{"block", []}], &split_line/2)
     |> Enum.reverse()
-    |> Enum.map(fn {part, lines} -> {part, lines |> Enum.reverse() |> Enum.join("\n")} end)
+    |> Enum.map(fn {part, lines} -> {part, Enum.join(Enum.reverse(lines), "\n")} end)
     |> Enum.reject(fn {_part, code} -> String.trim(code) == "" end)
+  end
+
+  defp split_line(line, [{part, lines} | rest]) do
+    case Regex.run(@marker, line) do
+      [_, marker] -> [{marker, []}, {part, lines} | rest]
+      nil -> [{part, [line | lines]} | rest]
+    end
   end
 
   defp parse(code) do
@@ -284,16 +293,17 @@ defmodule Evals.SkillCheck do
     {_ast, found?} =
       code
       |> Code.string_to_quoted!()
-      |> Macro.prewalk(false, fn
-        {name, _meta, _args} = node, _found? when name in [:defmodule, :defprotocol, :defimpl] ->
-          {node, true}
-
-        node, found? ->
-          {node, found?}
-      end)
+      |> Macro.prewalk(false, &note_definition/2)
 
     found?
   end
+
+  defp note_definition({name, _meta, _args} = node, _found?)
+       when name in [:defmodule, :defprotocol, :defimpl] do
+    {node, true}
+  end
+
+  defp note_definition(node, found?), do: {node, found?}
 
   defp compile(code) do
     names = module_names(code)
@@ -301,7 +311,10 @@ defmodule Evals.SkillCheck do
     {result, diagnostics} =
       Code.with_diagnostics(fn ->
         try do
-          code |> Code.compile_string() |> Enum.map(&elem(&1, 0)) |> purge()
+          code
+          |> Code.compile_string()
+          |> Enum.map(&elem(&1, 0))
+          |> purge()
         rescue
           error -> {:error, Exception.message(error)}
         after
@@ -318,16 +331,19 @@ defmodule Evals.SkillCheck do
     {_ast, names} =
       code
       |> Code.string_to_quoted!()
-      |> Macro.prewalk([], fn
-        {:defmodule, _meta, [{:__aliases__, _alias_meta, parts} | _rest]} = node, names ->
-          {node, [Module.concat(parts) | names]}
-
-        node, names ->
-          {node, names}
-      end)
+      |> Macro.prewalk([], &note_module/2)
 
     names
   end
+
+  defp note_module(
+         {:defmodule, _meta, [{:__aliases__, _alias_meta, parts} | _rest]} = node,
+         names
+       ) do
+    {node, [Module.concat(parts) | names]}
+  end
+
+  defp note_module(node, names), do: {node, names}
 
   defp verdict(:ok, []), do: :ok
 
@@ -430,7 +446,7 @@ defmodule Evals.SkillCheck do
     %{
       phrase: row.phrase,
       file: row.file,
-      in_file: contents |> Map.get(row.file, "") |> String.count(row.phrase),
+      in_file: String.count(Map.get(contents, row.file, ""), row.phrase),
       total: Enum.sum_by(contents, fn {_file, text} -> String.count(text, row.phrase) end)
     }
   end
@@ -452,12 +468,15 @@ defmodule Evals.SkillCheck do
       for {_block, {:failed, findings}} <- block_results, finding <- findings, do: finding
 
     Enum.each(findings, fn finding ->
-      part = if finding.part, do: " part \"#{finding.part}\"", else: ""
+      part = part_label(finding.part)
       fail("#{finding.file} | #{finding.heading} | #{finding.tier}#{part}: #{finding.reason}")
     end)
 
     length(findings)
   end
+
+  defp part_label(nil), do: ""
+  defp part_label(part), do: " part \"#{part}\""
 
   defp print_coverage(coverage) do
     Enum.each(coverage.missing, &fail("#{@readme} | no index row for the rule \"#{&1}\""))

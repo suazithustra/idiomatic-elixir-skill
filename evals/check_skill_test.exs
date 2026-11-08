@@ -138,7 +138,7 @@ defmodule Evals.SkillCheckTest do
 
     test "passes a marker block whose parts are formatted even though the whole block is not" do
       code = "# Instead of\nif a do\n  foo(1)\nend\n# write\nfoo(2)\n"
-      formatted_whole = code |> Code.format_string!() |> IO.iodata_to_binary()
+      formatted_whole = IO.iodata_to_binary(Code.format_string!(code))
 
       refute formatted_whole == String.trim_trailing(code)
       assert :ok = SkillCheck.check_block(block("Marker", code))

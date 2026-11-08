@@ -89,6 +89,33 @@ An agent loads the skill when a task involves Elixir code, whether you ask it to
 
 When reviewing, the skill asks the agent to name the rule behind each finding and apply them when making improvements.
 
+## Checking each edit automatically
+
+The skill includes `scripts/check.exs`, which reports the shapes agents keep writing late in long sessions, after the rules have dropped out of their attention: a long one-line `if ... else`, a pipe step that spans several lines, a pipeline on one line, and `==` against a value built in place. The skill tells the agent to run it on each file it writes. That still depends on the agent remembering, so in Claude Code and Codex you can also run it as a hook after every edit; the agent then sees the finding as soon as the line is written. It needs Elixir 1.18 or later on the `PATH`, adds about half a second to each `.ex` or `.exs` edit, and exits at once for other files.
+
+Add this to `~/.claude/settings.json` for Claude Code, or to `~/.codex/hooks.json` for Codex (`.claude/settings.json` or `.codex/hooks.json` in a project instead), with the path to `check.exs` where you installed the skill:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "elixir ~/.claude/skills/idiomatic-elixir/scripts/check.exs",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+If the file already has a `hooks` key, add the `PostToolUse` entry to it rather than a second `hooks`. Codex matches `Edit|Write` against its `apply_patch` tool and asks you to trust a new hook before it runs it. The script checks four shapes, not every rule, so it works alongside the skill rather than in place of it.
+
 ## Using the skill alongside Phoenix's generated AGENTS.md
 
 `mix phx.new` (Phoenix 1.8.16) writes an `AGENTS.md` into every new project. Most of it is Phoenix-specific guidance this skill does not cover: layouts, HEEx (HTML-aware Embedded Elixir) templates, streams, hooks and forms. Some of it repeats rules here (atoms from input, `is_` prefixes, `start_supervised!/1`, waiting for messages instead of sleeping, preloading associations, map access on structs) without the reasons. A few of its statements are wrong or overstated. These were checked on 2026-10-21 against Elixir 1.20.3, Phoenix LiveView 1.2.13, Ecto 3.13.5 and phoenix_ecto 4.7.0, and this skill follows the checked behaviour:
@@ -123,12 +150,14 @@ Contributions are welcome, especially rules drawn from real Elixir output that w
 idiomatic-elixir/      the skill
   SKILL.md             rules for all Elixir code
   references/          topic-specific rules
+  scripts/check.exs    reports the shapes long sessions keep writing; run by the agent or by a hook
   LICENSE.txt          Apache License 2.0
   NOTICE               copyright and credits for adapted material
 evals/                 checks on the skill and its test prompts
   README.md            how to run and record a case, which case exercises which rule, cull candidates
   check_skill.exs      parses, formats and compiles the skill's examples and checks the rule index
   check_skill_test.exs tests for the checker
+  check_script_test.exs tests for scripts/check.exs
   cases/               one prompt per case, with what to check and its record of runs; input files and
                        the shop-project/ Mix project sit beside the prompts that use them
   sweeps/              dated run records: outputs, transcripts, gradings
@@ -156,7 +185,8 @@ LICENSE                Apache License 2.0
    ````
 
 4. Run `elixir evals/check_skill.exs`. It parses, formats, and compiles the code examples and checks the rule index in `evals/README.md`. It cannot see a wrong claim or an example that compiles but misbehaves, so also run every example by hand and check every claim about Elixir behavior on a current Elixir version before you submit.
-5. Keep the frontmatter to the fields defined in the specification. Some tools reject a skill with extra fields.
+5. If `idiomatic-elixir/scripts/check.exs` checks the rule you changed, make its message and threshold match the new text, update `evals/check_script_test.exs`, and run it with `elixir evals/check_script_test.exs`.
+6. Keep the frontmatter to the fields defined in the specification. Some tools reject a skill with extra fields.
 
 ### Testing a change
 
